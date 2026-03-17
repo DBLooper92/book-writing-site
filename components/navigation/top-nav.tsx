@@ -2,8 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
+import { ProjectSelect } from "@/components/projects/project-select";
 import { useAuthUser } from "@/hooks/use-auth-user";
+import { useUserProjects } from "@/hooks/use-user-projects";
+import { setActiveProjectForUser } from "@/lib/firebase/projects";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -19,6 +23,22 @@ const navLinks = [
 export function TopNav() {
   const pathname = usePathname();
   const { user, loading, uid } = useAuthUser();
+  const { projects, activeProjectId, loading: projectsLoading } = useUserProjects(uid);
+  const [switchingProject, setSwitchingProject] = useState(false);
+
+  async function handleProjectChange(projectId: string) {
+    if (!uid || !projectId) {
+      return;
+    }
+
+    setSwitchingProject(true);
+
+    try {
+      await setActiveProjectForUser(uid, projectId);
+    } finally {
+      setSwitchingProject(false);
+    }
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
@@ -51,7 +71,18 @@ export function TopNav() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-end gap-3">
+          {user ? (
+            <ProjectSelect
+              compact
+              label="Project"
+              projects={projects}
+              activeProjectId={activeProjectId}
+              loading={projectsLoading}
+              disabled={switchingProject}
+              onChange={handleProjectChange}
+            />
+          ) : null}
           <div className="rounded-full border border-zinc-200 bg-zinc-50 px-4 py-2 text-xs text-zinc-600">
             {loading ? (
               "Auth loading..."
