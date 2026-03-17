@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { FirebaseError } from "firebase/app";
 
+import { PageShell } from "@/components/layout/page-shell";
 import { app, auth, db } from "@/lib/firebase/client";
 import { runFirestoreHealthcheck } from "@/lib/firebase/firestore";
 
@@ -59,22 +60,12 @@ export default function FirebaseTestPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50 px-6 py-16 text-zinc-950">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
-        <div className="space-y-2">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-zinc-500">
-            Temporary Firebase Test Page
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Firebase connection status
-          </h1>
-          <p className="text-sm leading-6 text-zinc-600">
-            This page is isolated so you can verify client-side Firebase setup and
-            delete it later. Firestore security rules may block reads until rules are
-            configured in Firebase.
-          </p>
-        </div>
-
+    <PageShell
+      eyebrow="Temporary Firebase Test"
+      title="Firebase connection status"
+      description="Use this page to confirm the client app can reach the initialized Firebase app, Auth, and Firestore. Firestore rules may still block reads until your project rules allow them."
+    >
+      <section className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
         <div className="grid gap-4 sm:grid-cols-2">
           <StatusCard label="Firebase App" value="Initialized" />
           <StatusCard label="Project ID" value={projectId} />
@@ -109,8 +100,8 @@ export default function FirebaseTestPage() {
             {readState.message}
           </p>
         </div>
-      </div>
-    </main>
+      </section>
+    </PageShell>
   );
 }
 

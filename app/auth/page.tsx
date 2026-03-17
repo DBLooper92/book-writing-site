@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { FirebaseError } from "firebase/app";
-import { onAuthStateChanged, type User } from "firebase/auth";
 
-import { auth } from "@/lib/firebase/client";
+import { PageShell } from "@/components/layout/page-shell";
+import { useAuthUser } from "@/hooks/use-auth-user";
 import {
   signInWithEmail,
   signOutCurrentUser,
@@ -28,17 +28,9 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authReady, setAuthReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<Notice>(defaultNotice);
-
-  useEffect(() => {
-    return onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setAuthReady(true);
-    });
-  }, []);
+  const { user: currentUser, loading: authReadyLoading } = useAuthUser();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -118,21 +110,13 @@ export default function AuthPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50 px-6 py-16 text-zinc-950">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 rounded-[2rem] border border-zinc-200 bg-white p-8 shadow-sm">
+    <PageShell
+      eyebrow="BookWritingSite Auth"
+      title="Email and password sign in"
+      description="Firestore writes on the development setup page are scoped to the currently authenticated user, so sign in here before initializing your personal story-bible data."
+    >
+      <section className="rounded-4xl border border-zinc-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-2">
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-zinc-500">
-              BookWritingSite Auth
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Email and password sign in
-            </h1>
-            <p className="max-w-2xl text-sm leading-6 text-zinc-600">
-              Firestore rules now require an authenticated user, so signing in here
-              should also let you test reads on the Firebase check page.
-            </p>
-          </div>
           <div className="flex gap-3 text-sm">
             <Link
               href="/"
@@ -240,7 +224,7 @@ export default function AuthPage() {
             <div className="mt-4 space-y-3 text-sm text-zinc-600">
               <StatusRow
                 label="Auth ready"
-                value={authReady ? "Yes" : "Loading..."}
+                value={authReadyLoading ? "Loading..." : "Yes"}
               />
               <StatusRow
                 label="Signed in"
@@ -274,8 +258,8 @@ export default function AuthPage() {
             </button>
           </aside>
         </div>
-      </div>
-    </main>
+      </section>
+    </PageShell>
   );
 }
 
