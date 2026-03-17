@@ -31,6 +31,8 @@ export default function ProjectsPage() {
   const [creating, setCreating] = useState(false);
   const [savingProjectId, setSavingProjectId] = useState<string | null>(null);
   const [switchingProject, setSwitchingProject] = useState(false);
+  const activeProject =
+    projects.find((project) => project.id === activeProjectId) ?? null;
 
   useEffect(() => {
     setDraftNames((current) => {
@@ -219,11 +221,11 @@ export default function ProjectsPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
-              Project names
+              Active project details
             </h2>
             <p className="mt-2 text-sm leading-6 text-zinc-600">
-              Edit project titles here. Renaming a project updates the header
-              dropdown label without changing the project document ID.
+              Edit only the active project here. Use the selector above to switch
+              projects, then update the visible project name.
             </p>
           </div>
           <p className="text-sm text-zinc-500">
@@ -240,69 +242,48 @@ export default function ProjectsPage() {
             No projects found yet. Create one above, or run the dev initializer to
             seed the default story-bible project.
           </div>
+        ) : !activeProject ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm leading-6 text-zinc-600">
+            Select an active project above to edit its name and review its summary.
+          </div>
         ) : (
-          <div className="mt-6 space-y-4">
-            {projects.map((project) => {
-              const isActive = activeProjectId === project.id;
-              const isSaving = savingProjectId === project.id;
+          <div className="mt-6 rounded-3xl border border-zinc-200 bg-zinc-50 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-zinc-950">
+                {activeProject.id}
+              </p>
+              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+                Active
+              </span>
+            </div>
 
-              return (
-                <div
-                  key={project.id}
-                  className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5"
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-zinc-950">
-                          {project.id}
-                        </p>
-                        {isActive ? (
-                          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
-                            Active
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 text-sm text-zinc-600">
-                        {project.summary ?? "No summary yet."}
-                      </p>
-                    </div>
+            <p className="mt-2 text-sm text-zinc-600">
+              {activeProject.summary ?? "No summary yet."}
+            </p>
 
-                    {!isActive ? (
-                      <button
-                        type="button"
-                        onClick={() => handleSelectProject(project.id)}
-                        disabled={switchingProject}
-                        className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-300 px-4 text-sm font-medium text-zinc-800 transition hover:bg-white disabled:cursor-not-allowed disabled:border-zinc-200 disabled:text-zinc-400"
-                      >
-                        Set active
-                      </button>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-3 md:flex-row">
-                    <input
-                      value={draftNames[project.id] ?? ""}
-                      onChange={(event) =>
-                        setDraftNames((current) => ({
-                          ...current,
-                          [project.id]: event.target.value,
-                        }))
-                      }
-                      className="h-11 flex-1 rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRenameProject(project.id)}
-                      disabled={isSaving || !draftNames[project.id]?.trim()}
-                      className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
-                    >
-                      {isSaving ? "Saving..." : "Save name"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            <div className="mt-4 flex flex-col gap-3 md:flex-row">
+              <input
+                value={draftNames[activeProject.id] ?? ""}
+                onChange={(event) =>
+                  setDraftNames((current) => ({
+                    ...current,
+                    [activeProject.id]: event.target.value,
+                  }))
+                }
+                className="h-11 flex-1 rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400"
+              />
+              <button
+                type="button"
+                onClick={() => handleRenameProject(activeProject.id)}
+                disabled={
+                  savingProjectId === activeProject.id ||
+                  !draftNames[activeProject.id]?.trim()
+                }
+                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+              >
+                {savingProjectId === activeProject.id ? "Saving..." : "Save name"}
+              </button>
+            </div>
           </div>
         )}
 
