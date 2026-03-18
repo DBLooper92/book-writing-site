@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BookWritingSite
 
-## Getting Started
+BookWritingSite is a private story-bible and AI-assisted writing workspace for a long-form, multi-book fiction series. It is being built as a single-author system first, with structured canon data, wiki-style reference pages, timeline support, and AI writing tools sharing one maintainable app.
 
-First, run the development server:
+## Current Scope
+
+The current repo already has:
+
+- Firebase Auth with email/password flows
+- user-owned projects plus active project switching
+- Firestore-backed Characters pages
+- Firestore-backed Locations pages
+- Firestore-backed Notes pages
+- a developer seeding flow for a default story-bible project
+- a placeholder Timeline route
+
+Characters, Locations, and Notes currently have list, create, detail, and edit flows. Delete flows, richer cross-entity linking, and the broader entity library are still future work.
+
+## Local Development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Architecture Summary
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Next.js App Router
+- TypeScript
+- Firebase Auth
+- Firestore
+- per-user, per-project data model
+- active project stored on `users/{uid}.activeProjectId`
 
-## Learn More
+Story-bible entities must stay nested under:
 
-To learn more about Next.js, take a look at the following resources:
+- `users/{uid}/projects/{projectId}/{entityCollection}/{entityId}`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Global entity collections such as `characters/{characterId}` are not part of this architecture.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Docs
 
-## Deploy on Vercel
+- `AGENTS.md`: high-signal coding-agent entry point
+- `docs/README.md`: documentation index and read order
+- `docs/product/project-vision.md`: long-term product intent
+- `docs/architecture/current-status.md`: implemented vs partial vs planned
+- `docs/architecture/firestore-structure.md`: Firestore scoping rules
+- `docs/patterns/entity-slice-pattern.md`: reference pattern for new slices
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Current Entity Status
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Implemented: `projects`, `characters`, `locations`, `notes`
+- Placeholder routes only: `timeline`
+- Seeded for future development, but not yet implemented as slices: `books`, `chapters`, `scenes`, `timeline_events`, `cultures`, `factions`, `languages`, `species`, `items`, `plot_threads`, `relationships`, `themes`, `eras`, `technologies`, `religions`, `governments`, `organizations`, `outlines`, `glossary_terms`, `attachments`, `ai_sessions`, `retcons`
