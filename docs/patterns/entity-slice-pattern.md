@@ -4,7 +4,7 @@
 
 New structured entity features should follow the existing slice pattern instead of introducing a custom architecture per entity.
 
-Characters is the reference slice. Locations is the second implemented example and confirms the pattern is reusable. Notes is the third implemented example and shows that a content-heavy slice can still stay inside the same architecture.
+Characters is the reference slice. Locations is the second implemented example and confirms the pattern is reusable. Notes is the third implemented example and shows that a content-heavy slice can still stay inside the same architecture. Books is the fourth implemented example and shows that manuscript-structure records can use that same slice pattern too.
 
 ## Standard Slice Shape
 

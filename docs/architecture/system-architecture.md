@@ -54,6 +54,7 @@ The repo currently follows an entity-slice approach:
 
 Characters is the reference slice. Locations confirms the pattern is reusable.
 Notes shows that the same slice architecture also works for text-heavy project records.
+Books extends it into manuscript structure without changing the core architecture.
 
 ## Design Rules
 
@@ -72,6 +73,7 @@ Implemented now:
 - auth
 - projects
 - active project switching
+- books
 - characters
 - locations
 - notes
@@ -80,7 +82,7 @@ Implemented now:
 Not yet implemented as full features:
 
 - timeline tools
-- books and chapter writing tools
+- chapter writing tools
 - broader entity library
 - AI writing surfaces
 

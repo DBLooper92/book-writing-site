@@ -38,6 +38,7 @@ Implemented now:
 - user-owned projects
 - active project switching via `users/{uid}.activeProjectId`
 - dev initializer that seeds a default project and starter docs
+- books slice with list, create, detail, and edit flows
 - characters slice with list, create, detail, and edit flows
 - locations slice with list, create, detail, and edit flows
 - notes slice with list, create, detail, and edit flows
@@ -91,5 +92,6 @@ Docs must stay honest about what is implemented now, what is partial, and what i
 - `docs/patterns/firestore-patterns.md`
 - `docs/patterns/typing-and-normalization.md`
 - `docs/patterns/ui-patterns.md`
+- `docs/features/books.md`
 - `docs/features/notes.md`
 - `docs/ai/assistant-guidelines.md`

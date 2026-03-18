@@ -47,7 +47,7 @@ All slice pages should handle:
 - empty state where relevant
 - error state
 
-Characters, Locations, and Notes already use this pattern. Characters should remain the baseline reference when a future slice needs a tie-breaker.
+Books, Characters, Locations, and Notes already use this pattern. Characters should remain the baseline reference when a future slice needs a tie-breaker.
 
 ## Detail Pages
 

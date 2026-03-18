@@ -8,13 +8,14 @@ The current repo already has:
 
 - Firebase Auth with email/password flows
 - user-owned projects plus active project switching
+- Firestore-backed Books pages
 - Firestore-backed Characters pages
 - Firestore-backed Locations pages
 - Firestore-backed Notes pages
 - a developer seeding flow for a default story-bible project
 - a placeholder Timeline route
 
-Characters, Locations, and Notes currently have list, create, detail, and edit flows. Delete flows, richer cross-entity linking, and the broader entity library are still future work.
+Books, Characters, Locations, and Notes currently have list, create, detail, and edit flows. Delete flows, richer cross-entity linking, and the broader entity library are still future work.
 
 ## Local Development
 
@@ -50,6 +51,6 @@ Global entity collections such as `characters/{characterId}` are not part of thi
 
 ## Current Entity Status
 
-- Implemented: `projects`, `characters`, `locations`, `notes`
+- Implemented: `projects`, `books`, `characters`, `locations`, `notes`
 - Placeholder routes only: `timeline`
-- Seeded for future development, but not yet implemented as slices: `books`, `chapters`, `scenes`, `timeline_events`, `cultures`, `factions`, `languages`, `species`, `items`, `plot_threads`, `relationships`, `themes`, `eras`, `technologies`, `religions`, `governments`, `organizations`, `outlines`, `glossary_terms`, `attachments`, `ai_sessions`, `retcons`
+- Seeded for future development, but not yet implemented as slices: `chapters`, `scenes`, `timeline_events`, `cultures`, `factions`, `languages`, `species`, `items`, `plot_threads`, `relationships`, `themes`, `eras`, `technologies`, `religions`, `governments`, `organizations`, `outlines`, `glossary_terms`, `attachments`, `ai_sessions`, `retcons`

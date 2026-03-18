@@ -34,6 +34,17 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - starter documents for many planned collections
 - rerunnable merge/skip behavior for seed data
 
+### Books
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
 ### Characters
 
 - canonical type definitions
@@ -71,7 +82,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 
 ### CRUD Coverage
 
-Characters, Locations, and Notes have create, list, detail, and edit flows. Dedicated delete actions are not implemented yet.
+Books, Characters, Locations, and Notes have create, list, detail, and edit flows. Dedicated delete actions are not implemented yet.
 
 ### Broader Schema Visibility
 
@@ -89,7 +100,6 @@ This route communicates product direction and seeded-data intent, but it is not 
 
 ## Planned Later
 
-- books
 - chapters
 - scenes
 - timeline events

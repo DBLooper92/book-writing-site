@@ -60,3 +60,9 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: First Notes slice implementation
 - Decision: The first Notes implementation keeps notes as a flat project-scoped collection and treats `users/{uid}/projects/{projectId}.notesRootId` as an optional project-level pointer, not as proof of a required note-tree model.
 - Why it stays in force: The current docs and seed data support project-scoped notes and a root-note pointer, but they do not define parent-child note structure strongly enough to justify inventing a hierarchy in the first pass.
+
+### D-009
+
+- Origin: First Books slice implementation
+- Decision: Books is the first manuscript-structure slice and the baseline pattern for later manuscript-layer entity work.
+- Why it stays in force: Chapters, scenes, and chronology records need a real parent manuscript entity, and Books now proves that manuscript-facing slices can still follow the same project-scoped entity pattern as the canon slices.

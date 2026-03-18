@@ -4,6 +4,12 @@ import { PageShell } from "@/components/layout/page-shell";
 
 const quickLinks = [
   {
+    href: "/books",
+    title: "Books",
+    description:
+      "Inspect the first manuscript-structure slice with active-project book list, create, detail, and edit flows.",
+  },
+  {
     href: "/dev/setup",
     title: "Developer setup",
     description:
@@ -61,6 +67,11 @@ export default function HomePage() {
           Firestore data is structured under <code>users/{`{uid}`}</code> so the
           project can stay single-user for now without blocking future expansion to
           multiple authenticated users and multiple projects per user.
+        </p>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">
+          Books is now the first manuscript-structure slice, giving future chapter,
+          scene, and timeline work a real project-scoped parent record instead of
+          relying on seed data alone.
         </p>
       </section>
     </PageShell>
