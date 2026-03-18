@@ -40,8 +40,11 @@ Implemented now:
 - dev initializer that seeds a default project and starter docs
 - books slice with list, create, detail, and edit flows
 - chapters slice with list, create, detail, and edit flows
+- scenes slice with list, create, detail, and edit flows
 - characters slice with list, create, detail, and edit flows
+- factions slice with list, create, detail, and edit flows
 - locations slice with list, create, detail, and edit flows
+- timeline events slice with list, create, detail, and edit flows
 - notes slice with list, create, detail, and edit flows
 
 Partial or placeholder:
@@ -95,5 +98,8 @@ Docs must stay honest about what is implemented now, what is partial, and what i
 - `docs/patterns/ui-patterns.md`
 - `docs/features/books.md`
 - `docs/features/chapters.md`
+- `docs/features/scenes.md`
+- `docs/features/factions.md`
 - `docs/features/notes.md`
+- `docs/features/timeline-events.md`
 - `docs/ai/assistant-guidelines.md`

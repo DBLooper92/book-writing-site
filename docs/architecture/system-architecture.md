@@ -56,6 +56,8 @@ Characters is the reference slice. Locations confirms the pattern is reusable.
 Notes shows that the same slice architecture also works for text-heavy project records.
 Books extends it into manuscript structure without changing the core architecture.
 Chapters confirms that the same pattern also works for child manuscript records.
+Scenes extends the same pattern one level deeper into scene planning and drafting.
+Timeline Events extends the same pattern into chronology without introducing a separate timeline architecture.
 
 ## Design Rules
 
@@ -76,6 +78,8 @@ Implemented now:
 - active project switching
 - books
 - chapters
+- scenes
+- timeline events
 - characters
 - locations
 - notes
@@ -83,8 +87,7 @@ Implemented now:
 
 Not yet implemented as full features:
 
-- timeline tools
-- scene writing tools
+- broader timeline workspace
 - broader entity library
 - AI writing surfaces
 

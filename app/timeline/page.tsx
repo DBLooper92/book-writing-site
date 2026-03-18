@@ -5,9 +5,9 @@ export default function TimelinePage() {
     <PlaceholderPage
       eyebrow="Timeline"
       title="Timeline workspace"
-      description="Timeline events will anchor the internal chronology across eras, books, chapters, scenes, and wider worldbuilding records."
+      description="The broader timeline workspace is still a placeholder, but project-scoped timeline events now exist as a real slice for chronology records."
       placeholderTitle="Timeline placeholder"
-      placeholderDescription="The development initializer seeds timeline_events/event_001 and related references so you can inspect how chronology-linked records will connect before the timeline UI is built."
+      placeholderDescription="Use /timeline-events for real list, create, detail, and edit flows today. This route remains reserved for a richer chronology workspace built on top of those records later."
     />
   );
 }

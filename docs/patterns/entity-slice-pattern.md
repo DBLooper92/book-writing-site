@@ -4,7 +4,8 @@
 
 New structured entity features should follow the existing slice pattern instead of introducing a custom architecture per entity.
 
-Characters is the reference slice. Locations is the second implemented example and confirms the pattern is reusable. Notes is the third implemented example and shows that a content-heavy slice can still stay inside the same architecture. Books is the fourth implemented example and shows that manuscript-structure records can use that same slice pattern too. Chapters is the fifth implemented example and confirms the same approach works for child manuscript records under the active project.
+Characters is the reference slice. Locations is the second implemented example and confirms the pattern is reusable. Notes is the third implemented example and shows that a content-heavy slice can still stay inside the same architecture. Books is the fourth implemented example and shows that manuscript-structure records can use that same slice pattern too. Chapters is the fifth implemented example and confirms the same approach works for child manuscript records under the active project. Scenes is the sixth implemented example and confirms the pattern still holds at the scene layer without introducing a second manuscript architecture.
+Timeline Events is the seventh implemented example and confirms the same slice pattern also works for chronology records without turning the broader Timeline workspace into a special case.
 
 ## Standard Slice Shape
 

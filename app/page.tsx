@@ -16,6 +16,24 @@ const quickLinks = [
       "Work one level below books with project-scoped chapter list, create, detail, and edit flows.",
   },
   {
+    href: "/scenes",
+    title: "Scenes",
+    description:
+      "Manage the scene layer beneath chapters with project-scoped list, create, detail, and edit flows.",
+  },
+  {
+    href: "/factions",
+    title: "Factions",
+    description:
+      "Manage project-scoped faction records with list, create, detail, and edit flows aligned to the existing entity-slice pattern.",
+  },
+  {
+    href: "/timeline-events",
+    title: "Timeline Events",
+    description:
+      "Anchor project chronology with timeline-event list, create, detail, and edit flows under the active project.",
+  },
+  {
     href: "/dev/setup",
     title: "Developer setup",
     description:
@@ -75,9 +93,10 @@ export default function HomePage() {
           multiple authenticated users and multiple projects per user.
         </p>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">
-          Books and Chapters now give the manuscript layer real project-scoped
-          structure, so scenes and later timeline work can attach to implemented
-          records instead of relying on seed data alone.
+          Books, Chapters, Scenes, Timeline Events, and Factions now give the
+          manuscript, chronology, and core worldbuilding layers real
+          project-scoped structure. The broader timeline workspace is still a
+          placeholder, but chronology records no longer rely on seed data alone.
         </p>
       </section>
     </PageShell>

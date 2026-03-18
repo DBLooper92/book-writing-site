@@ -28,7 +28,7 @@ Implemented now as the fifth full entity slice and the second manuscript-structu
 
 ## Current Role In The Architecture
 
-Chapters is the first child manuscript slice. It keeps manuscript structure project-scoped and flat at the collection level while linking back to `bookId`, which leaves room for later scene and chronology work without changing the established slice architecture.
+Chapters is the first child manuscript slice. It keeps manuscript structure project-scoped and flat at the collection level while linking back to `bookId`, and Scenes now builds directly on that structure without changing the established slice architecture.
 
 ## What Remains Later
 

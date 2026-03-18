@@ -32,7 +32,7 @@ The long-term story-bible model is expected to include at least:
 
 ## Current Status Snapshot
 
-- Implemented slices: `books`, `chapters`, `characters`, `locations`, `notes`
+- Implemented slices: `books`, `chapters`, `scenes`, `characters`, `factions`, `locations`, `timeline_events`, `notes`
 - Implemented supporting systems: `projects`, `auth`, `dev setup`
 - Placeholder routes only: `timeline`
 - Seeded only: most of the remaining collections
@@ -41,26 +41,24 @@ The long-term story-bible model is expected to include at least:
 
 ### Immediate Next Slice
 
-- `scenes`
+- `cultures`
 
-Reason: Books and Chapters are now implemented. Scenes are the next clean structural step because they turn chapter structure into actionable narrative units and make timeline events more useful once scene-level anchors exist.
+Reason: Characters, Locations, and Factions already point toward culture records, so `cultures` is the next clean slice for extending real navigable canon data through an existing reference field.
 
 ### Manuscript And Chronology Tier
 
-- `scenes`
 - `timeline_events`
 
-Reason: with Books and Chapters now in place as the manuscript backbone, scenes and timeline events provide the next layer that many other entity types will link into. `timeline_events` stays in this tier because it becomes more useful after books, chapters, and scenes establish the narrative structure it should reference.
+Reason: this chronology layer is now implemented and gives the broader timeline workspace a concrete data foundation.
 
 ### Near-Term Worldbuilding Tier
 
-- `factions`
 - `cultures`
 - `species`
 - `items`
 - `relationships`
 
-Reason: these are already represented in Characters and Locations fields, so implementing them next unlocks meaningful cross-links without expanding too far beyond the current canon model.
+Reason: these are already represented in Characters, Factions, Locations, and Timeline Events fields, so implementing them next unlocks meaningful cross-links without expanding too far beyond the current canon model.
 
 ### Deeper Reference Tier
 
@@ -83,4 +81,4 @@ Reason: these are already represented in Characters and Locations fields, so imp
 
 ## Practical Rule
 
-Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Chapters, Characters, Locations, and Notes are already in place; the next biggest value comes from deeper manuscript and chronology structure.
+Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Chapters, Scenes, Characters, Factions, Locations, Timeline Events, and Notes are already in place; the next biggest value comes from deeper worldbuilding links built on top of that structure.

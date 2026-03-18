@@ -42,7 +42,10 @@ For any substantial task, read in this order:
 
 - `features/books.md`
 - `features/chapters.md`
+- `features/scenes.md`
+- `features/timeline-events.md`
 - `features/characters.md`
+- `features/factions.md`
 - `features/locations.md`
 - `features/notes.md`
 - `features/project-management.md`
@@ -69,11 +72,14 @@ Implemented now:
 - dev seeding
 - books slice
 - chapters slice
+- scenes slice
+- timeline events slice
 - characters slice
+- factions slice
 - locations slice
 - notes slice
 
 Partial or planned:
 
-- timeline UI is still a placeholder
+- timeline workspace UI is still a placeholder
 - many future collections are visible through seed data only
