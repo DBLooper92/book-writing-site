@@ -10,6 +10,12 @@ const quickLinks = [
       "Inspect the first manuscript-structure slice with active-project book list, create, detail, and edit flows.",
   },
   {
+    href: "/chapters",
+    title: "Chapters",
+    description:
+      "Work one level below books with project-scoped chapter list, create, detail, and edit flows.",
+  },
+  {
     href: "/dev/setup",
     title: "Developer setup",
     description:
@@ -69,9 +75,9 @@ export default function HomePage() {
           multiple authenticated users and multiple projects per user.
         </p>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">
-          Books is now the first manuscript-structure slice, giving future chapter,
-          scene, and timeline work a real project-scoped parent record instead of
-          relying on seed data alone.
+          Books and Chapters now give the manuscript layer real project-scoped
+          structure, so scenes and later timeline work can attach to implemented
+          records instead of relying on seed data alone.
         </p>
       </section>
     </PageShell>

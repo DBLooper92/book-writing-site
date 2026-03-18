@@ -14,6 +14,7 @@ const navLinks = [
   { href: "/firebase-test", label: "Firebase Test" },
   { href: "/dev/setup", label: "Dev Setup" },
   { href: "/books", label: "Books" },
+  { href: "/chapters", label: "Chapters" },
   { href: "/characters", label: "Characters" },
   { href: "/locations", label: "Locations" },
   { href: "/timeline", label: "Timeline" },

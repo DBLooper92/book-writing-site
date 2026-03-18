@@ -68,4 +68,4 @@ The project should remain:
 
 ## Current Stage
 
-Today, the repo is still in an early infrastructure stage. It already has authenticated project workspaces, an active project concept, a dev seeding flow, and initial Books, Characters, Locations, and Notes slices. The broader chapter-writing, scene-writing, timeline, and AI-writing surfaces are still planned layers, not finished product areas.
+Today, the repo is still in an early infrastructure stage. It already has authenticated project workspaces, an active project concept, a dev seeding flow, and initial Books, Chapters, Characters, Locations, and Notes slices. Scene-writing, timeline, and AI-writing surfaces are still planned layers, not finished product areas.

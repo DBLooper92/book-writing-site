@@ -32,7 +32,7 @@ The long-term story-bible model is expected to include at least:
 
 ## Current Status Snapshot
 
-- Implemented slices: `books`, `characters`, `locations`, `notes`
+- Implemented slices: `books`, `chapters`, `characters`, `locations`, `notes`
 - Implemented supporting systems: `projects`, `auth`, `dev setup`
 - Placeholder routes only: `timeline`
 - Seeded only: most of the remaining collections
@@ -41,17 +41,16 @@ The long-term story-bible model is expected to include at least:
 
 ### Immediate Next Slice
 
-- `chapters`
+- `scenes`
 
-Reason: Books is now implemented. Chapters is the next clean structural step because it begins the manuscript layer beneath books that scenes and later chronology work should attach to.
+Reason: Books and Chapters are now implemented. Scenes are the next clean structural step because they turn chapter structure into actionable narrative units and make timeline events more useful once scene-level anchors exist.
 
 ### Manuscript And Chronology Tier
 
-- `chapters`
 - `scenes`
 - `timeline_events`
 
-Reason: with Books now in place as the parent manuscript entity, these slices provide the next layer of manuscript and chronology backbone that many other entity types will link into. `timeline_events` stays in this tier because it becomes more useful after books, chapters, and scenes establish the narrative structure it should reference.
+Reason: with Books and Chapters now in place as the manuscript backbone, scenes and timeline events provide the next layer that many other entity types will link into. `timeline_events` stays in this tier because it becomes more useful after books, chapters, and scenes establish the narrative structure it should reference.
 
 ### Near-Term Worldbuilding Tier
 
@@ -84,4 +83,4 @@ Reason: these are already represented in Characters and Locations fields, so imp
 
 ## Practical Rule
 
-Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Characters, Locations, and Notes are already in place; the next biggest value comes from deeper manuscript and chronology structure.
+Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Chapters, Characters, Locations, and Notes are already in place; the next biggest value comes from deeper manuscript and chronology structure.

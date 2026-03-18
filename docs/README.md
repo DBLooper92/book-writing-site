@@ -41,6 +41,7 @@ For any substantial task, read in this order:
 ### Features
 
 - `features/books.md`
+- `features/chapters.md`
 - `features/characters.md`
 - `features/locations.md`
 - `features/notes.md`
@@ -67,6 +68,7 @@ Implemented now:
 - active project switching
 - dev seeding
 - books slice
+- chapters slice
 - characters slice
 - locations slice
 - notes slice

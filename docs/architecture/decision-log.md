@@ -66,3 +66,9 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: First Books slice implementation
 - Decision: Books is the first manuscript-structure slice and the baseline pattern for later manuscript-layer entity work.
 - Why it stays in force: Chapters, scenes, and chronology records need a real parent manuscript entity, and Books now proves that manuscript-facing slices can still follow the same project-scoped entity pattern as the canon slices.
+
+### D-010
+
+- Origin: First Chapters slice implementation
+- Decision: Chapters stays as a project-scoped top-level collection under `users/{uid}/projects/{projectId}/chapters/{chapterId}` and links back to books through `bookId` instead of nesting chapter documents under book documents.
+- Why it stays in force: This preserves the repo's flat per-project entity-slice architecture, keeps Firestore paths consistent across slices, and avoids introducing a second persistence pattern just for manuscript child records.

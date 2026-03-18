@@ -28,7 +28,7 @@ Implemented now as the fourth full entity slice and the first manuscript-structu
 
 ## Current Role In The Architecture
 
-Books is the first real manuscript-structure slice. It gives the repo a concrete parent entity for later chapter, scene, and chronology work without introducing a different architecture from the canon-oriented slices.
+Books is the first real manuscript-structure slice. It gives the repo a concrete parent entity for real chapter work plus later scene and chronology work without introducing a different architecture from the canon-oriented slices.
 
 ## What Remains Later
 

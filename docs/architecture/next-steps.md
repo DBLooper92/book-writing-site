@@ -4,24 +4,24 @@ This file tracks the short-term development direction implied by the current rep
 
 ## Current Focus
 
-- Keep future entity work inside the existing slice pattern proven by Books, Characters, Locations, and Notes.
-- Books now extends that same slice pattern into manuscript structure without introducing a separate architecture.
+- Keep future entity work inside the existing slice pattern proven by Books, Chapters, Characters, Locations, and Notes.
+- Books and Chapters now extend that same slice pattern into manuscript structure without introducing a separate architecture.
 - Prefer one fully working slice over several new placeholders.
 - Keep docs aligned as implementation changes land so the documentation system remains usable as working memory.
 
 ## Next Recommended Slice
 
-- `chapters`
+- `scenes`
 
 Reason:
-Books is now real, so the next highest-value step is the first child manuscript slice. Chapters is the cleanest follow-up because scenes naturally hang from it, and timeline events become more useful once narrative structure exists below the book level.
+Books and Chapters are now real, so the next highest-value step is the scene layer beneath chapters. Scenes are the cleanest follow-up because they make chapter-level structure more actionable and give later timeline-event work concrete narrative units to reference.
 
 Recommended scope for that pass:
 
-- canonical chapter type in `types/`
+- canonical scene type in `types/`
 - Firestore read/write utilities under the active project
 - list, create, detail, and edit pages
-- normalization compatible with seeded chapter documents
+- normalization compatible with seeded scene documents
 - explicit documentation updates in `current-status` and a new feature doc once the slice is real
 
 ## Follow-Up Cleanup Items
@@ -34,8 +34,9 @@ Recommended scope for that pass:
 
 - dedicated delete flows for Characters and Locations
 - dedicated delete flow for Books
+- dedicated delete flow for Chapters
 - dedicated delete flow for Notes
 - richer cross-entity pickers, linked navigation, and validation
-- manuscript structure slices: `chapters` and `scenes`
+- manuscript structure slice: `scenes`
 - chronology slice work for `timeline_events` and the Timeline route
 - later specialized slices such as `attachments` and `ai_sessions` after core canon-management slices are real
