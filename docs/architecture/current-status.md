@@ -89,7 +89,51 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - edit page
 - reusable form, card, and detail-section components
 
+### Relationships
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
 ### Factions
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
+### Cultures
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
+### Species
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
+### Items
 
 - canonical type definitions
 - Firestore read and write utilities
@@ -126,7 +170,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 
 ### CRUD Coverage
 
-Books, Chapters, Scenes, Timeline Events, Characters, Factions, Locations, and Notes have create, list, detail, and edit flows. Dedicated delete actions are not implemented yet.
+Books, Chapters, Scenes, Timeline Events, Characters, Relationships, Factions, Cultures, Species, Items, Locations, and Notes have create, list, detail, and edit flows. Dedicated delete actions are not implemented yet.
 
 ### Broader Schema Visibility
 
@@ -144,11 +188,7 @@ This route communicates product direction and seeded-data intent, but it is not 
 
 ## Planned Later
 
-- cultures
 - languages
-- species
-- items
-- relationships
 - plot threads
 - retcons
 - eras

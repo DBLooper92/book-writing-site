@@ -42,7 +42,11 @@ Implemented now:
 - chapters slice with list, create, detail, and edit flows
 - scenes slice with list, create, detail, and edit flows
 - characters slice with list, create, detail, and edit flows
+- relationships slice with list, create, detail, and edit flows
 - factions slice with list, create, detail, and edit flows
+- cultures slice with list, create, detail, and edit flows
+- species slice with list, create, detail, and edit flows
+- items slice with list, create, detail, and edit flows
 - locations slice with list, create, detail, and edit flows
 - timeline events slice with list, create, detail, and edit flows
 - notes slice with list, create, detail, and edit flows
@@ -99,7 +103,11 @@ Docs must stay honest about what is implemented now, what is partial, and what i
 - `docs/features/books.md`
 - `docs/features/chapters.md`
 - `docs/features/scenes.md`
+- `docs/features/relationships.md`
 - `docs/features/factions.md`
+- `docs/features/cultures.md`
+- `docs/features/species.md`
+- `docs/features/items.md`
 - `docs/features/notes.md`
 - `docs/features/timeline-events.md`
 - `docs/ai/assistant-guidelines.md`

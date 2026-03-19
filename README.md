@@ -12,14 +12,18 @@ The current repo already has:
 - Firestore-backed Chapters pages
 - Firestore-backed Scenes pages
 - Firestore-backed Characters pages
+- Firestore-backed Relationships pages
 - Firestore-backed Factions pages
+- Firestore-backed Cultures pages
+- Firestore-backed Species pages
+- Firestore-backed Items pages
 - Firestore-backed Locations pages
 - Firestore-backed Timeline Events pages
 - Firestore-backed Notes pages
 - a developer seeding flow for a default story-bible project
 - a placeholder Timeline route
 
-Books, Chapters, Scenes, Characters, Factions, Locations, Timeline Events, and Notes currently have list, create, detail, and edit flows. Delete flows, richer cross-entity linking, and the broader entity library are still future work.
+Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Species, Items, Locations, Timeline Events, and Notes currently have list, create, detail, and edit flows. Delete flows, richer cross-entity linking, and the broader entity library are still future work.
 
 ## Local Development
 
@@ -55,6 +59,6 @@ Global entity collections such as `characters/{characterId}` are not part of thi
 
 ## Current Entity Status
 
-- Implemented: `projects`, `books`, `chapters`, `scenes`, `characters`, `factions`, `locations`, `timeline_events`, `notes`
+- Implemented: `projects`, `books`, `chapters`, `scenes`, `characters`, `relationships`, `factions`, `cultures`, `species`, `items`, `locations`, `timeline_events`, `notes`
 - Placeholder routes only: `timeline`
-- Seeded for future development, but not yet implemented as slices: `cultures`, `languages`, `species`, `items`, `plot_threads`, `relationships`, `themes`, `eras`, `technologies`, `religions`, `governments`, `organizations`, `outlines`, `glossary_terms`, `attachments`, `ai_sessions`, `retcons`
+- Seeded for future development, but not yet implemented as slices: `languages`, `plot_threads`, `themes`, `eras`, `technologies`, `religions`, `governments`, `organizations`, `outlines`, `glossary_terms`, `attachments`, `ai_sessions`, `retcons`

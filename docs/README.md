@@ -45,7 +45,11 @@ For any substantial task, read in this order:
 - `features/scenes.md`
 - `features/timeline-events.md`
 - `features/characters.md`
+- `features/relationships.md`
 - `features/factions.md`
+- `features/cultures.md`
+- `features/species.md`
+- `features/items.md`
 - `features/locations.md`
 - `features/notes.md`
 - `features/project-management.md`
@@ -75,7 +79,11 @@ Implemented now:
 - scenes slice
 - timeline events slice
 - characters slice
+- relationships slice
 - factions slice
+- cultures slice
+- species slice
+- items slice
 - locations slice
 - notes slice
 

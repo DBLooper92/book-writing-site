@@ -22,6 +22,30 @@ const quickLinks = [
       "Manage the scene layer beneath chapters with project-scoped list, create, detail, and edit flows.",
   },
   {
+    href: "/relationships",
+    title: "Relationships",
+    description:
+      "Track project-scoped cross-entity connections with list, create, detail, and edit flows for relationship records.",
+  },
+  {
+    href: "/cultures",
+    title: "Cultures",
+    description:
+      "Manage project-scoped culture records with list, create, detail, and edit flows that align with existing character, faction, and location references.",
+  },
+  {
+    href: "/species",
+    title: "Species",
+    description:
+      "Manage project-scoped species records with list, create, detail, and edit flows that make existing character species references point at real data.",
+  },
+  {
+    href: "/items",
+    title: "Items",
+    description:
+      "Manage project-scoped item records with list, create, detail, and edit flows that turn existing artifact and important-item references into real data.",
+  },
+  {
     href: "/factions",
     title: "Factions",
     description:
@@ -93,10 +117,12 @@ export default function HomePage() {
           multiple authenticated users and multiple projects per user.
         </p>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">
-          Books, Chapters, Scenes, Timeline Events, and Factions now give the
-          manuscript, chronology, and core worldbuilding layers real
+          Books, Chapters, Scenes, Timeline Events, Relationships, Factions,
+          Cultures, Species, and Items now give the manuscript, chronology,
+          connection-tracking, and core worldbuilding layers real
           project-scoped structure. The broader timeline workspace is still a
-          placeholder, but chronology records no longer rely on seed data alone.
+          placeholder, but chronology and relationship-linked references no
+          longer rely on seed data alone.
         </p>
       </section>
     </PageShell>

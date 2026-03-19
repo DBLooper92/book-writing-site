@@ -58,6 +58,8 @@ Books extends it into manuscript structure without changing the core architectur
 Chapters confirms that the same pattern also works for child manuscript records.
 Scenes extends the same pattern one level deeper into scene planning and drafting.
 Timeline Events extends the same pattern into chronology without introducing a separate timeline architecture.
+Relationships extends the same pattern into cross-entity connection records without changing the project-scoped data model.
+Factions, Cultures, Species, and Items extend the same pattern into deeper worldbuilding records without changing the project-scoped data model.
 
 ## Design Rules
 
@@ -81,6 +83,11 @@ Implemented now:
 - scenes
 - timeline events
 - characters
+- relationships
+- factions
+- cultures
+- species
+- items
 - locations
 - notes
 - dev setup and seeding

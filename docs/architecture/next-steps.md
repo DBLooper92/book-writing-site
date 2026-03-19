@@ -4,25 +4,29 @@ This file tracks the short-term development direction implied by the current rep
 
 ## Current Focus
 
-- Keep future entity work inside the existing slice pattern proven by Books, Chapters, Scenes, Characters, Factions, Locations, Timeline Events, and Notes.
+- Keep future entity work inside the existing slice pattern proven by Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Species, Items, Locations, Timeline Events, and Notes.
 - Books, Chapters, Scenes, and Timeline Events now extend that same slice pattern into manuscript structure and chronology without introducing a separate architecture.
 - Factions now extends that same slice pattern into cross-linked worldbuilding data without changing the project-scoped Firestore model.
+- Cultures now makes existing `cultureIds` references point at a real slice rather than seed-only records.
+- Species now makes existing `speciesId` references point at a real slice rather than seed-only records.
+- Items now makes existing item references point at a real slice rather than seed-only records.
+- Relationships now turns seeded connection records into a real project-scoped slice without changing the entity architecture.
 - Prefer one fully working slice over several new placeholders.
 - Keep docs aligned as implementation changes land so the documentation system remains usable as working memory.
 
 ## Next Recommended Slice
 
-- `cultures`
+- `eras`
 
 Reason:
-Characters, Locations, and Factions already carry `cultureIds`, so `cultures` is now the cleanest next slice for extending the same worldbuilding-link pattern without changing the architecture.
+Locations, timeline events, and the starter dataset already point at era records, so `eras` is now the cleanest next slice for turning existing historical anchors into a real navigable slice.
 
 Recommended scope for that pass:
 
-- canonical culture type in `types/`
+- canonical era type in `types/`
 - Firestore read/write utilities under the active project
 - list, create, detail, and edit pages
-- normalization compatible with seeded culture documents
+- normalization compatible with seeded era documents
 - explicit documentation updates in `current-status` and a new feature doc once the slice is real
 
 ## Follow-Up Cleanup Items
@@ -34,10 +38,14 @@ Recommended scope for that pass:
 ## Deferred Items
 
 - dedicated delete flows for Characters and Locations
+- dedicated delete flow for Relationships
 - dedicated delete flow for Books
 - dedicated delete flow for Chapters
 - dedicated delete flow for Scenes
 - dedicated delete flow for Timeline Events
+- dedicated delete flow for Cultures
+- dedicated delete flow for Species
+- dedicated delete flow for Items
 - dedicated delete flow for Notes
 - richer cross-entity pickers, linked navigation, and validation
 - broader `/timeline` workspace work on top of the `timeline_events` slice
