@@ -48,6 +48,9 @@ For any substantial task, read in this order:
 - `features/relationships.md`
 - `features/factions.md`
 - `features/cultures.md`
+- `features/eras.md`
+- `features/themes.md`
+- `features/languages.md`
 - `features/species.md`
 - `features/items.md`
 - `features/locations.md`
@@ -82,6 +85,9 @@ Implemented now:
 - relationships slice
 - factions slice
 - cultures slice
+- eras slice
+- themes slice
+- languages slice
 - species slice
 - items slice
 - locations slice

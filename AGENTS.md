@@ -45,6 +45,9 @@ Implemented now:
 - relationships slice with list, create, detail, and edit flows
 - factions slice with list, create, detail, and edit flows
 - cultures slice with list, create, detail, and edit flows
+- eras slice with list, create, detail, and edit flows
+- themes slice with list, create, detail, and edit flows
+- languages slice with list, create, detail, and edit flows
 - species slice with list, create, detail, and edit flows
 - items slice with list, create, detail, and edit flows
 - locations slice with list, create, detail, and edit flows
@@ -106,6 +109,9 @@ Docs must stay honest about what is implemented now, what is partial, and what i
 - `docs/features/relationships.md`
 - `docs/features/factions.md`
 - `docs/features/cultures.md`
+- `docs/features/eras.md`
+- `docs/features/themes.md`
+- `docs/features/languages.md`
 - `docs/features/species.md`
 - `docs/features/items.md`
 - `docs/features/notes.md`

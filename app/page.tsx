@@ -34,6 +34,24 @@ const quickLinks = [
       "Manage project-scoped culture records with list, create, detail, and edit flows that align with existing character, faction, and location references.",
   },
   {
+    href: "/eras",
+    title: "Eras",
+    description:
+      "Manage project-scoped era records with list, create, detail, and edit flows that turn seeded chronology anchors into real canon data.",
+  },
+  {
+    href: "/themes",
+    title: "Themes",
+    description:
+      "Manage project-scoped theme records with list, create, detail, and edit flows that turn seeded narrative anchors into real canon data.",
+  },
+  {
+    href: "/languages",
+    title: "Languages",
+    description:
+      "Manage project-scoped language records with list, create, detail, and edit flows that turn seeded linguistic anchors into real canon data.",
+  },
+  {
     href: "/species",
     title: "Species",
     description:
@@ -118,8 +136,8 @@ export default function HomePage() {
         </p>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">
           Books, Chapters, Scenes, Timeline Events, Relationships, Factions,
-          Cultures, Species, and Items now give the manuscript, chronology,
-          connection-tracking, and core worldbuilding layers real
+          Cultures, Eras, Themes, Languages, Species, and Items now give the manuscript,
+          chronology, connection-tracking, and core worldbuilding layers real
           project-scoped structure. The broader timeline workspace is still a
           placeholder, but chronology and relationship-linked references no
           longer rely on seed data alone.

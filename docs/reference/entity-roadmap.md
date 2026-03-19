@@ -32,7 +32,7 @@ The long-term story-bible model is expected to include at least:
 
 ## Current Status Snapshot
 
-- Implemented slices: `books`, `chapters`, `scenes`, `characters`, `relationships`, `factions`, `cultures`, `species`, `items`, `locations`, `timeline_events`, `notes`
+- Implemented slices: `books`, `chapters`, `scenes`, `characters`, `relationships`, `factions`, `cultures`, `eras`, `themes`, `languages`, `species`, `items`, `locations`, `timeline_events`, `notes`
 - Implemented supporting systems: `projects`, `auth`, `dev setup`
 - Placeholder routes only: `timeline`
 - Seeded only: most of the remaining collections
@@ -41,9 +41,9 @@ The long-term story-bible model is expected to include at least:
 
 ### Immediate Next Slice
 
-- `eras`
+- `religions`
 
-Reason: Locations, timeline events, and the seed dataset already point toward era records, so `eras` is the next clean slice for turning historical anchors into real navigable canon data.
+Reason: Characters, Cultures, Factions, Timeline Events, and the seed dataset already point toward religion records, so `religions` is the next clean slice for turning belief-system references into real navigable canon data.
 
 ### Manuscript And Chronology Tier
 
@@ -53,15 +53,12 @@ Reason: this chronology layer is now implemented and gives the broader timeline 
 
 ### Near-Term Worldbuilding Tier
 
-- `eras`
-- `themes`
+- `religions`
 
-Reason: `eras` is the next clean historical anchor for locations, timeline events, and broader chronology work, while `themes` is the next reusable narrative layer across books, characters, and events.
+Reason: `religions` is now the next reusable reference layer across characters, cultures, factions, and broader worldbuilding work.
 
 ### Deeper Reference Tier
 
-- `themes`
-- `languages`
 - `religions`
 - `governments`
 - `organizations`
@@ -78,4 +75,4 @@ Reason: `eras` is the next clean historical anchor for locations, timeline event
 
 ## Practical Rule
 
-Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Chapters, Scenes, Characters, Factions, Cultures, Species, Items, Locations, Timeline Events, and Notes are already in place; the next biggest value comes from deeper worldbuilding links built on top of that structure.
+Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Chapters, Scenes, Characters, Factions, Cultures, Eras, Themes, Languages, Species, Items, Locations, Timeline Events, and Notes are already in place; the next biggest value comes from deeper worldbuilding links built on top of that structure.

@@ -15,6 +15,9 @@ The current repo already has:
 - Firestore-backed Relationships pages
 - Firestore-backed Factions pages
 - Firestore-backed Cultures pages
+- Firestore-backed Eras pages
+- Firestore-backed Themes pages
+- Firestore-backed Languages pages
 - Firestore-backed Species pages
 - Firestore-backed Items pages
 - Firestore-backed Locations pages
@@ -23,7 +26,7 @@ The current repo already has:
 - a developer seeding flow for a default story-bible project
 - a placeholder Timeline route
 
-Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Species, Items, Locations, Timeline Events, and Notes currently have list, create, detail, and edit flows. Delete flows, richer cross-entity linking, and the broader entity library are still future work.
+Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Eras, Themes, Languages, Species, Items, Locations, Timeline Events, and Notes currently have list, create, detail, and edit flows. Delete flows, richer cross-entity linking, and the broader entity library are still future work.
 
 ## Local Development
 
@@ -59,6 +62,6 @@ Global entity collections such as `characters/{characterId}` are not part of thi
 
 ## Current Entity Status
 
-- Implemented: `projects`, `books`, `chapters`, `scenes`, `characters`, `relationships`, `factions`, `cultures`, `species`, `items`, `locations`, `timeline_events`, `notes`
+- Implemented: `projects`, `books`, `chapters`, `scenes`, `characters`, `relationships`, `factions`, `cultures`, `eras`, `themes`, `languages`, `species`, `items`, `locations`, `timeline_events`, `notes`
 - Placeholder routes only: `timeline`
-- Seeded for future development, but not yet implemented as slices: `languages`, `plot_threads`, `themes`, `eras`, `technologies`, `religions`, `governments`, `organizations`, `outlines`, `glossary_terms`, `attachments`, `ai_sessions`, `retcons`
+- Seeded for future development, but not yet implemented as slices: `plot_threads`, `technologies`, `religions`, `governments`, `organizations`, `outlines`, `glossary_terms`, `attachments`, `ai_sessions`, `retcons`
