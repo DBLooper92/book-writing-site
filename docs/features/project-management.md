@@ -8,10 +8,12 @@ Implemented now.
 
 - project listing under `users/{uid}/projects`
 - active project observation
-- active project switching from the top nav and projects page
-- project creation
+- active project switching from the header dropdown and projects page without navigating away from the current route
+- project creation from a dedicated `/projects/new` screen
 - project rename
 - active project stored on `users/{uid}.activeProjectId`
+- compact header project control that shows `Project` until an active project exists, then shows the active project title
+- header project menu option that opens the project create screen
 
 ## Important Rules
 

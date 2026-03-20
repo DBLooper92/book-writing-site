@@ -8,7 +8,8 @@ This file describes the codebase as it exists now. It should stay honest even wh
 
 - Next.js App Router application shell
 - Tailwind-based UI styling
-- top navigation with project selector
+- compact fixed header with Timeline, +Create, and Project controls aligned top-right
+- header hide-on-scroll-down and reveal-on-scroll-up behavior
 - home, auth, Firebase test, and developer setup routes
 
 ### Auth
@@ -22,9 +23,9 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Project Management
 
 - user project listing under `users/{uid}/projects`
-- project creation
+- project creation from a dedicated `/projects/new` page
 - project rename
-- active project switching
+- active project switching from the Projects page and header dropdown without route changes
 - `activeProjectId` stored on `users/{uid}`
 
 ### Dev Setup

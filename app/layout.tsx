@@ -32,7 +32,7 @@ export default function RootLayout({
       >
         <div className="min-h-screen bg-zinc-50 text-zinc-950">
           <TopNav />
-          {children}
+          <div className="pt-24">{children}</div>
         </div>
       </body>
     </html>

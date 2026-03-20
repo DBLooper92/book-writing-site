@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { PageShell } from "@/components/layout/page-shell";
@@ -7,7 +8,6 @@ import { ProjectSelect } from "@/components/projects/project-select";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { useUserProjects } from "@/hooks/use-user-projects";
 import {
-  createProjectForUser,
   renameProjectForUser,
   setActiveProjectForUser,
 } from "@/lib/firebase/projects";
@@ -19,16 +19,14 @@ type Notice =
 
 const defaultNotice: Notice = {
   tone: "neutral",
-  text: "Create new projects here, rename existing ones, and choose which project is active in the header.",
+  text: "Switch the active project here, rename the current one, and use the dedicated create screen when you need a new project.",
 };
 
 export default function ProjectsPage() {
   const { user, uid, loading: authLoading } = useAuthUser();
   const { projects, activeProjectId, loading: projectsLoading } = useUserProjects(uid);
-  const [newProjectTitle, setNewProjectTitle] = useState("");
   const [draftNames, setDraftNames] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<Notice>(defaultNotice);
-  const [creating, setCreating] = useState(false);
   const [savingProjectId, setSavingProjectId] = useState<string | null>(null);
   const [switchingProject, setSwitchingProject] = useState(false);
   const activeProject =
@@ -54,48 +52,6 @@ export default function ProjectsPage() {
       return next;
     });
   }, [projects]);
-
-  async function handleCreateProject(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!user) {
-      setNotice({
-        tone: "error",
-        text: "Sign in before creating a project.",
-      });
-      return;
-    }
-
-    setCreating(true);
-    setNotice({
-      tone: "neutral",
-      text: "Creating project...",
-    });
-
-    try {
-      const projectId = await createProjectForUser(
-        {
-          uid: user.uid,
-          email: user.email ?? null,
-          displayName: user.displayName ?? null,
-        },
-        newProjectTitle
-      );
-
-      setNewProjectTitle("");
-      setNotice({
-        tone: "success",
-        text: `Created project ${projectId} and made it active.`,
-      });
-    } catch (error) {
-      setNotice({
-        tone: "error",
-        text: error instanceof Error ? error.message : "Unable to create project.",
-      });
-    } finally {
-      setCreating(false);
-    }
-  }
 
   async function handleRenameProject(projectId: string) {
     if (!uid) {
@@ -160,7 +116,7 @@ export default function ProjectsPage() {
     <PageShell
       eyebrow="Projects"
       title="Project management"
-      description="Projects live under users/{uid}/projects/{projectId}. Use this screen to create new projects, rename them, and choose which project should be active in the header selector."
+      description="Projects live under users/{uid}/projects/{projectId}. Use this screen to switch the active project, rename the current one, and review which project scope the rest of the app is reading from."
     >
       <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -184,36 +140,23 @@ export default function ProjectsPage() {
         </div>
 
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
-            Create a new project
-          </h2>
+          <h2 className="text-lg font-semibold tracking-tight text-zinc-950">New project</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-600">
-            New projects are created inside your user document. The new project is
-            automatically set as active after creation.
+            Project creation now has its own route so the header dropdown can send
+            you to a dedicated screen without overloading this management page.
           </p>
-
-          <form className="mt-4 space-y-4" onSubmit={handleCreateProject}>
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-zinc-700">
-                Project name
-              </span>
-              <input
-                value={newProjectTitle}
-                onChange={(event) => setNewProjectTitle(event.target.value)}
-                placeholder="Example: Book Two Outline"
-                disabled={!user || creating}
-                className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-100"
-              />
-            </label>
-
-            <button
-              type="submit"
-              disabled={!user || creating || !newProjectTitle.trim()}
-              className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+          <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-4">
+            <p className="text-sm leading-6 text-zinc-600">
+              Creating a project still writes the new document under your user
+              scope and makes it active immediately.
+            </p>
+            <Link
+              href="/projects/new"
+              className="mt-4 inline-flex h-12 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-medium text-white transition hover:bg-zinc-800"
             >
-              {creating ? "Creating..." : "Create project"}
-            </button>
-          </form>
+              Go to project create screen
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -239,8 +182,8 @@ export default function ProjectsPage() {
           </div>
         ) : projects.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm leading-6 text-zinc-600">
-            No projects found yet. Create one above, or run the dev initializer to
-            seed the default story-bible project.
+            No projects found yet. Open the dedicated create screen, or run the
+            dev initializer to seed the default story-bible project.
           </div>
         ) : !activeProject ? (
           <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm leading-6 text-zinc-600">
