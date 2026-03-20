@@ -8,6 +8,7 @@ import type { TimelineEvent } from "@/types/timeline-event";
 export type TimelineLayoutEventItem = {
   kind: "event";
   id: string;
+  position: number;
   side: "left" | "right";
   timelineEvent: TimelineEvent;
 };
@@ -42,10 +43,9 @@ export type TimelineLayoutItem =
 
 export type TimelineQuickNavItem = {
   eventId: string;
+  position: number;
   title: string;
-  summary: string;
   chronologyLabel: string;
-  status: string;
 };
 
 export type TimelineLayoutModel = {
@@ -64,9 +64,12 @@ export function buildTimelineLayoutModel(timelineEvents: TimelineEvent[]): Timel
   items.push(buildInsertionItem(null, sortedTimelineEvents[0] ?? null));
 
   sortedTimelineEvents.forEach((timelineEvent, index) => {
+    const position = index + 1;
+
     items.push({
       kind: "event",
       id: timelineEvent.id,
+      position,
       side: index % 2 === 0 ? "left" : "right",
       timelineEvent,
     });
@@ -86,12 +89,11 @@ export function buildTimelineLayoutModel(timelineEvents: TimelineEvent[]): Timel
 
   return {
     items,
-    quickNavItems: sortedTimelineEvents.map((timelineEvent) => ({
+    quickNavItems: sortedTimelineEvents.map((timelineEvent, index) => ({
       eventId: timelineEvent.id,
+      position: index + 1,
       title: timelineEvent.title,
-      summary: timelineEvent.summary,
       chronologyLabel: getChronologyLabel(timelineEvent),
-      status: timelineEvent.status,
     })),
   };
 }

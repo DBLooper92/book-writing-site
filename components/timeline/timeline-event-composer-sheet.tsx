@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import { TimelineEventForm } from "@/components/timeline-events/timeline-event-form";
 import {
   createTimelineEventForProject,
@@ -81,23 +79,6 @@ export function TimelineEventComposerSheet({
               x
             </button>
           </div>
-
-          {isEditMode && timelineEvent ? (
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Link
-                href={`/timeline-events/${timelineEvent.id}/edit`}
-                className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-              >
-                Open standalone edit page
-              </Link>
-              <Link
-                href={`/timeline-events/${timelineEvent.id}`}
-                className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-              >
-                View detail
-              </Link>
-            </div>
-          ) : null}
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">

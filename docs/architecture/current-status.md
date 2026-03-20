@@ -88,17 +88,18 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - shared chronology utilities for sorting, filtering, grouping, and formatting normalized timeline records
 - timeline workspace hook for active-project chronology browsing
 - center-line visual chronology with alternating event blocks
+- derived numeric block markers that renumber from the current sorted chronology
 - sticky quick-navigation list for dense event scanning and jump-to-block behavior
 - derived insertion notches before, between, and after event blocks
 - compressed time-jump markers for large year gaps without proportional blank spacing
 - filters for search, status, event type, dating coverage, and link scope
-- direct linked navigation to existing slice detail routes from timeline records
 - chronology sorting that uses year, optional month/day precision, and same-date sequence ordering
 - validation warnings for invalid date ranges, missing continuity IDs, and missing linked slice records
 - query-driven timeline create entry points that can prefill predecessor, successor, and shared-year context inside `/timeline`
-- inline timeline composer sheet for create-from-notch and edit-selected flows inside `/timeline`
+- inline timeline composer sheet for create-from-notch and edit-in-place flows inside `/timeline`
+- in-place event detail lightbox from timeline cards and selected-block actions
 - first-event creation inside `/timeline` even when the active project has no existing timeline records
-- selected-block inspection with resolved linked labels, chronology detail, and warning summaries inside `/timeline`
+- lightweight selected-block summary with modal inspection from `/timeline`
 
 ### Characters
 

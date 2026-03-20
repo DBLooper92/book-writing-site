@@ -17,7 +17,9 @@ Implemented now as the seventh full entity slice and the first dedicated chronol
 - `hooks/use-timeline-workspace.ts`
 - `components/timeline-events/timeline-event-form.tsx`
 - `components/timeline-events/timeline-event-detail-section.tsx`
+- `components/timeline-events/timeline-event-detail-view.tsx`
 - `components/timeline/timeline-event-composer-sheet.tsx`
+- `components/timeline/timeline-event-detail-lightbox.tsx`
 - `components/timeline/timeline-workspace-controls.tsx`
 - `components/timeline/timeline-workspace-event-card.tsx`
 - `components/timeline/timeline-workspace-visual.tsx`
@@ -33,6 +35,7 @@ Implemented now as the seventh full entity slice and the first dedicated chronol
 - `/timeline` is the only top-level browse/create surface for timeline events; legacy `/timeline-events` index and new routes only redirect into the workspace
 - the slice still owns the canonical timeline-event type, normalization, Firestore utilities, detail route, and edit route even though top-level authoring moved into `/timeline`
 - chronology data currently uses start/end year fields with optional month/day precision, an optional same-date sequence number, and an optional freeform time label
+- workspace cards should stay lightweight and open event inspection/editing in-place instead of routing authors away from `/timeline`
 - the current form uses picker-style inputs for the main linked manuscript, character, location, worldbuilding, era, and continuity references already backed by real slices
 - linked labels and warnings should resolve from already loaded project-scoped slice data instead of storing duplicate display metadata on timeline events
 - query-driven workspace prefills should stay optional conveniences, not a second authoring model or a second persistence shape
@@ -42,7 +45,7 @@ Implemented now as the seventh full entity slice and the first dedicated chronol
 
 ## Current Role In The Architecture
 
-Timeline Events turns chronology into a real project-scoped slice and now powers `/timeline` as the sole top-level chronology surface. It gives Books, Chapters, Scenes, Characters, Locations, and several worldbuilding slices a real chronology target to reference instead of relying on seed-only event documents, while keeping all timeline authoring grounded in one normalized document shape that now supports year/month/day placement, same-date ordering, and optional time labels.
+Timeline Events turns chronology into a real project-scoped slice and now powers `/timeline` as the sole top-level chronology surface. It gives Books, Chapters, Scenes, Characters, Locations, and several worldbuilding slices a real chronology target to reference instead of relying on seed-only event documents, while keeping all timeline authoring grounded in one normalized document shape that now supports year/month/day placement, same-date ordering, optional time labels, and in-place workspace viewing/editing.
 
 ## What Remains Later
 

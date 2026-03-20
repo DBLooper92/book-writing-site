@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { TimelineEventComposerSheet } from "@/components/timeline/timeline-event-composer-sheet";
+import { TimelineEventDetailLightbox } from "@/components/timeline/timeline-event-detail-lightbox";
 import { TimelineWorkspaceEventCard } from "@/components/timeline/timeline-workspace-event-card";
 import { useTimelineFormOptions } from "@/hooks/use-timeline-form-options";
 import {
@@ -19,18 +20,7 @@ import {
   clearTimelineCreateSearchParams,
   hasTimelineCreateSearchParams,
 } from "@/lib/timeline/create-route";
-import {
-  buildTimelineLinkedReferenceGroups,
-  type TimelineLinkedReferenceGroup,
-} from "@/lib/timeline/references";
-import {
-  formatDetailedTimelineEventRange,
-  formatTimelineEventBoundaryLabel,
-  formatTimelineEnumValue,
-  formatTimelineEventSequenceLabel,
-  getTimelineEventChronologyLabel,
-  getTimelineWorkspaceIssues,
-} from "@/lib/timeline/workspace";
+import { formatTimelineEnumValue } from "@/lib/timeline/workspace";
 import type { TimelineEvent, TimelineEventFormValues } from "@/types/timeline-event";
 
 type TimelineWorkspaceVisualProps = {
@@ -48,6 +38,7 @@ export function TimelineWorkspaceVisual({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [requestedSelectedEventId, setRequestedSelectedEventId] = useState<string | null>(null);
+  const [viewerEventId, setViewerEventId] = useState<string | null>(null);
   const [localComposerState, setLocalComposerState] = useState<
     | {
         initialValuesOverride?: TimelineEventFormValues | null;
@@ -79,46 +70,19 @@ export function TimelineWorkspaceVisual({
       : timelineEvents[0]?.id ?? null;
   const selectedTimelineEvent =
     timelineEvents.find((timelineEvent) => timelineEvent.id === selectedEventId) ?? null;
+  const viewingTimelineEvent =
+    viewerEventId && timelineEvents.some((timelineEvent) => timelineEvent.id === viewerEventId)
+      ? timelineEvents.find((timelineEvent) => timelineEvent.id === viewerEventId) ?? null
+      : null;
   const editingTimelineEvent =
     composerState?.mode === "edit"
       ? timelineEvents.find((timelineEvent) => timelineEvent.id === composerState.timelineEventId) ??
         null
       : null;
-  const selectedIssues =
-    selectedTimelineEvent && !formOptions.loading && !formOptions.error
-      ? getTimelineWorkspaceIssues(
-          selectedTimelineEvent,
-          knownTimelineEventIds,
-          formOptions.referenceSets
-        )
-      : [];
-  const selectedGroups =
-    selectedTimelineEvent && !formOptions.loading && !formOptions.error
-      ? buildTimelineLinkedReferenceGroups(selectedTimelineEvent, formOptions.referenceMaps)
-      : [];
   const availableReferenceMaps =
     !formOptions.loading && !formOptions.error ? formOptions.referenceMaps : null;
   const availableReferenceSets =
     !formOptions.loading && !formOptions.error ? formOptions.referenceSets : null;
-  const selectedChronologyLabel = selectedTimelineEvent
-    ? getTimelineEventChronologyLabel(selectedTimelineEvent)
-    : null;
-  const selectedDetailedRange = selectedTimelineEvent
-    ? formatDetailedTimelineEventRange(selectedTimelineEvent)
-    : null;
-  const selectedStartDate = selectedTimelineEvent
-    ? formatTimelineEventBoundaryLabel(selectedTimelineEvent, "start")
-    : null;
-  const selectedEndDate = selectedTimelineEvent
-    ? formatTimelineEventBoundaryLabel(selectedTimelineEvent, "end")
-    : null;
-  const selectedSequenceLabel = selectedTimelineEvent
-    ? formatTimelineEventSequenceLabel(selectedTimelineEvent)
-    : null;
-  const showSelectedDetailedRange =
-    !!selectedTimelineEvent &&
-    selectedChronologyLabel !== selectedDetailedRange &&
-    selectedTimelineEvent.displayDateLabel.trim().length > 0;
 
   function registerEventRef(eventId: string, node: HTMLDivElement | null) {
     if (node) {
@@ -134,6 +98,21 @@ export function TimelineWorkspaceVisual({
     eventRefs.current.get(eventId)?.scrollIntoView({
       behavior: "smooth",
       block: "center",
+    });
+  }
+
+  function openViewer(eventId: string) {
+    setRequestedSelectedEventId(eventId);
+    setViewerEventId(eventId);
+  }
+
+  function openEditComposer(eventId: string) {
+    setRequestedSelectedEventId(eventId);
+    setViewerEventId(null);
+    setLocalComposerState({
+      mode: "edit",
+      source: "local",
+      timelineEventId: eventId,
     });
   }
 
@@ -177,7 +156,7 @@ export function TimelineWorkspaceVisual({
           </div>
 
           <p className="mt-3 text-sm leading-6 text-zinc-600">
-            Dense event index for fast jumping while the main line stays visually spaced.
+            Jump by block number while the main timeline stays spaced and readable.
           </p>
 
           <div className="mt-5 max-h-[70vh] space-y-2 overflow-y-auto pr-1">
@@ -196,14 +175,14 @@ export function TimelineWorkspaceVisual({
                   }`}
                 >
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                    Block {quickNavItem.position}
+                  </p>
+                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
                     {quickNavItem.chronologyLabel}
                   </p>
                   <p className="mt-1 text-sm font-semibold tracking-tight">{quickNavItem.title}</p>
-                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-zinc-600">
-                    {quickNavItem.summary || "No summary yet."}
-                  </p>
                   <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                    {formatTimelineEnumValue(quickNavItem.status)}
+                    {isSelected ? "Selected block" : "Focus block"}
                   </p>
                 </button>
               );
@@ -237,120 +216,37 @@ export function TimelineWorkspaceVisual({
                 {selectedTimelineEvent ? (
                   <button
                     type="button"
-                    onClick={() =>
-                      setLocalComposerState({
-                        mode: "edit",
-                        source: "local",
-                        timelineEventId: selectedTimelineEvent.id,
-                      })
-                    }
+                    onClick={() => openViewer(selectedTimelineEvent.id)}
                     className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
                   >
-                    Edit selected block
+                    View selected event
                   </button>
                 ) : null}
               </div>
             </div>
 
             {selectedTimelineEvent ? (
-              <div className="rounded-3xl border border-amber-200 bg-amber-50/80 p-4">
+              <div className="rounded-3xl border border-amber-200 bg-amber-50/70 px-4 py-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-900">
                   Selected block
                 </p>
-                <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-lg font-semibold tracking-tight text-zinc-950">
+                    <p className="text-base font-semibold tracking-tight text-zinc-950">
                       {selectedTimelineEvent.title}
                     </p>
-                    <p className="mt-1 text-sm leading-6 text-zinc-700">
-                      {selectedTimelineEvent.summary || "No summary yet."}
+                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">
+                      {formatTimelineEnumValue(selectedTimelineEvent.status)}
                     </p>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-600">
-                      <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
-                        {selectedChronologyLabel}
-                      </span>
-                      <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
-                        {formatTimelineEnumValue(selectedTimelineEvent.eventType)}
-                      </span>
-                      <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
-                        {formatTimelineEnumValue(selectedTimelineEvent.status)}
-                      </span>
-                      {showSelectedDetailedRange ? (
-                        <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
-                          {selectedDetailedRange}
-                        </span>
-                      ) : null}
-                      {selectedSequenceLabel ? (
-                        <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
-                          {selectedSequenceLabel}
-                        </span>
-                      ) : null}
-                    </div>
-                    {(selectedStartDate || selectedEndDate || selectedTimelineEvent.timeOfDayLabel) ? (
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-600">
-                        {selectedStartDate ? (
-                          <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
-                            Start: {selectedStartDate}
-                          </span>
-                        ) : null}
-                        {selectedEndDate ? (
-                          <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
-                            End: {selectedEndDate}
-                          </span>
-                        ) : null}
-                        {selectedTimelineEvent.timeOfDayLabel ? (
-                          <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
-                            Time: {selectedTimelineEvent.timeOfDayLabel}
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : null}
                   </div>
-                  <div className="flex flex-wrap gap-3">
-                    <Link
-                      href={`/timeline-events/${selectedTimelineEvent.id}`}
-                      className="inline-flex h-10 items-center justify-center rounded-full border border-amber-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-amber-100/50"
-                    >
-                      Open detail
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLocalComposerState({
-                          mode: "edit",
-                          source: "local",
-                          timelineEventId: selectedTimelineEvent.id,
-                        })
-                      }
-                      className="inline-flex h-10 items-center justify-center rounded-full bg-amber-400 px-4 text-sm font-medium text-amber-950 transition hover:bg-amber-300"
-                    >
-                      Edit here
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openViewer(selectedTimelineEvent.id)}
+                    className="inline-flex h-10 items-center justify-center rounded-full bg-white px-4 text-sm font-medium text-zinc-700 ring-1 ring-amber-200 transition hover:bg-amber-100/50"
+                  >
+                    View Event
+                  </button>
                 </div>
-
-                {selectedIssues.length > 0 ? (
-                  <div className="mt-4 rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm text-amber-900">
-                    <p className="font-medium">Validation warnings</p>
-                    <div className="mt-2 space-y-1">
-                      {selectedIssues.map((issue) => (
-                        <p key={issue.message}>{issue.message}</p>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {selectedGroups.length > 0 ? (
-                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                    {selectedGroups.slice(0, 6).map((group) => (
-                      <SelectedReferenceGroup key={group.label} group={group} />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-4 text-sm text-zinc-600">
-                    No linked manuscript, entity, or continuity records on this block yet.
-                  </p>
-                )}
               </div>
             ) : null}
           </div>
@@ -366,10 +262,8 @@ export function TimelineWorkspaceVisual({
                       key={item.id}
                       eventItem={item}
                       isSelected={item.timelineEvent.id === selectedEventId}
-                      knownTimelineEventIds={knownTimelineEventIds}
-                      referenceMaps={availableReferenceMaps}
-                      referenceSets={availableReferenceSets}
                       onSelect={focusEvent}
+                      onView={openViewer}
                       registerRef={registerEventRef}
                     />
                   );
@@ -413,6 +307,30 @@ export function TimelineWorkspaceVisual({
           uid={uid}
         />
       ) : null}
+
+      {viewingTimelineEvent && availableReferenceMaps && availableReferenceSets ? (
+        <TimelineEventDetailLightbox
+          knownTimelineEventIds={knownTimelineEventIds}
+          onClose={() => setViewerEventId(null)}
+          onEdit={() => openEditComposer(viewingTimelineEvent.id)}
+          referenceMaps={availableReferenceMaps}
+          referenceSets={availableReferenceSets}
+          timelineEvent={viewingTimelineEvent}
+        />
+      ) : null}
+
+      {viewingTimelineEvent && (!availableReferenceMaps || !availableReferenceSets) ? (
+        <TimelineEventPendingLightbox
+          message={
+            formOptions.error
+              ? "Event detail references could not be loaded right now."
+              : "Loading event details..."
+          }
+          onClose={() => setViewerEventId(null)}
+          onEdit={() => openEditComposer(viewingTimelineEvent.id)}
+          title={viewingTimelineEvent.title}
+        />
+      ) : null}
     </>
   );
 }
@@ -420,18 +338,14 @@ export function TimelineWorkspaceVisual({
 function TimelineEventRow({
   eventItem,
   isSelected,
-  knownTimelineEventIds,
-  referenceMaps,
-  referenceSets,
   onSelect,
+  onView,
   registerRef,
 }: {
   eventItem: TimelineLayoutEventItem;
   isSelected: boolean;
-  knownTimelineEventIds: ReadonlySet<string>;
-  referenceMaps: ReturnType<typeof useTimelineFormOptions>["referenceMaps"] | null;
-  referenceSets: ReturnType<typeof useTimelineFormOptions>["referenceSets"] | null;
   onSelect: (eventId: string) => void;
+  onView: (eventId: string) => void;
   registerRef: (eventId: string, node: HTMLDivElement | null) => void;
 }) {
   const isLeft = eventItem.side === "left";
@@ -443,9 +357,8 @@ function TimelineEventRow({
     >
       <div className={`pl-16 md:pl-0 ${isLeft ? "md:col-start-1" : "md:col-start-3"}`}>
         <TimelineWorkspaceEventCard
-          knownTimelineEventIds={knownTimelineEventIds}
-          referenceMaps={referenceMaps}
-          referenceSets={referenceSets}
+          onView={onView}
+          position={eventItem.position}
           selected={isSelected}
           timelineEvent={eventItem.timelineEvent}
         />
@@ -455,49 +368,15 @@ function TimelineEventRow({
         <button
           type="button"
           onClick={() => onSelect(eventItem.timelineEvent.id)}
-          className={`flex h-12 w-12 items-center justify-center rounded-full border-4 text-sm font-semibold transition ${
+          className={`flex min-h-12 min-w-12 items-center justify-center rounded-full border-4 px-2 text-sm font-semibold tabular-nums transition ${
             isSelected
               ? "border-amber-200 bg-amber-400 text-amber-950"
               : "border-white bg-zinc-950 text-white hover:bg-zinc-800"
           }`}
           aria-label={`Focus ${eventItem.timelineEvent.title}`}
         >
-          {eventItem.timelineEvent.title.slice(0, 1).toUpperCase()}
+          {eventItem.position}
         </button>
-      </div>
-    </div>
-  );
-}
-
-function SelectedReferenceGroup({
-  group,
-}: {
-  group?: TimelineLinkedReferenceGroup;
-}) {
-  if (!group || group.items.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="rounded-2xl border border-amber-200 bg-white p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-        {group.label}
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {group.items.slice(0, 4).map((item) => (
-          <Link
-            key={`${group.label}-${item.id}`}
-            href={item.href}
-            className={`rounded-full px-3 py-1 text-sm transition ${
-              item.missing
-                ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200"
-                : "bg-zinc-50 text-zinc-700 ring-1 ring-zinc-200 hover:bg-zinc-100"
-            }`}
-            title={item.meta ? `${item.label} - ${item.meta}` : item.label}
-          >
-            {item.label}
-          </Link>
-        ))}
       </div>
     </div>
   );
@@ -548,6 +427,49 @@ function TimelineInsertionRow({
         >
           +
         </button>
+      </div>
+    </div>
+  );
+}
+
+function TimelineEventPendingLightbox({
+  message,
+  onClose,
+  onEdit,
+  title,
+}: {
+  message: string;
+  onClose: () => void;
+  onEdit: () => void;
+  title: string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
+      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
+
+      <div className="relative z-10 w-full max-w-xl rounded-4xl border border-zinc-200 bg-[#fffdf9] p-6 shadow-2xl">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+          Timeline event
+        </p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">{title}</h2>
+        <p className="mt-4 text-sm leading-6 text-zinc-600">{message}</p>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+          >
+            Edit event
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
