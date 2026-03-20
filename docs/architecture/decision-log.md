@@ -84,3 +84,21 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: First Timeline workspace implementation
 - Decision: The `/timeline` workspace must stay a derived view over `users/{uid}/projects/{projectId}/timeline_events/{eventId}` records instead of introducing a second chronology collection or separate timeline persistence model.
 - Why it stays in force: This preserves the flat project-scoped architecture, avoids duplicate chronology data, keeps Firestore costs predictable, and ensures every timeline surface derives from the same normalized event records.
+
+### D-013
+
+- Origin: Visual timeline workspace expansion
+- Decision: Timeline insertion notches and time-gap compression stay derived workspace behavior over sorted `timeline_events` data rather than persisted placeholder documents or stored spacing metadata.
+- Why it stays in force: This keeps chronology data honest, avoids fake records just to support layout, preserves cheap Firestore reads and writes, and ensures inserting a real event automatically creates new before-and-after insertion points on the next render.
+
+### D-014
+
+- Origin: Inline timeline authoring expansion
+- Decision: Inline timeline workspace creation and editing must reuse the same `timeline_events` normalization, validation, and write path as the dedicated create/edit routes instead of introducing a separate workspace-only payload shape.
+- Why it stays in force: This avoids drift between timeline surfaces, keeps chronology writes predictable, and ensures the workspace remains a faster entry point into the same source-of-truth records rather than becoming a second authoring system.
+
+### D-015
+
+- Origin: Shared timeline reference validation expansion
+- Decision: Timeline linked-label resolution and missing-link warnings should be derived from already loaded project-scoped slice records at read time rather than copied into timeline event documents as duplicated display metadata.
+- Why it stays in force: This keeps `timeline_events` as the source of truth for linked IDs only, avoids stale duplicated labels, preserves the flat project-scoped model, and lets timeline surfaces improve their inspection UI without changing persisted chronology data.

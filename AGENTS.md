@@ -59,7 +59,7 @@ Implemented now:
 - technologies slice with list, create, detail, and edit flows
 - locations slice with list, create, detail, and edit flows
 - timeline events slice with list, create, detail, and edit flows
-- timeline workspace with grouped chronology browsing and filters built on `timeline_events`
+- timeline workspace with a center-line visual chronology, quick navigation, filters, derived insertion notches, and inline authoring built on `timeline_events`
 - notes slice with list, create, detail, and edit flows
 - retcons slice with list, create, detail, and edit flows
 - attachments slice with list, create, detail, and edit flows

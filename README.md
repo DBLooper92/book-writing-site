@@ -29,14 +29,14 @@ The current repo already has:
 - Firestore-backed Technologies pages
 - Firestore-backed Locations pages
 - Firestore-backed Timeline Events pages
-- a Timeline workspace route with grouped chronology browsing and filters
+- a Timeline workspace route with a visual center-line chronology, quick navigation, filters, and inline authoring
 - Firestore-backed Notes pages
 - Firestore-backed Retcons pages
 - Firestore-backed Attachments pages
 - Firestore-backed AI Sessions pages
 - a developer seeding flow for a default story-bible project
 
-Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions currently have list, create, detail, and edit flows. The `/timeline` workspace now adds grouped chronology browsing and filters on top of `timeline_events`. Delete flows, richer cross-entity linking, deeper timeline continuity tooling, upload/storage workflow, and richer AI tooling are still future work.
+Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions currently have list, create, detail, and edit flows. The `/timeline` workspace now adds a visual center-line chronology, quick navigation, filters, derived insertion notches, compressed time-jump markers, and inline create/edit entry points on top of `timeline_events`, while Timeline Events now supports picker-style linking for the main connected slices. Delete flows, richer cross-entity linking, deeper timeline continuity tooling, upload/storage workflow, and richer AI tooling are still future work.
 
 ## Local Development
 

@@ -6,7 +6,7 @@ This file tracks the short-term development direction implied by the current rep
 
 - Keep future entity work inside the existing slice pattern proven by Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions.
 - Books, Chapters, Scenes, and Timeline Events now extend that same slice pattern into manuscript structure and chronology without introducing a separate architecture.
-- The Timeline workspace now turns `/timeline` into a real chronology surface derived directly from `timeline_events` instead of introducing a second collection or a separate timeline persistence model.
+- The Timeline workspace now turns `/timeline` into a real visual chronology surface derived directly from `timeline_events` instead of introducing a second collection or a separate timeline persistence model.
 - Factions now extends that same slice pattern into cross-linked worldbuilding data without changing the project-scoped Firestore model.
 - Cultures now makes existing `cultureIds` references point at a real slice rather than seed-only records.
 - Religions now makes existing `religionIds` references point at a real slice rather than seed-only records.
@@ -30,18 +30,19 @@ This file tracks the short-term development direction implied by the current rep
 
 ## Next Recommended Focus
 
-- deeper timeline continuity editing and chronology validation on top of the current workspace
+- chronology precision and deeper timeline inspection polish
 
 Reason:
-The current long-term entity set now has first-pass slices and `/timeline` is now a real route-level workspace. The next biggest value is improving chronology integrity so predecessor/successor links, year ranges, and raw linked IDs are less dependent on manual discipline.
+The current long-term entity set now has first-pass slices, `/timeline` is a real visual workspace, and timeline authoring now includes insertion notches, an inline composer sheet, picker-style linking, linked-label resolution, and first-pass linked-ID validation. The next biggest value is making closely clustered events easier to order and making block inspection richer without leaving the workspace.
 
 Recommended scope for that pass:
 
 - keep `/timeline` derived from `timeline_events` rather than introducing a second chronology collection
-- expose predecessor and successor editing in the timeline event form
-- add light validation for impossible year ranges and obviously broken linked IDs
+- add richer chronology precision beyond the current year-first model where that can be done without destabilizing existing data
+- surface deeper inline summaries or hover/detail previews from timeline blocks and quick-nav items
+- tighten chronology integrity checks around predecessor/successor and linked manuscript records
 - keep extending linked navigation where existing IDs already point at real slices
-- refresh docs as the timeline workspace grows beyond its current first-pass filtering and grouping layer
+- refresh docs as the timeline layer becomes more precise and inspectable
 
 ## Follow-Up Cleanup Items
 

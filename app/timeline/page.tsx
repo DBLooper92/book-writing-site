@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { TimelineWorkspaceControls } from "@/components/timeline/timeline-workspace-controls";
-import { TimelineWorkspaceEventCard } from "@/components/timeline/timeline-workspace-event-card";
+import { TimelineWorkspaceVisual } from "@/components/timeline/timeline-workspace-visual";
 import { useTimelineWorkspace } from "@/hooks/use-timeline-workspace";
 
 export default function TimelinePage() {
@@ -13,6 +13,7 @@ export default function TimelinePage() {
     loading,
     error,
     user,
+    uid,
     activeProjectId,
     activeProject,
     filters,
@@ -26,7 +27,7 @@ export default function TimelinePage() {
     <PageShell
       eyebrow="Timeline"
       title="Timeline workspace"
-      description="Browse chronology as a project-scoped workspace built directly on top of timeline_events. The first pass groups dated events, keeps undated records visible, and filters by chronology coverage and existing cross-slice links."
+      description="Browse chronology as a project-scoped visual timeline built directly on top of timeline_events. This pass adds a center-line layout, quick navigation, virtual insertion notches, and compressed time-jump markers without changing the Firestore model."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -132,78 +133,11 @@ export default function TimelinePage() {
               restore the chronology view.
             </StateCard>
           ) : (
-            <>
-              {workspace.datedGroups.length > 0 ? (
-                <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
-                        Dated chronology
-                      </h2>
-                      <p className="mt-2 text-sm leading-6 text-zinc-600">
-                        Events are grouped by their earliest known placement year.
-                      </p>
-                    </div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      {workspace.datedGroups.length} year bucket
-                      {workspace.datedGroups.length === 1 ? "" : "s"}
-                    </p>
-                  </div>
-
-                  <div className="mt-6 space-y-8">
-                    {workspace.datedGroups.map((group) => (
-                      <section key={group.anchorYear} className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-px flex-1 bg-zinc-200" />
-                          <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                            {group.label}
-                          </h3>
-                          <div className="h-px flex-1 bg-zinc-200" />
-                        </div>
-
-                        <div className="grid gap-4">
-                          {group.events.map((timelineEvent) => (
-                            <TimelineWorkspaceEventCard
-                              key={timelineEvent.id}
-                              timelineEvent={timelineEvent}
-                            />
-                          ))}
-                        </div>
-                      </section>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {workspace.undatedEvents.length > 0 ? (
-                <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
-                        Undated events
-                      </h2>
-                      <p className="mt-2 text-sm leading-6 text-zinc-600">
-                        These records still need chronology placement but remain visible in the
-                        workspace.
-                      </p>
-                    </div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      {workspace.undatedEvents.length} undated event
-                      {workspace.undatedEvents.length === 1 ? "" : "s"}
-                    </p>
-                  </div>
-
-                  <div className="mt-6 grid gap-4">
-                    {workspace.undatedEvents.map((timelineEvent) => (
-                      <TimelineWorkspaceEventCard
-                        key={timelineEvent.id}
-                        timelineEvent={timelineEvent}
-                      />
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-            </>
+            <TimelineWorkspaceVisual
+              activeProjectId={activeProjectId}
+              timelineEvents={workspace.filteredEvents}
+              uid={uid}
+            />
           )}
         </>
       )}

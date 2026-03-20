@@ -1,18 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { TimelineEventForm } from "@/components/timeline-events/timeline-event-form";
 import { useActiveProject } from "@/hooks/use-active-project";
 import { createTimelineEventForProject } from "@/lib/firebase/timeline-events";
-import type { NormalizedTimelineEventFormValues } from "@/types/timeline-event";
+import {
+  createEmptyTimelineEventFormValues,
+  type NormalizedTimelineEventFormValues,
+} from "@/types/timeline-event";
 
 export default function NewTimelineEventPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, uid, activeProjectId, activeProject, loading } = useActiveProject();
+  const initialValues = buildInitialValuesFromSearchParams(searchParams);
 
   async function handleCreateTimelineEvent(values: NormalizedTimelineEventFormValues) {
     if (!uid || !activeProjectId) {
@@ -27,7 +32,7 @@ export default function NewTimelineEventPage() {
     <PageShell
       eyebrow="Timeline Events"
       title="Create timeline event"
-      description="Start a new chronology record inside the active project. This first-pass form stays focused, but it writes into the full project-scoped timeline event document shape."
+      description="Start a new chronology record inside the active project. Timeline insertion notches can prefill continuity and year context here, while the form still writes into the same project-scoped timeline event document shape."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -72,6 +77,7 @@ export default function NewTimelineEventPage() {
       ) : (
         <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
           <TimelineEventForm
+            initialValues={initialValues}
             submitLabel="Create timeline event"
             onSubmit={handleCreateTimelineEvent}
           />
@@ -97,5 +103,31 @@ function StateCard({
     <section className={`rounded-3xl border p-6 text-sm leading-6 ${className}`}>
       {children}
     </section>
+  );
+}
+
+function buildInitialValuesFromSearchParams(searchParams: URLSearchParams) {
+  const initialValues = createEmptyTimelineEventFormValues();
+
+  initialValues.yearStart = readQueryValue(searchParams, "yearStart");
+  initialValues.yearEnd = readQueryValue(searchParams, "yearEnd");
+  initialValues.predecessorEventIds = readQueryValues(searchParams, "predecessorEventIds");
+  initialValues.successorEventIds = readQueryValues(searchParams, "successorEventIds");
+
+  return initialValues;
+}
+
+function readQueryValue(searchParams: URLSearchParams, key: string) {
+  return searchParams.get(key)?.trim() ?? "";
+}
+
+function readQueryValues(searchParams: URLSearchParams, key: string) {
+  return Array.from(
+    new Set(
+      (searchParams.get(key) ?? "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean)
+    )
   );
 }

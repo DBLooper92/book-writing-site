@@ -1,3 +1,4 @@
+import { getTimelineReferenceIssues, type TimelineReferenceSets } from "@/lib/timeline/references";
 import {
   TIMELINE_EVENT_STATUS_OPTIONS,
   TIMELINE_EVENT_TYPE_OPTIONS,
@@ -29,6 +30,11 @@ export type TimelineWorkspaceYearGroup = {
   anchorYear: number;
   label: string;
   events: TimelineEvent[];
+};
+
+export type TimelineWorkspaceIssue = {
+  severity: "warning";
+  message: string;
 };
 
 export type TimelineWorkspaceStats = {
@@ -219,6 +225,83 @@ export function hasTimelineContinuityLinks(timelineEvent: TimelineEvent) {
     timelineEvent.predecessorEventIds.length > 0 ||
     timelineEvent.successorEventIds.length > 0
   );
+}
+
+export function getTimelineWorkspaceIssues(
+  timelineEvent: TimelineEvent,
+  knownTimelineEventIds: ReadonlySet<string>,
+  referenceSets?: TimelineReferenceSets | null
+): TimelineWorkspaceIssue[] {
+  const issues: TimelineWorkspaceIssue[] = [];
+
+  if (timelineEvent.predecessorEventIds.includes(timelineEvent.id)) {
+    issues.push({
+      severity: "warning",
+      message: "This event lists itself as a predecessor.",
+    });
+  }
+
+  if (timelineEvent.successorEventIds.includes(timelineEvent.id)) {
+    issues.push({
+      severity: "warning",
+      message: "This event lists itself as a successor.",
+    });
+  }
+
+  if (
+    typeof timelineEvent.yearStart === "number" &&
+    typeof timelineEvent.yearEnd === "number" &&
+    timelineEvent.yearEnd < timelineEvent.yearStart
+  ) {
+    issues.push({
+      severity: "warning",
+      message: "End year is earlier than start year.",
+    });
+  }
+
+  const missingPredecessors = timelineEvent.predecessorEventIds.filter(
+    (eventId) => !knownTimelineEventIds.has(eventId)
+  );
+
+  if (missingPredecessors.length > 0) {
+    issues.push({
+      severity: "warning",
+      message: `Missing predecessor IDs: ${missingPredecessors.join(", ")}.`,
+    });
+  }
+
+  const missingSuccessors = timelineEvent.successorEventIds.filter(
+    (eventId) => !knownTimelineEventIds.has(eventId)
+  );
+
+  if (missingSuccessors.length > 0) {
+    issues.push({
+      severity: "warning",
+      message: `Missing successor IDs: ${missingSuccessors.join(", ")}.`,
+    });
+  }
+
+  const overlappingContinuityIds = timelineEvent.predecessorEventIds.filter((eventId) =>
+    timelineEvent.successorEventIds.includes(eventId)
+  );
+
+  if (overlappingContinuityIds.length > 0) {
+    issues.push({
+      severity: "warning",
+      message: `IDs appear in both predecessor and successor lists: ${overlappingContinuityIds.join(", ")}.`,
+    });
+  }
+
+  if (referenceSets) {
+    getTimelineReferenceIssues(timelineEvent, referenceSets).forEach((message) => {
+      issues.push({
+        severity: "warning",
+        message,
+      });
+    });
+  }
+
+  return issues;
 }
 
 function buildTimelineWorkspaceYearGroups(

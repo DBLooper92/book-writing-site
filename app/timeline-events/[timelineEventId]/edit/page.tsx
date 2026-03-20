@@ -93,6 +93,7 @@ export default function EditTimelineEventPage() {
       ) : (
         <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
           <TimelineEventForm
+            currentTimelineEventId={timelineEventId}
             initialValues={timelineEventToFormValues(timelineEvent)}
             submitLabel="Save changes"
             onSubmit={handleUpdateTimelineEvent}

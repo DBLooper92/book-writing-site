@@ -6,10 +6,13 @@ import type { ReactNode } from "react";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { TimelineEventDetailSection } from "@/components/timeline-events/timeline-event-detail-section";
+import { useTimelineFormOptions } from "@/hooks/use-timeline-form-options";
+import { buildTimelineLinkedReferenceGroups } from "@/lib/timeline/references";
 import { useTimelineEvent } from "@/hooks/use-timeline-event";
 import {
   formatTimelineEnumValue,
   formatTimelineEventRange,
+  getTimelineWorkspaceIssues,
 } from "@/lib/timeline/workspace";
 
 export default function TimelineEventDetailPage() {
@@ -18,6 +21,35 @@ export default function TimelineEventDetailPage() {
     typeof params.timelineEventId === "string" ? params.timelineEventId : null;
   const { timelineEvent, loading, error, user, activeProjectId, activeProject } =
     useTimelineEvent(timelineEventId);
+  const formOptions = useTimelineFormOptions(timelineEventId);
+  const knownTimelineEventIds = new Set(formOptions.timelineEventOptions.map((option) => option.value));
+  if (timelineEventId) {
+    knownTimelineEventIds.add(timelineEventId);
+  }
+  const linkedGroups =
+    timelineEvent && !formOptions.loading && !formOptions.error
+      ? buildTimelineLinkedReferenceGroups(timelineEvent, formOptions.referenceMaps)
+      : [];
+  const manuscriptGroups = linkedGroups.filter((group) =>
+    ["Books", "Chapters", "Scenes", "Predecessors", "Successors"].includes(group.label)
+  );
+  const entityGroups = linkedGroups.filter((group) =>
+    [
+      "Characters",
+      "Locations",
+      "Era",
+      "Factions",
+      "Cultures",
+      "Religions",
+      "Technologies",
+      "Plot threads",
+      "Themes",
+    ].includes(group.label)
+  );
+  const issues =
+    timelineEvent && !formOptions.loading && !formOptions.error
+      ? getTimelineWorkspaceIssues(timelineEvent, knownTimelineEventIds, formOptions.referenceSets)
+      : [];
 
   return (
     <PageShell
@@ -85,6 +117,17 @@ export default function TimelineEventDetailPage() {
         </StateCard>
       ) : (
         <>
+          {issues.length > 0 ? (
+            <StateCard tone="warning">
+              <div className="space-y-2">
+                <p className="font-medium">Validation warnings</p>
+                {issues.map((issue) => (
+                  <p key={issue.message}>{issue.message}</p>
+                ))}
+              </div>
+            </StateCard>
+          ) : null}
+
           <TimelineEventDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{timelineEvent.summary || "No summary yet."}</p>
@@ -116,24 +159,17 @@ export default function TimelineEventDetailPage() {
 
           <TimelineEventDetailSection title="Chronology and manuscript links">
             <div className="grid gap-4 lg:grid-cols-2">
-              <ListBlock label="Book IDs" values={timelineEvent.bookIds} />
-              <ListBlock label="Chapter IDs" values={timelineEvent.chapterIds} />
-              <ListBlock label="Scene IDs" values={timelineEvent.sceneIds} />
-              <ListBlock label="Predecessor event IDs" values={timelineEvent.predecessorEventIds} />
-              <ListBlock label="Successor event IDs" values={timelineEvent.successorEventIds} />
+              {manuscriptGroups.map((group) => (
+                <LinkedGroupBlock key={group.label} label={group.label} items={group.items} />
+              ))}
             </div>
           </TimelineEventDetailSection>
 
           <TimelineEventDetailSection title="Entity links">
             <div className="grid gap-4 lg:grid-cols-2">
-              <ListBlock label="Character IDs" values={timelineEvent.characterIds} />
-              <ListBlock label="Location IDs" values={timelineEvent.locationIds} />
-              <ListBlock label="Faction IDs" values={timelineEvent.factionIds} />
-              <ListBlock label="Culture IDs" values={timelineEvent.cultureIds} />
-              <ListBlock label="Technology IDs" values={timelineEvent.technologyIds} />
-              <ListBlock label="Religion IDs" values={timelineEvent.religionIds} />
-              <ListBlock label="Plot thread IDs" values={timelineEvent.plotThreadIds} />
-              <ListBlock label="Theme IDs" values={timelineEvent.themeIds} />
+              {entityGroups.map((group) => (
+                <LinkedGroupBlock key={group.label} label={group.label} items={group.items} />
+              ))}
             </div>
           </TimelineEventDetailSection>
 
@@ -181,6 +217,39 @@ function ListBlock({ label, values }: { label: string; values: string[] }) {
             >
               {value}
             </span>
+          ))
+        ) : (
+          <span className="text-sm text-zinc-500">None</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LinkedGroupBlock({
+  label,
+  items,
+}: {
+  label: string;
+  items: Array<{ id: string; label: string; href: string; missing: boolean }>;
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">{label}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {items.length > 0 ? (
+          items.map((item) => (
+            <Link
+              key={`${label}-${item.id}`}
+              href={item.href}
+              className={`rounded-full px-3 py-1 text-sm transition ${
+                item.missing
+                  ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200"
+                  : "bg-white text-zinc-700 ring-1 ring-zinc-200 hover:bg-zinc-100"
+              }`}
+            >
+              {item.label}
+            </Link>
           ))
         ) : (
           <span className="text-sm text-zinc-500">None</span>

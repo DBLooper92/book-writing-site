@@ -20,6 +20,7 @@ import {
   coerceTimelineEventStatus,
   coerceTimelineEventType,
   slugifyTimelineEventTitle,
+  validateNormalizedTimelineEventFormValues,
   type NormalizedTimelineEventFormValues,
   type TimelineEvent,
 } from "@/types/timeline-event";
@@ -133,11 +134,9 @@ export async function createTimelineEventForProject(
   projectId: string,
   values: NormalizedTimelineEventFormValues
 ) {
-  const title = values.title.trim();
+  assertValidTimelineEventValues(values);
 
-  if (!title) {
-    throw new Error("Timeline event title is required.");
-  }
+  const title = values.title.trim();
 
   const timelineEventId = await getAvailableTimelineEventId(uid, projectId, title);
   const timelineEventRef = doc(
@@ -170,11 +169,9 @@ export async function updateTimelineEventForProject(
   timelineEventId: string,
   values: NormalizedTimelineEventFormValues
 ) {
-  const title = values.title.trim();
+  assertValidTimelineEventValues(values, timelineEventId);
 
-  if (!title) {
-    throw new Error("Timeline event title is required.");
-  }
+  const title = values.title.trim();
 
   const timelineEventRef = doc(
     db,
@@ -206,8 +203,16 @@ export async function updateTimelineEventForProject(
       sceneIds: values.sceneIds,
       characterIds: values.characterIds,
       locationIds: values.locationIds,
+      factionIds: values.factionIds,
+      cultureIds: values.cultureIds,
+      technologyIds: values.technologyIds,
+      religionIds: values.religionIds,
+      plotThreadIds: values.plotThreadIds,
+      themeIds: values.themeIds,
       causes: values.causes,
       consequences: values.consequences,
+      predecessorEventIds: values.predecessorEventIds,
+      successorEventIds: values.successorEventIds,
       publicWikiSummary: values.publicWikiSummary,
       updatedAt: serverTimestamp(),
     },
@@ -285,6 +290,19 @@ async function getAvailableTimelineEventId(uid: string, projectId: string, title
 function buildTimelineEventId(title: string) {
   const normalized = slugifyTimelineEventTitle(title).replace(/-/g, "_");
   return `event_${normalized || "event"}`;
+}
+
+function assertValidTimelineEventValues(
+  values: NormalizedTimelineEventFormValues,
+  currentTimelineEventId?: string
+) {
+  const validationResult = validateNormalizedTimelineEventFormValues(values, {
+    currentTimelineEventId,
+  });
+
+  if (validationResult.errors.length > 0) {
+    throw new Error(validationResult.errors[0]);
+  }
 }
 
 function readString(value: unknown) {

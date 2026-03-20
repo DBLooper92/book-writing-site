@@ -80,13 +80,21 @@ export type TimelineEventFormValues = {
   yearEnd: string;
   displayDateLabel: string;
   eraId: string;
-  bookIds: string;
-  chapterIds: string;
-  sceneIds: string;
-  characterIds: string;
-  locationIds: string;
+  bookIds: string[];
+  chapterIds: string[];
+  sceneIds: string[];
+  characterIds: string[];
+  locationIds: string[];
+  factionIds: string[];
+  cultureIds: string[];
+  technologyIds: string[];
+  religionIds: string[];
+  plotThreadIds: string[];
+  themeIds: string[];
   causes: string;
   consequences: string;
+  predecessorEventIds: string[];
+  successorEventIds: string[];
   publicWikiSummary: string;
 };
 
@@ -107,7 +115,17 @@ export type NormalizedTimelineEventFormValues = {
   locationIds: string[];
   causes: string[];
   consequences: string[];
+  predecessorEventIds: string[];
+  successorEventIds: string[];
   publicWikiSummary: string;
+};
+
+export type TimelineEventValidationContext = {
+  currentTimelineEventId?: string | null;
+};
+
+export type TimelineEventValidationResult = {
+  errors: string[];
 };
 
 type BuildTimelineEventDocumentInput = {
@@ -160,13 +178,21 @@ export function createEmptyTimelineEventFormValues(): TimelineEventFormValues {
     yearEnd: "",
     displayDateLabel: "",
     eraId: "",
-    bookIds: "",
-    chapterIds: "",
-    sceneIds: "",
-    characterIds: "",
-    locationIds: "",
+    bookIds: [],
+    chapterIds: [],
+    sceneIds: [],
+    characterIds: [],
+    locationIds: [],
+    factionIds: [],
+    cultureIds: [],
+    technologyIds: [],
+    religionIds: [],
+    plotThreadIds: [],
+    themeIds: [],
     causes: "",
     consequences: "",
+    predecessorEventIds: [],
+    successorEventIds: [],
     publicWikiSummary: "",
   };
 }
@@ -185,13 +211,21 @@ export function timelineEventToFormValues(
     yearEnd: typeof timelineEvent.yearEnd === "number" ? String(timelineEvent.yearEnd) : "",
     displayDateLabel: timelineEvent.displayDateLabel,
     eraId: timelineEvent.eraId ?? "",
-    bookIds: timelineEvent.bookIds.join(", "),
-    chapterIds: timelineEvent.chapterIds.join(", "),
-    sceneIds: timelineEvent.sceneIds.join(", "),
-    characterIds: timelineEvent.characterIds.join(", "),
-    locationIds: timelineEvent.locationIds.join(", "),
+    bookIds: timelineEvent.bookIds,
+    chapterIds: timelineEvent.chapterIds,
+    sceneIds: timelineEvent.sceneIds,
+    characterIds: timelineEvent.characterIds,
+    locationIds: timelineEvent.locationIds,
+    factionIds: timelineEvent.factionIds,
+    cultureIds: timelineEvent.cultureIds,
+    technologyIds: timelineEvent.technologyIds,
+    religionIds: timelineEvent.religionIds,
+    plotThreadIds: timelineEvent.plotThreadIds,
+    themeIds: timelineEvent.themeIds,
     causes: timelineEvent.causes.join(", "),
     consequences: timelineEvent.consequences.join(", "),
+    predecessorEventIds: timelineEvent.predecessorEventIds,
+    successorEventIds: timelineEvent.successorEventIds,
     publicWikiSummary: timelineEvent.publicWikiSummary,
   };
 }
@@ -209,15 +243,68 @@ export function normalizeTimelineEventFormValues(
     yearEnd: parseIntegerOrNull(values.yearEnd),
     displayDateLabel: values.displayDateLabel.trim(),
     eraId: values.eraId.trim() || null,
-    bookIds: parseCommaSeparatedList(values.bookIds),
-    chapterIds: parseCommaSeparatedList(values.chapterIds),
-    sceneIds: parseCommaSeparatedList(values.sceneIds),
-    characterIds: parseCommaSeparatedList(values.characterIds),
-    locationIds: parseCommaSeparatedList(values.locationIds),
+    bookIds: normalizeSelectedIds(values.bookIds),
+    chapterIds: normalizeSelectedIds(values.chapterIds),
+    sceneIds: normalizeSelectedIds(values.sceneIds),
+    characterIds: normalizeSelectedIds(values.characterIds),
+    locationIds: normalizeSelectedIds(values.locationIds),
+    factionIds: normalizeSelectedIds(values.factionIds),
+    cultureIds: normalizeSelectedIds(values.cultureIds),
+    technologyIds: normalizeSelectedIds(values.technologyIds),
+    religionIds: normalizeSelectedIds(values.religionIds),
+    plotThreadIds: normalizeSelectedIds(values.plotThreadIds),
+    themeIds: normalizeSelectedIds(values.themeIds),
     causes: parseCommaSeparatedList(values.causes),
     consequences: parseCommaSeparatedList(values.consequences),
+    predecessorEventIds: normalizeSelectedIds(values.predecessorEventIds),
+    successorEventIds: normalizeSelectedIds(values.successorEventIds),
     publicWikiSummary: values.publicWikiSummary.trim(),
   };
+}
+
+export function validateNormalizedTimelineEventFormValues(
+  values: NormalizedTimelineEventFormValues,
+  context: TimelineEventValidationContext = {}
+): TimelineEventValidationResult {
+  const errors: string[] = [];
+
+  if (!values.title.trim()) {
+    errors.push("Timeline event title is required.");
+  }
+
+  if (
+    typeof values.yearStart === "number" &&
+    typeof values.yearEnd === "number" &&
+    values.yearEnd < values.yearStart
+  ) {
+    errors.push("End year cannot be earlier than start year.");
+  }
+
+  const currentTimelineEventId = context.currentTimelineEventId?.trim() ?? "";
+
+  if (currentTimelineEventId) {
+    if (values.predecessorEventIds.includes(currentTimelineEventId)) {
+      errors.push("A timeline event cannot list itself as a predecessor.");
+    }
+
+    if (values.successorEventIds.includes(currentTimelineEventId)) {
+      errors.push("A timeline event cannot list itself as a successor.");
+    }
+  }
+
+  const overlappingContinuityIds = values.predecessorEventIds.filter((predecessorId) =>
+    values.successorEventIds.includes(predecessorId)
+  );
+
+  if (overlappingContinuityIds.length > 0) {
+    errors.push(
+      `The same event cannot be both predecessor and successor: ${overlappingContinuityIds.join(
+        ", "
+      )}.`
+    );
+  }
+
+  return { errors };
 }
 
 export function buildTimelineEventDocument({
@@ -247,16 +334,16 @@ export function buildTimelineEventDocument({
     sceneIds: values.sceneIds,
     characterIds: values.characterIds,
     locationIds: values.locationIds,
-    factionIds: [],
-    cultureIds: [],
-    technologyIds: [],
-    religionIds: [],
-    plotThreadIds: [],
-    themeIds: [],
+    factionIds: values.factionIds,
+    cultureIds: values.cultureIds,
+    technologyIds: values.technologyIds,
+    religionIds: values.religionIds,
+    plotThreadIds: values.plotThreadIds,
+    themeIds: values.themeIds,
     causes: values.causes,
     consequences: values.consequences,
-    predecessorEventIds: [],
-    successorEventIds: [],
+    predecessorEventIds: values.predecessorEventIds,
+    successorEventIds: values.successorEventIds,
     publicWikiSummary: values.publicWikiSummary,
   };
 }
@@ -349,10 +436,20 @@ function isAllowedValue<const Values extends readonly string[]>(
 }
 
 function parseCommaSeparatedList(value: string) {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+  return Array.from(
+    new Set(
+      value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function normalizeSelectedIds(values: string[]) {
+  return Array.from(
+    new Set(values.map((value) => value.trim()).filter(Boolean))
+  );
 }
 
 function parseIntegerOrNull(value: string) {

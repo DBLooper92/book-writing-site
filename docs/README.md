@@ -92,7 +92,7 @@ Implemented now:
 - chapters slice
 - scenes slice
 - timeline events slice
-- timeline workspace
+- timeline workspace with a visual center-line chronology
 - characters slice
 - relationships slice
 - factions slice
