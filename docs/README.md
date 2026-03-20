@@ -48,13 +48,23 @@ For any substantial task, read in this order:
 - `features/relationships.md`
 - `features/factions.md`
 - `features/cultures.md`
+- `features/governments.md`
+- `features/organizations.md`
+- `features/plot-threads.md`
+- `features/outlines.md`
+- `features/glossary-terms.md`
+- `features/religions.md`
 - `features/eras.md`
 - `features/themes.md`
 - `features/languages.md`
 - `features/species.md`
 - `features/items.md`
+- `features/technologies.md`
 - `features/locations.md`
 - `features/notes.md`
+- `features/retcons.md`
+- `features/attachments.md`
+- `features/ai-sessions.md`
 - `features/project-management.md`
 - `features/dev-setup.md`
 
@@ -85,15 +95,25 @@ Implemented now:
 - relationships slice
 - factions slice
 - cultures slice
+- governments slice
+- organizations slice
+- plot threads slice
+- outlines slice
+- glossary terms slice
+- religions slice
 - eras slice
 - themes slice
 - languages slice
 - species slice
 - items slice
+- technologies slice
 - locations slice
 - notes slice
+- retcons slice
+- attachments slice
+- AI sessions slice
 
 Partial or planned:
 
 - timeline workspace UI is still a placeholder
-- many future collections are visible through seed data only
+- richer attachment upload workflow and richer AI tooling are still planned

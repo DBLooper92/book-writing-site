@@ -32,18 +32,18 @@ The long-term story-bible model is expected to include at least:
 
 ## Current Status Snapshot
 
-- Implemented slices: `books`, `chapters`, `scenes`, `characters`, `relationships`, `factions`, `cultures`, `eras`, `themes`, `languages`, `species`, `items`, `locations`, `timeline_events`, `notes`
+- Implemented slices: `books`, `chapters`, `scenes`, `characters`, `relationships`, `factions`, `cultures`, `religions`, `governments`, `organizations`, `plot_threads`, `outlines`, `glossary_terms`, `eras`, `themes`, `languages`, `species`, `items`, `technologies`, `locations`, `timeline_events`, `notes`, `retcons`, `attachments`, `ai_sessions`
 - Implemented supporting systems: `projects`, `auth`, `dev setup`
 - Placeholder routes only: `timeline`
-- Seeded only: most of the remaining collections
+- Seeded only: none in the current long-term entity set
 
 ## Recommended Build Order
 
 ### Immediate Next Slice
 
-- `religions`
+- `none`
 
-Reason: Characters, Cultures, Factions, Timeline Events, and the seed dataset already point toward religion records, so `religions` is the next clean slice for turning belief-system references into real navigable canon data.
+Reason: The current long-term entity set now has first-pass slices, so the next value comes from deeper workspace behavior and cross-slice navigation rather than another new collection.
 
 ### Manuscript And Chronology Tier
 
@@ -51,28 +51,20 @@ Reason: Characters, Cultures, Factions, Timeline Events, and the seed dataset al
 
 Reason: this chronology layer is now implemented and gives the broader timeline workspace a concrete data foundation.
 
-### Near-Term Worldbuilding Tier
+### Near-Term Reference Tier
 
-- `religions`
+- `attachments` and `ai_sessions` are now implemented
 
-Reason: `religions` is now the next reusable reference layer across characters, cultures, factions, and broader worldbuilding work.
+Reason: File metadata and tracked AI workflow records now exist as real slices, so the next gains come from making them more connected and operationally useful.
 
 ### Deeper Reference Tier
 
-- `religions`
-- `governments`
-- `organizations`
-- `plot_threads`
+- no additional slice recommended right now
 
 ### Later Specialized Tier
 
-- `outlines`
-- `retcons`
-- `glossary_terms`
-- `technologies`
-- `attachments`
-- `ai_sessions`
+- future richer file workflows and AI tooling built on top of `attachments` and `ai_sessions`
 
 ## Practical Rule
 
-Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Chapters, Scenes, Characters, Factions, Cultures, Eras, Themes, Languages, Species, Items, Locations, Timeline Events, and Notes are already in place; the next biggest value comes from deeper worldbuilding links built on top of that structure.
+Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Chapters, Scenes, Characters, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions are already in place; the next biggest value comes from deeper workspace behavior, linked navigation, and richer operational workflows built on top of that structure.

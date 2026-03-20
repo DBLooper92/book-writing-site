@@ -72,3 +72,9 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: First Chapters slice implementation
 - Decision: Chapters stays as a project-scoped top-level collection under `users/{uid}/projects/{projectId}/chapters/{chapterId}` and links back to books through `bookId` instead of nesting chapter documents under book documents.
 - Why it stays in force: This preserves the repo's flat per-project entity-slice architecture, keeps Firestore paths consistent across slices, and avoids introducing a second persistence pattern just for manuscript child records.
+
+### D-011
+
+- Origin: First AI Sessions slice implementation
+- Decision: The first AI Sessions implementation stores summarized session metadata, linked entity IDs, and prompt/output excerpts under `users/{uid}/projects/{projectId}/ai_sessions/{sessionId}` instead of inventing provider-specific runtime workflow state or treating AI chat transcripts as canon.
+- Why it stays in force: Structured Firestore data remains the source of truth, the slice stays cheap to run and inspect, and later AI tooling can extend this record shape without requiring the app to depend on transient chat state.

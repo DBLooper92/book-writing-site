@@ -4,33 +4,43 @@ This file tracks the short-term development direction implied by the current rep
 
 ## Current Focus
 
-- Keep future entity work inside the existing slice pattern proven by Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Eras, Themes, Languages, Species, Items, Locations, Timeline Events, and Notes.
+- Keep future entity work inside the existing slice pattern proven by Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions.
 - Books, Chapters, Scenes, and Timeline Events now extend that same slice pattern into manuscript structure and chronology without introducing a separate architecture.
 - Factions now extends that same slice pattern into cross-linked worldbuilding data without changing the project-scoped Firestore model.
 - Cultures now makes existing `cultureIds` references point at a real slice rather than seed-only records.
+- Religions now makes existing `religionIds` references point at a real slice rather than seed-only records.
+- Governments now makes existing `governmentId` references point at a real slice rather than seed-only records.
+- Organizations now makes existing organization references point at a real slice rather than seed-only records.
+- Plot Threads now makes existing narrative-thread references point at a real slice rather than seed-only records.
 - Eras now makes existing `eraId` and `eraIds` references point at a real slice rather than seed-only records.
 - Themes now makes existing `primaryThemes`, `themeIds`, and `dominantThemes` references point at a real slice rather than seed-only records.
 - Languages now makes existing `languageIds` and `defaultLanguageId` references point at a real slice rather than seed-only records.
 - Species now makes existing `speciesId` references point at a real slice rather than seed-only records.
 - Items now makes existing item references point at a real slice rather than seed-only records.
+- Technologies now makes existing `technologyIds` references point at a real slice rather than seed-only records.
+- Retcons now turns seeded canon-change records into a real project-scoped slice for old canon, new canon, and downstream impact tracking without changing the entity architecture.
+- Attachments now turns seeded reference-file metadata into a real project-scoped slice without pretending a full upload workflow exists yet.
+- AI Sessions now turns seeded prompt/output tracking into a real project-scoped slice without making provider-specific workflow metadata the source of truth for canon.
+- Outlines now turns seeded planning records into a real project-scoped slice without changing the entity architecture.
+- Glossary Terms now turns seeded vocabulary records into a real project-scoped slice without changing the entity architecture.
 - Relationships now turns seeded connection records into a real project-scoped slice without changing the entity architecture.
 - Prefer one fully working slice over several new placeholders.
 - Keep docs aligned as implementation changes land so the documentation system remains usable as working memory.
 
-## Next Recommended Slice
+## Next Recommended Focus
 
-- `religions`
+- broader `/timeline` workspace built on `timeline_events`
 
 Reason:
-Characters, Cultures, Factions, Timeline Events, and the starter dataset already point at religion records, so `religions` is now the cleanest next slice for turning existing belief-system references into a real navigable slice.
+The current long-term entity set now has first-pass slices, so the next biggest value is turning the placeholder timeline route into a real chronology workspace with sorting, scanning, and linked navigation on top of the existing `timeline_events` slice.
 
 Recommended scope for that pass:
 
-- canonical religion type in `types/`
-- Firestore read/write utilities under the active project
-- list, create, detail, and edit pages
-- normalization compatible with seeded religion documents
-- explicit documentation updates in `current-status` and a new feature doc once the slice is real
+- replace the placeholder `/timeline` route with a working project-scoped chronology workspace
+- reuse `timeline_events` rather than adding a second chronology collection
+- add ordering, grouping, and browsing affordances over the current event records
+- surface linked navigation where existing IDs already point at real slices
+- refresh docs so the timeline workspace stops being described as placeholder-only
 
 ## Follow-Up Cleanup Items
 
@@ -47,9 +57,19 @@ Recommended scope for that pass:
 - dedicated delete flow for Scenes
 - dedicated delete flow for Timeline Events
 - dedicated delete flow for Cultures
+- dedicated delete flow for Religions
+- dedicated delete flow for Governments
+- dedicated delete flow for Organizations
+- dedicated delete flow for Plot Threads
+- dedicated delete flow for Outlines
+- dedicated delete flow for Glossary Terms
 - dedicated delete flow for Species
 - dedicated delete flow for Items
+- dedicated delete flow for Technologies
 - dedicated delete flow for Notes
+- dedicated delete flow for Retcons
+- dedicated delete flow for Attachments
+- dedicated delete flow for AI Sessions
 - richer cross-entity pickers, linked navigation, and validation
 - broader `/timeline` workspace work on top of the `timeline_events` slice
-- later specialized slices such as `attachments` and `ai_sessions` after core canon-management slices are real
+- later specialized slices building on top of `ai_sessions` and richer file workflows

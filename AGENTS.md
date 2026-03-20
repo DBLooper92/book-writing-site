@@ -45,19 +45,29 @@ Implemented now:
 - relationships slice with list, create, detail, and edit flows
 - factions slice with list, create, detail, and edit flows
 - cultures slice with list, create, detail, and edit flows
+- religions slice with list, create, detail, and edit flows
+- governments slice with list, create, detail, and edit flows
+- organizations slice with list, create, detail, and edit flows
+- plot threads slice with list, create, detail, and edit flows
+- outlines slice with list, create, detail, and edit flows
+- glossary terms slice with list, create, detail, and edit flows
 - eras slice with list, create, detail, and edit flows
 - themes slice with list, create, detail, and edit flows
 - languages slice with list, create, detail, and edit flows
 - species slice with list, create, detail, and edit flows
 - items slice with list, create, detail, and edit flows
+- technologies slice with list, create, detail, and edit flows
 - locations slice with list, create, detail, and edit flows
 - timeline events slice with list, create, detail, and edit flows
 - notes slice with list, create, detail, and edit flows
+- retcons slice with list, create, detail, and edit flows
+- attachments slice with list, create, detail, and edit flows
+- AI sessions slice with list, create, detail, and edit flows
 
 Partial or placeholder:
 
 - timeline route placeholder
-- many future entity collections seeded for inspection, but not yet surfaced with real CRUD UIs
+- richer attachment upload workflow and richer AI tooling are still future work
 
 ## Architectural Rules
 
@@ -109,11 +119,21 @@ Docs must stay honest about what is implemented now, what is partial, and what i
 - `docs/features/relationships.md`
 - `docs/features/factions.md`
 - `docs/features/cultures.md`
+- `docs/features/governments.md`
+- `docs/features/organizations.md`
+- `docs/features/plot-threads.md`
+- `docs/features/outlines.md`
+- `docs/features/glossary-terms.md`
+- `docs/features/religions.md`
 - `docs/features/eras.md`
 - `docs/features/themes.md`
 - `docs/features/languages.md`
 - `docs/features/species.md`
 - `docs/features/items.md`
+- `docs/features/technologies.md`
 - `docs/features/notes.md`
+- `docs/features/retcons.md`
+- `docs/features/attachments.md`
+- `docs/features/ai-sessions.md`
 - `docs/features/timeline-events.md`
 - `docs/ai/assistant-guidelines.md`

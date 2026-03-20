@@ -122,6 +122,72 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - edit page
 - reusable form, card, and detail-section components
 
+### Religions
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
+### Governments
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
+### Organizations
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
+### Plot Threads
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
+### Outlines
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
+### Glossary Terms
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
 ### Eras
 
 - canonical type definitions
@@ -177,6 +243,17 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - edit page
 - reusable form, card, and detail-section components
 
+### Technologies
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
 ### Locations
 
 - canonical type definitions
@@ -199,15 +276,48 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - edit page
 - reusable form, card, and detail-section components
 
+### Retcons
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
+### Attachments
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
+### AI Sessions
+
+- canonical type definitions
+- Firestore read and write utilities
+- list and detail hooks
+- list page
+- create page
+- detail page
+- edit page
+- reusable form, card, and detail-section components
+
 ## Partially Implemented
 
 ### CRUD Coverage
 
-Books, Chapters, Scenes, Timeline Events, Characters, Relationships, Factions, Cultures, Eras, Themes, Languages, Species, Items, Locations, and Notes have create, list, detail, and edit flows. Dedicated delete actions are not implemented yet.
+Books, Chapters, Scenes, Timeline Events, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Notes, Retcons, Attachments, and AI Sessions have create, list, detail, and edit flows. Dedicated delete actions are not implemented yet.
 
-### Broader Schema Visibility
+### Workflow Depth
 
-The dev initializer seeds many future collections, so Firestore structure is visible now, but most of those entity slices do not yet have real hooks, pages, or forms.
+Attachments and AI Sessions now have real slices, but both stay intentionally metadata-first in their initial pass. Upload/storage workflow, provider integration, and richer operational tooling are still future work.
 
 ### Cross-Entity Linking
 
@@ -221,16 +331,7 @@ This route communicates product direction and seeded-data intent, but it is not 
 
 ## Planned Later
 
-- plot threads
-- retcons
-- technologies
-- religions
-- governments
-- organizations
-- outlines
-- glossary terms
-- attachments
-- AI session tracking
+- upload and storage workflow for attachments
 - richer AI writing workflows
 
 ## Documentation Rule

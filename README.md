@@ -15,18 +15,28 @@ The current repo already has:
 - Firestore-backed Relationships pages
 - Firestore-backed Factions pages
 - Firestore-backed Cultures pages
+- Firestore-backed Religions pages
+- Firestore-backed Governments pages
+- Firestore-backed Organizations pages
+- Firestore-backed Plot Threads pages
+- Firestore-backed Outlines pages
+- Firestore-backed Glossary Terms pages
 - Firestore-backed Eras pages
 - Firestore-backed Themes pages
 - Firestore-backed Languages pages
 - Firestore-backed Species pages
 - Firestore-backed Items pages
+- Firestore-backed Technologies pages
 - Firestore-backed Locations pages
 - Firestore-backed Timeline Events pages
 - Firestore-backed Notes pages
+- Firestore-backed Retcons pages
+- Firestore-backed Attachments pages
+- Firestore-backed AI Sessions pages
 - a developer seeding flow for a default story-bible project
 - a placeholder Timeline route
 
-Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Eras, Themes, Languages, Species, Items, Locations, Timeline Events, and Notes currently have list, create, detail, and edit flows. Delete flows, richer cross-entity linking, and the broader entity library are still future work.
+Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions currently have list, create, detail, and edit flows. Delete flows, richer cross-entity linking, the broader timeline workspace, upload/storage workflow, and richer AI tooling are still future work.
 
 ## Local Development
 
@@ -62,6 +72,6 @@ Global entity collections such as `characters/{characterId}` are not part of thi
 
 ## Current Entity Status
 
-- Implemented: `projects`, `books`, `chapters`, `scenes`, `characters`, `relationships`, `factions`, `cultures`, `eras`, `themes`, `languages`, `species`, `items`, `locations`, `timeline_events`, `notes`
+- Implemented: `projects`, `books`, `chapters`, `scenes`, `characters`, `relationships`, `factions`, `cultures`, `religions`, `governments`, `organizations`, `plot_threads`, `outlines`, `glossary_terms`, `eras`, `themes`, `languages`, `species`, `items`, `technologies`, `locations`, `timeline_events`, `notes`, `retcons`, `attachments`, `ai_sessions`
 - Placeholder routes only: `timeline`
-- Seeded for future development, but not yet implemented as slices: `plot_threads`, `technologies`, `religions`, `governments`, `organizations`, `outlines`, `glossary_terms`, `attachments`, `ai_sessions`, `retcons`
+- Seeded for future development, but not yet implemented as slices: none in the current roadmap

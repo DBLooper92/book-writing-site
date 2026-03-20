@@ -34,6 +34,42 @@ const quickLinks = [
       "Manage project-scoped culture records with list, create, detail, and edit flows that align with existing character, faction, and location references.",
   },
   {
+    href: "/religions",
+    title: "Religions",
+    description:
+      "Manage project-scoped religion records with list, create, detail, and edit flows that turn existing belief-system references into real canon data.",
+  },
+  {
+    href: "/governments",
+    title: "Governments",
+    description:
+      "Manage project-scoped government records with list, create, detail, and edit flows that turn existing civic-power references into real canon data.",
+  },
+  {
+    href: "/organizations",
+    title: "Organizations",
+    description:
+      "Manage project-scoped organization records with list, create, detail, and edit flows that turn existing institutional references into real canon data.",
+  },
+  {
+    href: "/plot-threads",
+    title: "Plot Threads",
+    description:
+      "Manage project-scoped plot-thread records with list, create, detail, and edit flows that turn existing narrative-thread references into real canon data.",
+  },
+  {
+    href: "/outlines",
+    title: "Outlines",
+    description:
+      "Manage project-scoped outline records with list, create, detail, and edit flows that turn seeded planning structures into real navigable data.",
+  },
+  {
+    href: "/glossary-terms",
+    title: "Glossary Terms",
+    description:
+      "Manage project-scoped glossary term records with list, create, detail, and edit flows that turn reusable lore vocabulary into real navigable data.",
+  },
+  {
     href: "/eras",
     title: "Eras",
     description:
@@ -64,6 +100,12 @@ const quickLinks = [
       "Manage project-scoped item records with list, create, detail, and edit flows that turn existing artifact and important-item references into real data.",
   },
   {
+    href: "/technologies",
+    title: "Technologies",
+    description:
+      "Manage project-scoped technology records with list, create, detail, and edit flows that turn seeded infrastructure and system references into real canon data.",
+  },
+  {
     href: "/factions",
     title: "Factions",
     description:
@@ -74,6 +116,24 @@ const quickLinks = [
     title: "Timeline Events",
     description:
       "Anchor project chronology with timeline-event list, create, detail, and edit flows under the active project.",
+  },
+  {
+    href: "/retcons",
+    title: "Retcons",
+    description:
+      "Track canon revisions with project-scoped retcon list, create, detail, and edit flows for old canon, new canon, and downstream impact records.",
+  },
+  {
+    href: "/attachments",
+    title: "Attachments",
+    description:
+      "Track project-scoped attachment metadata for maps, diagrams, and other reference files without introducing upload workflow yet.",
+  },
+  {
+    href: "/ai-sessions",
+    title: "AI Sessions",
+    description:
+      "Track project-scoped AI work records for brainstorming, summaries, drafting, and metadata about prompt/output sessions.",
   },
   {
     href: "/dev/setup",
@@ -136,10 +196,13 @@ export default function HomePage() {
         </p>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">
           Books, Chapters, Scenes, Timeline Events, Relationships, Factions,
-          Cultures, Eras, Themes, Languages, Species, and Items now give the manuscript,
-          chronology, connection-tracking, and core worldbuilding layers real
-          project-scoped structure. The broader timeline workspace is still a
-          placeholder, but chronology and relationship-linked references no
+          Cultures, Religions, Governments, Organizations, Plot Threads,
+          Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items,
+          Technologies, Notes, Retcons, Attachments, and AI Sessions now give
+          the manuscript, chronology, connection-tracking, planning,
+          reference, canon revision, file-metadata, and workflow-tracking
+          layers real project-scoped structure. The broader timeline workspace
+          is still a placeholder, but chronology and canon-change tracking no
           longer rely on seed data alone.
         </p>
       </section>
