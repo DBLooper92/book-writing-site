@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase/client";
+import { compareTimelineEvents } from "@/lib/timeline/workspace";
 import {
   buildTimelineEventDocument,
   coerceTimelineEventCanonLevel,
@@ -284,36 +285,6 @@ async function getAvailableTimelineEventId(uid: string, projectId: string, title
 function buildTimelineEventId(title: string) {
   const normalized = slugifyTimelineEventTitle(title).replace(/-/g, "_");
   return `event_${normalized || "event"}`;
-}
-
-function compareTimelineEvents(left: TimelineEvent, right: TimelineEvent) {
-  const leftYearStart = left.yearStart;
-  const rightYearStart = right.yearStart;
-
-  if (typeof leftYearStart === "number" && typeof rightYearStart === "number") {
-    if (leftYearStart !== rightYearStart) {
-      return leftYearStart - rightYearStart;
-    }
-  } else if (typeof leftYearStart === "number") {
-    return -1;
-  } else if (typeof rightYearStart === "number") {
-    return 1;
-  }
-
-  const leftYearEnd = left.yearEnd;
-  const rightYearEnd = right.yearEnd;
-
-  if (typeof leftYearEnd === "number" && typeof rightYearEnd === "number") {
-    if (leftYearEnd !== rightYearEnd) {
-      return leftYearEnd - rightYearEnd;
-    }
-  } else if (typeof leftYearEnd === "number") {
-    return -1;
-  } else if (typeof rightYearEnd === "number") {
-    return 1;
-  }
-
-  return left.title.localeCompare(right.title);
 }
 
 function readString(value: unknown) {

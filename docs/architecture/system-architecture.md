@@ -36,11 +36,11 @@ The central design boundary is:
 
 ### UI Components
 
-`components/` contains shared layout primitives plus slice-specific cards, forms, and detail sections.
+`components/` contains shared layout primitives plus slice-specific cards, forms, detail sections, and derived workspace UI such as the first-pass Timeline workspace.
 
 ### Routes
 
-`app/` contains pages for list, create, detail, edit, setup, auth, and placeholder workspaces.
+`app/` contains pages for list, create, detail, edit, setup, auth, and derived workspaces.
 
 ## Current Architectural Pattern
 
@@ -78,24 +78,39 @@ Implemented now:
 - auth
 - projects
 - active project switching
+- dev setup and seeding
 - books
 - chapters
 - scenes
 - timeline events
+- timeline workspace
 - characters
 - relationships
 - factions
 - cultures
+- religions
+- governments
+- organizations
+- plot threads
+- outlines
+- glossary terms
+- eras
+- themes
+- languages
 - species
 - items
+- technologies
 - locations
 - notes
-- dev setup and seeding
+- retcons
+- attachments
+- AI sessions
 
 Not yet implemented as full features:
 
-- broader timeline workspace
-- broader entity library
+- richer cross-entity navigation and validation
+- deeper timeline continuity tooling
+- attachment upload workflow
 - AI writing surfaces
 
 ## Related Docs

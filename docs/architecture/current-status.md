@@ -78,6 +78,15 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - edit page
 - reusable form, card, and detail-section components
 
+### Timeline Workspace
+
+- working `/timeline` route built on `timeline_events`
+- shared chronology utilities for sorting, filtering, grouping, and formatting normalized timeline records
+- timeline workspace hook for active-project chronology browsing
+- grouped dated chronology browsing plus a dedicated undated section
+- filters for search, status, event type, dating coverage, and link scope
+- direct linked navigation to existing slice detail routes from timeline records
+
 ### Characters
 
 - canonical type definitions
@@ -323,11 +332,9 @@ Attachments and AI Sessions now have real slices, but both stay intentionally me
 
 Canonical types already reserve many relationship fields, but most actual linked navigation, validation, and entity pickers are still future work.
 
-## Placeholder Routes
+### Timeline Logic Depth
 
-- `app/timeline/page.tsx`
-
-This route communicates product direction and seeded-data intent, but it is not a working feature slice yet.
+The `/timeline` workspace now exists as a real route-level feature, but predecessor/successor editing, richer chronology validation, and more detailed date models are still future work.
 
 ## Planned Later
 

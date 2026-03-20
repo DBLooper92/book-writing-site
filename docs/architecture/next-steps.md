@@ -6,6 +6,7 @@ This file tracks the short-term development direction implied by the current rep
 
 - Keep future entity work inside the existing slice pattern proven by Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions.
 - Books, Chapters, Scenes, and Timeline Events now extend that same slice pattern into manuscript structure and chronology without introducing a separate architecture.
+- The Timeline workspace now turns `/timeline` into a real chronology surface derived directly from `timeline_events` instead of introducing a second collection or a separate timeline persistence model.
 - Factions now extends that same slice pattern into cross-linked worldbuilding data without changing the project-scoped Firestore model.
 - Cultures now makes existing `cultureIds` references point at a real slice rather than seed-only records.
 - Religions now makes existing `religionIds` references point at a real slice rather than seed-only records.
@@ -29,18 +30,18 @@ This file tracks the short-term development direction implied by the current rep
 
 ## Next Recommended Focus
 
-- broader `/timeline` workspace built on `timeline_events`
+- deeper timeline continuity editing and chronology validation on top of the current workspace
 
 Reason:
-The current long-term entity set now has first-pass slices, so the next biggest value is turning the placeholder timeline route into a real chronology workspace with sorting, scanning, and linked navigation on top of the existing `timeline_events` slice.
+The current long-term entity set now has first-pass slices and `/timeline` is now a real route-level workspace. The next biggest value is improving chronology integrity so predecessor/successor links, year ranges, and raw linked IDs are less dependent on manual discipline.
 
 Recommended scope for that pass:
 
-- replace the placeholder `/timeline` route with a working project-scoped chronology workspace
-- reuse `timeline_events` rather than adding a second chronology collection
-- add ordering, grouping, and browsing affordances over the current event records
-- surface linked navigation where existing IDs already point at real slices
-- refresh docs so the timeline workspace stops being described as placeholder-only
+- keep `/timeline` derived from `timeline_events` rather than introducing a second chronology collection
+- expose predecessor and successor editing in the timeline event form
+- add light validation for impossible year ranges and obviously broken linked IDs
+- keep extending linked navigation where existing IDs already point at real slices
+- refresh docs as the timeline workspace grows beyond its current first-pass filtering and grouping layer
 
 ## Follow-Up Cleanup Items
 
@@ -71,5 +72,5 @@ Recommended scope for that pass:
 - dedicated delete flow for Attachments
 - dedicated delete flow for AI Sessions
 - richer cross-entity pickers, linked navigation, and validation
-- broader `/timeline` workspace work on top of the `timeline_events` slice
+- deeper timeline continuity features on top of the current `/timeline` workspace
 - later specialized slices building on top of `ai_sessions` and richer file workflows

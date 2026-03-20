@@ -43,6 +43,7 @@ For any substantial task, read in this order:
 - `features/books.md`
 - `features/chapters.md`
 - `features/scenes.md`
+- `features/timeline.md`
 - `features/timeline-events.md`
 - `features/characters.md`
 - `features/relationships.md`
@@ -91,6 +92,7 @@ Implemented now:
 - chapters slice
 - scenes slice
 - timeline events slice
+- timeline workspace
 - characters slice
 - relationships slice
 - factions slice
@@ -115,5 +117,5 @@ Implemented now:
 
 Partial or planned:
 
-- timeline workspace UI is still a placeholder
+- deeper timeline continuity editing and validation are still planned
 - richer attachment upload workflow and richer AI tooling are still planned

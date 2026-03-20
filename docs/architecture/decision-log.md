@@ -78,3 +78,9 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: First AI Sessions slice implementation
 - Decision: The first AI Sessions implementation stores summarized session metadata, linked entity IDs, and prompt/output excerpts under `users/{uid}/projects/{projectId}/ai_sessions/{sessionId}` instead of inventing provider-specific runtime workflow state or treating AI chat transcripts as canon.
 - Why it stays in force: Structured Firestore data remains the source of truth, the slice stays cheap to run and inspect, and later AI tooling can extend this record shape without requiring the app to depend on transient chat state.
+
+### D-012
+
+- Origin: First Timeline workspace implementation
+- Decision: The `/timeline` workspace must stay a derived view over `users/{uid}/projects/{projectId}/timeline_events/{eventId}` records instead of introducing a second chronology collection or separate timeline persistence model.
+- Why it stays in force: This preserves the flat project-scoped architecture, avoids duplicate chronology data, keeps Firestore costs predictable, and ensures every timeline surface derives from the same normalized event records.

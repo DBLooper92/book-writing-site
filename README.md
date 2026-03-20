@@ -29,14 +29,14 @@ The current repo already has:
 - Firestore-backed Technologies pages
 - Firestore-backed Locations pages
 - Firestore-backed Timeline Events pages
+- a Timeline workspace route with grouped chronology browsing and filters
 - Firestore-backed Notes pages
 - Firestore-backed Retcons pages
 - Firestore-backed Attachments pages
 - Firestore-backed AI Sessions pages
 - a developer seeding flow for a default story-bible project
-- a placeholder Timeline route
 
-Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions currently have list, create, detail, and edit flows. Delete flows, richer cross-entity linking, the broader timeline workspace, upload/storage workflow, and richer AI tooling are still future work.
+Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions currently have list, create, detail, and edit flows. The `/timeline` workspace now adds grouped chronology browsing and filters on top of `timeline_events`. Delete flows, richer cross-entity linking, deeper timeline continuity tooling, upload/storage workflow, and richer AI tooling are still future work.
 
 ## Local Development
 
@@ -73,5 +73,5 @@ Global entity collections such as `characters/{characterId}` are not part of thi
 ## Current Entity Status
 
 - Implemented: `projects`, `books`, `chapters`, `scenes`, `characters`, `relationships`, `factions`, `cultures`, `religions`, `governments`, `organizations`, `plot_threads`, `outlines`, `glossary_terms`, `eras`, `themes`, `languages`, `species`, `items`, `technologies`, `locations`, `timeline_events`, `notes`, `retcons`, `attachments`, `ai_sessions`
-- Placeholder routes only: `timeline`
+- Implemented supporting systems: `auth`, `dev setup`, `timeline`
 - Seeded for future development, but not yet implemented as slices: none in the current roadmap

@@ -7,6 +7,10 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { TimelineEventDetailSection } from "@/components/timeline-events/timeline-event-detail-section";
 import { useTimelineEvent } from "@/hooks/use-timeline-event";
+import {
+  formatTimelineEnumValue,
+  formatTimelineEventRange,
+} from "@/lib/timeline/workspace";
 
 export default function TimelineEventDetailPage() {
   const params = useParams<{ timelineEventId: string }>();
@@ -94,7 +98,7 @@ export default function TimelineEventDetailPage() {
               <DetailItem label="Event type" value={formatEnumValue(timelineEvent.eventType)} />
               <DetailItem
                 label="Year range"
-                value={formatEventRange(timelineEvent.yearStart, timelineEvent.yearEnd)}
+                value={formatTimelineEventRange(timelineEvent.yearStart, timelineEvent.yearEnd)}
               />
               <DetailItem
                 label="Display date label"
@@ -207,28 +211,6 @@ function StateCard({
   );
 }
 
-function formatEventRange(yearStart: number | null, yearEnd: number | null) {
-  if (typeof yearStart === "number" && typeof yearEnd === "number") {
-    return yearStart === yearEnd ? String(yearStart) : `${yearStart}-${yearEnd}`;
-  }
-
-  if (typeof yearStart === "number") {
-    return `From ${yearStart}`;
-  }
-
-  if (typeof yearEnd === "number") {
-    return `Until ${yearEnd}`;
-  }
-
-  return "Undated";
-}
-
 function formatEnumValue(value: string) {
-  if (!value) {
-    return "Unknown";
-  }
-
-  return value
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (character) => character.toUpperCase());
+  return formatTimelineEnumValue(value);
 }

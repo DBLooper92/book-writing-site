@@ -59,6 +59,7 @@ Implemented now:
 - technologies slice with list, create, detail, and edit flows
 - locations slice with list, create, detail, and edit flows
 - timeline events slice with list, create, detail, and edit flows
+- timeline workspace with grouped chronology browsing and filters built on `timeline_events`
 - notes slice with list, create, detail, and edit flows
 - retcons slice with list, create, detail, and edit flows
 - attachments slice with list, create, detail, and edit flows
@@ -66,7 +67,7 @@ Implemented now:
 
 Partial or placeholder:
 
-- timeline route placeholder
+- timeline continuity editing and validation are still first-pass only
 - richer attachment upload workflow and richer AI tooling are still future work
 
 ## Architectural Rules
@@ -135,5 +136,6 @@ Docs must stay honest about what is implemented now, what is partial, and what i
 - `docs/features/retcons.md`
 - `docs/features/attachments.md`
 - `docs/features/ai-sessions.md`
+- `docs/features/timeline.md`
 - `docs/features/timeline-events.md`
 - `docs/ai/assistant-guidelines.md`

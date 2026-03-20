@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import {
+  formatTimelineEnumValue,
+  formatTimelineEventRange,
+} from "@/lib/timeline/workspace";
 import type { TimelineEvent } from "@/types/timeline-event";
 
 type TimelineEventCardProps = {
@@ -23,9 +27,9 @@ export function TimelineEventCard({ timelineEvent }: TimelineEventCardProps) {
         </div>
 
         <div className="flex flex-wrap gap-2 text-xs font-medium">
-          <Badge>{formatEnumValue(timelineEvent.status)}</Badge>
-          <Badge>{formatEventRange(timelineEvent.yearStart, timelineEvent.yearEnd)}</Badge>
-          <Badge>{formatEnumValue(timelineEvent.eventType)}</Badge>
+          <Badge>{formatTimelineEnumValue(timelineEvent.status)}</Badge>
+          <Badge>{formatTimelineEventRange(timelineEvent.yearStart, timelineEvent.yearEnd)}</Badge>
+          <Badge>{formatTimelineEnumValue(timelineEvent.eventType)}</Badge>
         </div>
       </div>
 
@@ -41,30 +45,4 @@ export function TimelineEventCard({ timelineEvent }: TimelineEventCardProps) {
 
 function Badge({ children }: { children: ReactNode }) {
   return <span className="rounded-full bg-zinc-100 px-3 py-1 text-zinc-700">{children}</span>;
-}
-
-function formatEventRange(yearStart: number | null, yearEnd: number | null) {
-  if (typeof yearStart === "number" && typeof yearEnd === "number") {
-    return yearStart === yearEnd ? String(yearStart) : `${yearStart}-${yearEnd}`;
-  }
-
-  if (typeof yearStart === "number") {
-    return `From ${yearStart}`;
-  }
-
-  if (typeof yearEnd === "number") {
-    return `Until ${yearEnd}`;
-  }
-
-  return "Undated";
-}
-
-function formatEnumValue(value: string) {
-  if (!value) {
-    return "Unknown";
-  }
-
-  return value
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (character) => character.toUpperCase());
 }

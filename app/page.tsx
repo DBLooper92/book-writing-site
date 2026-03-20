@@ -112,6 +112,12 @@ const quickLinks = [
       "Manage project-scoped faction records with list, create, detail, and edit flows aligned to the existing entity-slice pattern.",
   },
   {
+    href: "/timeline",
+    title: "Timeline",
+    description:
+      "Browse the grouped chronology workspace built on top of timeline-event records for the active project.",
+  },
+  {
     href: "/timeline-events",
     title: "Timeline Events",
     description:
@@ -201,9 +207,11 @@ export default function HomePage() {
           Technologies, Notes, Retcons, Attachments, and AI Sessions now give
           the manuscript, chronology, connection-tracking, planning,
           reference, canon revision, file-metadata, and workflow-tracking
-          layers real project-scoped structure. The broader timeline workspace
-          is still a placeholder, but chronology and canon-change tracking no
-          longer rely on seed data alone.
+          layers real project-scoped structure. The timeline workspace now
+          groups and filters chronology directly on top of the{" "}
+          <code>timeline_events</code>{" "}
+          slice, so chronology and canon-change tracking no longer rely on
+          seed data alone.
         </p>
       </section>
     </PageShell>

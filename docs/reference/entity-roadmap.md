@@ -33,8 +33,7 @@ The long-term story-bible model is expected to include at least:
 ## Current Status Snapshot
 
 - Implemented slices: `books`, `chapters`, `scenes`, `characters`, `relationships`, `factions`, `cultures`, `religions`, `governments`, `organizations`, `plot_threads`, `outlines`, `glossary_terms`, `eras`, `themes`, `languages`, `species`, `items`, `technologies`, `locations`, `timeline_events`, `notes`, `retcons`, `attachments`, `ai_sessions`
-- Implemented supporting systems: `projects`, `auth`, `dev setup`
-- Placeholder routes only: `timeline`
+- Implemented supporting systems: `projects`, `auth`, `dev setup`, `timeline`
 - Seeded only: none in the current long-term entity set
 
 ## Recommended Build Order
@@ -49,7 +48,7 @@ Reason: The current long-term entity set now has first-pass slices, so the next 
 
 - `timeline_events`
 
-Reason: this chronology layer is now implemented and gives the broader timeline workspace a concrete data foundation.
+Reason: this chronology layer is now implemented and powers the working timeline workspace without requiring a second chronology collection.
 
 ### Near-Term Reference Tier
 
@@ -67,4 +66,4 @@ Reason: File metadata and tracked AI workflow records now exist as real slices, 
 
 ## Practical Rule
 
-Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Chapters, Scenes, Characters, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions are already in place; the next biggest value comes from deeper workspace behavior, linked navigation, and richer operational workflows built on top of that structure.
+Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Chapters, Scenes, Characters, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions are already in place; the next biggest value comes from deeper workspace behavior, linked navigation, chronology validation, and richer operational workflows built on top of that structure.
