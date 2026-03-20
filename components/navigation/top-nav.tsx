@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { useUserProjects } from "@/hooks/use-user-projects";
 import { setActiveProjectForUser } from "@/lib/firebase/projects";
+import { buildTimelineCreateHref } from "@/lib/timeline/create-route";
 
 const createLinks = [
   { href: "/books/new", label: "Book" },
@@ -29,7 +30,7 @@ const createLinks = [
   { href: "/items/new", label: "Item" },
   { href: "/technologies/new", label: "Technology" },
   { href: "/locations/new", label: "Location" },
-  { href: "/timeline-events/new", label: "Timeline event" },
+  { href: buildTimelineCreateHref(), label: "Timeline event" },
   { href: "/notes/new", label: "Note" },
   { href: "/retcons/new", label: "Retcon" },
   { href: "/attachments/new", label: "Attachment" },

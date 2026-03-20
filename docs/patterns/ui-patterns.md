@@ -25,7 +25,7 @@ Entity slices should aim for consistent route coverage:
 - detail page
 - edit page
 
-These pages should feel structurally similar across entities.
+These pages should feel structurally similar across entities when they exist directly. Derived workspaces such as `/timeline` may intentionally absorb top-level browse/create flows as long as the underlying entity slice still keeps clear record-level inspection and editing behavior.
 
 ## First-Pass Forms
 

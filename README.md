@@ -28,7 +28,7 @@ The current repo already has:
 - Firestore-backed Items pages
 - Firestore-backed Technologies pages
 - Firestore-backed Locations pages
-- Firestore-backed Timeline Events pages
+- Firestore-backed Timeline Event detail and edit pages
 - a Timeline workspace route with a visual center-line chronology, quick navigation, filters, and inline authoring
 - Firestore-backed Notes pages
 - Firestore-backed Retcons pages
@@ -36,7 +36,7 @@ The current repo already has:
 - Firestore-backed AI Sessions pages
 - a developer seeding flow for a default story-bible project
 
-Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions currently have list, create, detail, and edit flows. The `/timeline` workspace now adds a visual center-line chronology, quick navigation, filters, derived insertion notches, compressed time-jump markers, and inline create/edit entry points on top of `timeline_events`, while Timeline Events now supports picker-style linking for the main connected slices. Delete flows, richer cross-entity linking, deeper timeline continuity tooling, upload/storage workflow, and richer AI tooling are still future work.
+Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Notes, Retcons, Attachments, and AI Sessions currently have list, create, detail, and edit flows. Timeline Events keeps the same project-scoped type and Firestore slice plus dedicated detail and edit routes, while `/timeline` is now the sole top-level chronology surface for browsing and creating those records. The workspace adds a visual center-line chronology, quick navigation, filters, derived insertion notches, compressed time-jump markers, and inline create/edit entry points on top of `timeline_events`, while Timeline Events supports picker-style linking for the main connected slices. Delete flows, richer cross-entity linking, deeper timeline continuity tooling, upload/storage workflow, and richer AI tooling are still future work.
 
 ## Local Development
 

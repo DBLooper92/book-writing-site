@@ -115,13 +115,7 @@ const quickLinks = [
     href: "/timeline",
     title: "Timeline",
     description:
-      "Browse the grouped chronology workspace built on top of timeline-event records for the active project.",
-  },
-  {
-    href: "/timeline-events",
-    title: "Timeline Events",
-    description:
-      "Anchor project chronology with timeline-event list, create, detail, and edit flows under the active project.",
+      "Browse and author project chronology directly in the visual workspace built on top of timeline-event records.",
   },
   {
     href: "/retcons",
@@ -208,7 +202,7 @@ export default function HomePage() {
           the manuscript, chronology, connection-tracking, planning,
           reference, canon revision, file-metadata, and workflow-tracking
           layers real project-scoped structure. The timeline workspace now
-          groups and filters chronology directly on top of the{" "}
+          groups, filters, and authors chronology directly on top of the{" "}
           <code>timeline_events</code>{" "}
           slice, so chronology and canon-change tracking no longer rely on
           seed data alone.

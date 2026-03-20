@@ -73,11 +73,10 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - canonical type definitions
 - Firestore read and write utilities
 - list and detail hooks
-- list page
-- create page
 - detail page
 - edit page
-- reusable form, card, and detail-section components
+- legacy `/timeline-events` index and new routes that redirect into `/timeline`
+- reusable form and detail-section components
 - chronology fields for year, optional month/day boundaries, same-date sequence ordering, and optional time labels
 - validation for impossible date ranges, invalid month/day precision, and self-referential continuity links
 - picker-style linked-slice editing for books, chapters, scenes, characters, locations, eras, continuity, and several worldbuilding slices
@@ -85,7 +84,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 
 ### Timeline Workspace
 
-- working `/timeline` route built on `timeline_events`
+- working `/timeline` route built on `timeline_events` as the sole top-level timeline surface
 - shared chronology utilities for sorting, filtering, grouping, and formatting normalized timeline records
 - timeline workspace hook for active-project chronology browsing
 - center-line visual chronology with alternating event blocks
@@ -96,8 +95,9 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - direct linked navigation to existing slice detail routes from timeline records
 - chronology sorting that uses year, optional month/day precision, and same-date sequence ordering
 - validation warnings for invalid date ranges, missing continuity IDs, and missing linked slice records
-- timeline insertion links that can prefill predecessor, successor, and shared-year context on the create page
+- query-driven timeline create entry points that can prefill predecessor, successor, and shared-year context inside `/timeline`
 - inline timeline composer sheet for create-from-notch and edit-selected flows inside `/timeline`
+- first-event creation inside `/timeline` even when the active project has no existing timeline records
 - selected-block inspection with resolved linked labels, chronology detail, and warning summaries inside `/timeline`
 
 ### Characters
@@ -335,7 +335,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 
 ### CRUD Coverage
 
-Books, Chapters, Scenes, Timeline Events, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Notes, Retcons, Attachments, and AI Sessions have create, list, detail, and edit flows. Dedicated delete actions are not implemented yet.
+Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Notes, Retcons, Attachments, and AI Sessions have create, list, detail, and edit flows. Timeline Events keeps dedicated detail and edit routes plus workspace-driven browse/create flows under `/timeline`. Dedicated delete actions are not implemented yet.
 
 ### Workflow Depth
 
@@ -347,7 +347,7 @@ Canonical types already reserve many relationship fields, and Timeline Events no
 
 ### Timeline Logic Depth
 
-The `/timeline` workspace now exists as a real route-level visual chronology surface and timeline events now support first-pass continuity editing, linked-slice pickers, inline workspace authoring, shared linked-ID validation, and year/month/day chronology precision with same-date ordering. Richer calendar systems, true timestamps, and more advanced continuity automation are still future work.
+The `/timeline` workspace now exists as the sole route-level visual chronology surface and timeline events now support first-pass continuity editing, linked-slice pickers, inline workspace authoring, shared linked-ID validation, and year/month/day chronology precision with same-date ordering. Richer calendar systems, true timestamps, and more advanced continuity automation are still future work.
 
 ## Planned Later
 

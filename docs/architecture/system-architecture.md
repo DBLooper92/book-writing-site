@@ -49,7 +49,7 @@ The repo currently follows an entity-slice approach:
 - one canonical type module per entity
 - one Firestore utility module per entity collection
 - one list hook and one detail hook per entity
-- one list page, create page, detail page, and edit page per entity
+- one consistent top-level browse/create flow plus detail/edit support per entity, usually via list/create/detail/edit pages unless a derived workspace is the stronger surface
 - one reusable form component per entity
 
 Characters is the reference slice. Locations confirms the pattern is reusable.

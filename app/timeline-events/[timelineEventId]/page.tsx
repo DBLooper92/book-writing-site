@@ -61,7 +61,7 @@ export default function TimelineEventDetailPage() {
 
   return (
     <PageShell
-      eyebrow="Timeline Events"
+      eyebrow="Timeline"
       title={timelineEvent?.title ?? "Timeline event detail"}
       description="Timeline event records are loaded from the active project's nested timeline_events collection so chronology remains scoped to the current story bible."
     >
@@ -84,10 +84,10 @@ export default function TimelineEventDetailPage() {
 
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/timeline-events"
+              href="/timeline"
               className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
             >
-              Back to timeline events
+              Back to timeline
             </Link>
             {timelineEvent ? (
               <Link

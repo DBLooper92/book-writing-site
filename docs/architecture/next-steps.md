@@ -6,7 +6,7 @@ This file tracks the short-term development direction implied by the current rep
 
 - Keep future entity work inside the existing slice pattern proven by Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions.
 - Books, Chapters, Scenes, and Timeline Events now extend that same slice pattern into manuscript structure and chronology without introducing a separate architecture.
-- The Timeline workspace now turns `/timeline` into a real visual chronology surface derived directly from `timeline_events` instead of introducing a second collection or a separate timeline persistence model.
+- The Timeline workspace now turns `/timeline` into the sole top-level visual chronology surface derived directly from `timeline_events` instead of introducing a second collection or a separate timeline persistence model.
 - Factions now extends that same slice pattern into cross-linked worldbuilding data without changing the project-scoped Firestore model.
 - Cultures now makes existing `cultureIds` references point at a real slice rather than seed-only records.
 - Religions now makes existing `religionIds` references point at a real slice rather than seed-only records.

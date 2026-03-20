@@ -23,6 +23,7 @@ For an entity such as `characters`, the expected files are:
 - `app/characters/[characterId]/edit/page.tsx`
 
 Future slices should mirror that structure unless there is a strong reason not to.
+The current exception is Timeline Events, where `/timeline` now owns the top-level browse/create surface while the slice still keeps its canonical type, Firestore module, hooks, form, detail route, and edit route.
 
 ## Responsibilities By Layer
 
@@ -65,7 +66,7 @@ Own:
 - auth gating
 - active-project gating
 - empty, loading, and error states
-- list/detail/create/edit layout
+- list/detail/create/edit layout or a deliberate derived-workspace equivalent
 
 ### Reusable UI Components
 
@@ -84,6 +85,8 @@ Right now, the practical first-pass slice is:
 - detail
 - edit
 
+Timeline Events is the current exception: browse and create are intentionally consolidated into `/timeline`, while detail and edit remain dedicated record routes over the same slice data.
+
 Delete can come later. Do not block new slices on delete UI if the rest of the pattern is in place.
 
 ## First-Pass Slice Rules
@@ -100,7 +103,7 @@ Delete can come later. Do not block new slices on delete UI if the rest of the p
 2. Add Firestore normalization and CRUD helpers in `lib/firebase/`.
 3. Add `use-entities` and `use-entity` hooks.
 4. Build the reusable form.
-5. Build list, create, detail, and edit pages.
+5. Build list, create, detail, and edit pages unless a stronger derived workspace justifies consolidating the top-level browse/create surface.
 6. Add a feature doc and update current status docs.
 
 ## Related Docs

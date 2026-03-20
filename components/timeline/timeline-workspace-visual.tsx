@@ -2,17 +2,23 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { TimelineEventComposerSheet } from "@/components/timeline/timeline-event-composer-sheet";
 import { TimelineWorkspaceEventCard } from "@/components/timeline/timeline-workspace-event-card";
 import { useTimelineFormOptions } from "@/hooks/use-timeline-form-options";
 import {
-  buildTimelineInsertionHref,
   buildTimelineLayoutModel,
   type TimelineLayoutEventItem,
   type TimelineLayoutGapItem,
   type TimelineLayoutInsertionItem,
 } from "@/lib/timeline/layout";
+import {
+  buildTimelineCreateHref,
+  buildTimelineCreateInitialValuesFromSearchParams,
+  clearTimelineCreateSearchParams,
+  hasTimelineCreateSearchParams,
+} from "@/lib/timeline/create-route";
 import {
   buildTimelineLinkedReferenceGroups,
   type TimelineLinkedReferenceGroup,
@@ -25,7 +31,7 @@ import {
   getTimelineEventChronologyLabel,
   getTimelineWorkspaceIssues,
 } from "@/lib/timeline/workspace";
-import type { TimelineEvent } from "@/types/timeline-event";
+import type { TimelineEvent, TimelineEventFormValues } from "@/types/timeline-event";
 
 type TimelineWorkspaceVisualProps = {
   activeProjectId: string;
@@ -38,16 +44,34 @@ export function TimelineWorkspaceVisual({
   timelineEvents,
   uid,
 }: TimelineWorkspaceVisualProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [requestedSelectedEventId, setRequestedSelectedEventId] = useState<string | null>(null);
-  const [composerState, setComposerState] = useState<
-    | { mode: "create"; insertionItem: TimelineLayoutInsertionItem | null }
-    | { mode: "edit"; timelineEventId: string }
+  const [localComposerState, setLocalComposerState] = useState<
+    | {
+        initialValuesOverride?: TimelineEventFormValues | null;
+        insertionItem: TimelineLayoutInsertionItem | null;
+        mode: "create";
+        source: "local" | "url";
+      }
+    | { mode: "edit"; source: "local"; timelineEventId: string }
     | null
   >(null);
   const eventRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const knownTimelineEventIds = new Set(timelineEvents.map((timelineEvent) => timelineEvent.id));
   const formOptions = useTimelineFormOptions();
   const layout = buildTimelineLayoutModel(timelineEvents);
+  const requestedCreateComposer = hasTimelineCreateSearchParams(searchParams);
+  const searchParamsKey = searchParams.toString();
+  const composerState = requestedCreateComposer
+    ? {
+        initialValuesOverride: buildTimelineCreateInitialValuesFromSearchParams(searchParams),
+        insertionItem: null,
+        mode: "create" as const,
+        source: "url" as const,
+      }
+    : localComposerState;
   const selectedEventId =
     requestedSelectedEventId &&
     timelineEvents.some((timelineEvent) => timelineEvent.id === requestedSelectedEventId)
@@ -115,7 +139,23 @@ export function TimelineWorkspaceVisual({
 
   function handleSaved(timelineEventId: string) {
     setRequestedSelectedEventId(timelineEventId);
-    setComposerState(null);
+    closeComposer();
+  }
+
+  function closeComposer() {
+    const shouldClearCreateQuery = composerState?.mode === "create" && composerState.source === "url";
+
+    setLocalComposerState(null);
+
+    if (!shouldClearCreateQuery) {
+      return;
+    }
+
+    const nextSearchParams = clearTimelineCreateSearchParams(new URLSearchParams(searchParamsKey));
+    const nextQueryString = nextSearchParams.toString();
+    router.replace(nextQueryString ? `${pathname}?${nextQueryString}` : pathname, {
+      scroll: false,
+    });
   }
 
   return (
@@ -188,19 +228,19 @@ export function TimelineWorkspaceVisual({
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => setComposerState({ mode: "create", insertionItem: null })}
+                <Link
+                  href={buildTimelineCreateHref()}
                   className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
                 >
                   Create timeline event
-                </button>
+                </Link>
                 {selectedTimelineEvent ? (
                   <button
                     type="button"
                     onClick={() =>
-                      setComposerState({
+                      setLocalComposerState({
                         mode: "edit",
+                        source: "local",
                         timelineEventId: selectedTimelineEvent.id,
                       })
                     }
@@ -276,8 +316,9 @@ export function TimelineWorkspaceVisual({
                     <button
                       type="button"
                       onClick={() =>
-                        setComposerState({
+                        setLocalComposerState({
                           mode: "edit",
+                          source: "local",
                           timelineEventId: selectedTimelineEvent.id,
                         })
                       }
@@ -343,9 +384,11 @@ export function TimelineWorkspaceVisual({
                     key={item.id}
                     insertionItem={item}
                     onOpenComposer={(nextInsertionItem) =>
-                      setComposerState({
+                      setLocalComposerState({
+                        initialValuesOverride: null,
                         mode: "create",
                         insertionItem: nextInsertionItem,
+                        source: "local",
                       })
                     }
                   />
@@ -359,9 +402,12 @@ export function TimelineWorkspaceVisual({
       {composerState ? (
         <TimelineEventComposerSheet
           activeProjectId={activeProjectId}
+          initialValuesOverride={
+            composerState.mode === "create" ? composerState.initialValuesOverride ?? null : null
+          }
           insertionItem={composerState.mode === "create" ? composerState.insertionItem : null}
           mode={composerState.mode}
-          onClose={() => setComposerState(null)}
+          onClose={closeComposer}
           onSaved={handleSaved}
           timelineEvent={editingTimelineEvent}
           uid={uid}
@@ -502,15 +548,6 @@ function TimelineInsertionRow({
         >
           +
         </button>
-      </div>
-
-      <div className="pl-16 md:col-span-3 md:pl-0 md:text-center">
-        <Link
-          href={buildTimelineInsertionHref(insertionItem)}
-          className="text-xs font-medium text-zinc-500 underline decoration-zinc-300 underline-offset-4 transition hover:text-zinc-700"
-        >
-          Open full-page create instead
-        </Link>
       </div>
     </div>
   );

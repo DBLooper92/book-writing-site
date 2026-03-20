@@ -96,29 +96,6 @@ export function buildTimelineLayoutModel(timelineEvents: TimelineEvent[]): Timel
   };
 }
 
-export function buildTimelineInsertionHref(insertionItem: TimelineLayoutInsertionItem) {
-  const params = new URLSearchParams();
-
-  if (insertionItem.previousEventId) {
-    params.set("predecessorEventIds", insertionItem.previousEventId);
-  }
-
-  if (insertionItem.nextEventId) {
-    params.set("successorEventIds", insertionItem.nextEventId);
-  }
-
-  if (insertionItem.prefilledYearStart) {
-    params.set("yearStart", insertionItem.prefilledYearStart);
-  }
-
-  if (insertionItem.prefilledYearEnd) {
-    params.set("yearEnd", insertionItem.prefilledYearEnd);
-  }
-
-  const queryString = params.toString();
-  return queryString ? `/timeline-events/new?${queryString}` : "/timeline-events/new";
-}
-
 function buildInsertionItem(
   previousTimelineEvent: TimelineEvent | null,
   nextTimelineEvent: TimelineEvent | null

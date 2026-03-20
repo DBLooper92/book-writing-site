@@ -8,16 +8,12 @@ import {
   updateTimelineEventForProject,
 } from "@/lib/firebase/timeline-events";
 import type { TimelineLayoutInsertionItem } from "@/lib/timeline/layout";
-import {
-  createEmptyTimelineEventFormValues,
-  timelineEventToFormValues,
-  type NormalizedTimelineEventFormValues,
-  type TimelineEvent,
-} from "@/types/timeline-event";
+import { createEmptyTimelineEventFormValues, timelineEventToFormValues, type NormalizedTimelineEventFormValues, type TimelineEvent, type TimelineEventFormValues } from "@/types/timeline-event";
 
 type TimelineEventComposerSheetProps = {
   activeProjectId: string;
   insertionItem?: TimelineLayoutInsertionItem | null;
+  initialValuesOverride?: TimelineEventFormValues | null;
   mode: "create" | "edit";
   onClose: () => void;
   onSaved: (timelineEventId: string) => void;
@@ -28,6 +24,7 @@ type TimelineEventComposerSheetProps = {
 export function TimelineEventComposerSheet({
   activeProjectId,
   insertionItem,
+  initialValuesOverride,
   mode,
   onClose,
   onSaved,
@@ -41,19 +38,13 @@ export function TimelineEventComposerSheet({
     : insertionItem
       ? insertionItem.helperText
       : "Create a new timeline block directly from the visual chronology.";
-  const fullPageHref =
-    isEditMode && timelineEvent
-      ? `/timeline-events/${timelineEvent.id}/edit`
-      : insertionItem
-        ? buildFullPageCreateHref(insertionItem)
-        : "/timeline-events/new";
   const initialValues =
     isEditMode && timelineEvent
       ? timelineEventToFormValues(timelineEvent)
-      : buildInsertionInitialValues(insertionItem ?? null);
+      : initialValuesOverride ?? buildInsertionInitialValues(insertionItem ?? null);
   const formKey = isEditMode
     ? `edit-${timelineEvent?.id ?? "unknown"}`
-    : `create-${insertionItem?.id ?? "blank"}`;
+    : `create-${insertionItem?.id ?? "blank"}-${initialValuesOverride ? "prefilled" : "default"}`;
 
   async function handleSubmit(values: NormalizedTimelineEventFormValues) {
     if (isEditMode && timelineEvent) {
@@ -91,22 +82,22 @@ export function TimelineEventComposerSheet({
             </button>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link
-              href={fullPageHref}
-              className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-            >
-              Open full page
-            </Link>
-            {isEditMode && timelineEvent ? (
+          {isEditMode && timelineEvent ? (
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link
+                href={`/timeline-events/${timelineEvent.id}/edit`}
+                className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+              >
+                Open standalone edit page
+              </Link>
               <Link
                 href={`/timeline-events/${timelineEvent.id}`}
                 className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
               >
                 View detail
               </Link>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
@@ -139,27 +130,4 @@ function buildInsertionInitialValues(insertionItem: TimelineLayoutInsertionItem 
   initialValues.successorEventIds = insertionItem.nextEventId ? [insertionItem.nextEventId] : [];
 
   return initialValues;
-}
-
-function buildFullPageCreateHref(insertionItem: TimelineLayoutInsertionItem) {
-  const params = new URLSearchParams();
-
-  if (insertionItem.previousEventId) {
-    params.set("predecessorEventIds", insertionItem.previousEventId);
-  }
-
-  if (insertionItem.nextEventId) {
-    params.set("successorEventIds", insertionItem.nextEventId);
-  }
-
-  if (insertionItem.prefilledYearStart) {
-    params.set("yearStart", insertionItem.prefilledYearStart);
-  }
-
-  if (insertionItem.prefilledYearEnd) {
-    params.set("yearEnd", insertionItem.prefilledYearEnd);
-  }
-
-  const queryString = params.toString();
-  return queryString ? `/timeline-events/new?${queryString}` : "/timeline-events/new";
 }

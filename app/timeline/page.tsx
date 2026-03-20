@@ -7,6 +7,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { TimelineWorkspaceControls } from "@/components/timeline/timeline-workspace-controls";
 import { TimelineWorkspaceVisual } from "@/components/timeline/timeline-workspace-visual";
 import { useTimelineWorkspace } from "@/hooks/use-timeline-workspace";
+import { buildTimelineCreateHref } from "@/lib/timeline/create-route";
 
 export default function TimelinePage() {
   const {
@@ -27,7 +28,7 @@ export default function TimelinePage() {
     <PageShell
       eyebrow="Timeline"
       title="Timeline workspace"
-      description="Browse chronology as a project-scoped visual timeline built directly on top of timeline_events. This pass adds a center-line layout, quick navigation, virtual insertion notches, and compressed time-jump markers without changing the Firestore model."
+      description="Browse and author chronology as a project-scoped visual timeline built directly on top of timeline_events. This pass keeps timeline creation inside the workspace with a center-line layout, quick navigation, derived insertion notches, and compressed time-jump markers."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -47,13 +48,7 @@ export default function TimelinePage() {
 
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/timeline-events"
-              className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-            >
-              Timeline event index
-            </Link>
-            <Link
-              href="/timeline-events/new"
+              href={buildTimelineCreateHref()}
               className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
             >
               Create timeline event
@@ -82,14 +77,6 @@ export default function TimelinePage() {
         </StateCard>
       ) : error ? (
         <StateCard tone="error">{error}</StateCard>
-      ) : workspace.stats.totalEvents === 0 ? (
-        <StateCard tone="neutral">
-          No timeline events exist in {activeProject.title} yet.{" "}
-          <Link href="/timeline-events/new" className="font-medium underline">
-            Create the first timeline event
-          </Link>
-          .
-        </StateCard>
       ) : (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -127,7 +114,19 @@ export default function TimelinePage() {
             onReset={resetFilters}
           />
 
-          {workspace.filteredEvents.length === 0 ? (
+          {workspace.stats.totalEvents === 0 ? (
+            <>
+              <StateCard tone="neutral">
+                No timeline events exist in {activeProject.title} yet. Use the create button or
+                the first insertion notch below to start the chronology.
+              </StateCard>
+              <TimelineWorkspaceVisual
+                activeProjectId={activeProjectId}
+                timelineEvents={workspace.filteredEvents}
+                uid={uid}
+              />
+            </>
+          ) : workspace.filteredEvents.length === 0 ? (
             <StateCard tone="neutral">
               No timeline events match the current filters. Adjust or reset the filters to
               restore the chronology view.

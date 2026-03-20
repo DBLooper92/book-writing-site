@@ -32,7 +32,7 @@ export default function EditTimelineEventPage() {
 
   return (
     <PageShell
-      eyebrow="Timeline Events"
+      eyebrow="Timeline"
       title={timelineEvent ? `Edit ${timelineEvent.title}` : "Edit timeline event"}
       description="Update the first set of structured chronology fields and write the changes back to the active project's nested timeline event document."
     >
@@ -51,10 +51,10 @@ export default function EditTimelineEventPage() {
 
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/timeline-events"
+              href="/timeline"
               className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
             >
-              Back to timeline events
+              Back to timeline
             </Link>
             {timelineEventId ? (
               <Link
