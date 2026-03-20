@@ -2,8 +2,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import {
+  formatDetailedTimelineEventRange,
   formatTimelineEnumValue,
-  formatTimelineEventRange,
+  formatTimelineEventSequenceLabel,
 } from "@/lib/timeline/workspace";
 import type { TimelineEvent } from "@/types/timeline-event";
 
@@ -28,8 +29,11 @@ export function TimelineEventCard({ timelineEvent }: TimelineEventCardProps) {
 
         <div className="flex flex-wrap gap-2 text-xs font-medium">
           <Badge>{formatTimelineEnumValue(timelineEvent.status)}</Badge>
-          <Badge>{formatTimelineEventRange(timelineEvent.yearStart, timelineEvent.yearEnd)}</Badge>
+          <Badge>{formatDetailedTimelineEventRange(timelineEvent)}</Badge>
           <Badge>{formatTimelineEnumValue(timelineEvent.eventType)}</Badge>
+          {formatTimelineEventSequenceLabel(timelineEvent) ? (
+            <Badge>{formatTimelineEventSequenceLabel(timelineEvent) ?? ""}</Badge>
+          ) : null}
         </div>
       </div>
 

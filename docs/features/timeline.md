@@ -21,6 +21,7 @@ Implemented now as the first derived workspace built on top of an existing slice
 
 - the workspace reads from the active project's `timeline_events` records instead of introducing a second chronology collection
 - chronology ordering, grouping, and filtering are derived from normalized `TimelineEvent` records
+- chronology precision currently uses start/end year with optional month/day fields, plus an optional same-date sequence number and optional time label
 - insertion notches are derived UI affordances, not stored Firestore documents
 - large chronology gaps should compress into labeled jumps instead of proportional empty space
 - undated events stay visible in the same derived chronology surface rather than disappearing from the workspace
@@ -31,11 +32,11 @@ Implemented now as the first derived workspace built on top of an existing slice
 
 ## Current Role In The Architecture
 
-The Timeline workspace turns `/timeline` into a real project-scoped chronology surface without changing the Firestore model. It now gives the existing `timeline_events` slice a center-line visual timeline, dense quick navigation, derived insertion points, inline create/edit entry points, resolved linked labels, timeline-specific filters, linked navigation, and first-pass integrity warnings while keeping timeline data grounded in the same normalized event records used elsewhere in the app.
+The Timeline workspace turns `/timeline` into a real project-scoped chronology surface without changing the Firestore model. It now gives the existing `timeline_events` slice a center-line visual timeline, dense quick navigation, derived insertion points, inline create/edit entry points, resolved linked labels, timeline-specific filters, linked navigation, year/month/day-aware chronology ordering, and first-pass integrity warnings while keeping timeline data grounded in the same normalized event records used elsewhere in the app.
 
 ## What Remains Later
 
-- richer date models beyond the current year-first chronology fields
 - linked-ID validation against more entity slices than the current first-pass connected set
 - richer timeline authoring flows such as hover summaries, deeper block inspection, and more contextual insertion behavior
+- richer chronology models beyond the current year/month/day plus sequence fields, such as calendar-system support or finer-grained timestamps
 - denser or zoomed chronology views for era-scale navigation

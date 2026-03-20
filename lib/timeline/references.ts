@@ -187,7 +187,7 @@ export function getTimelineReferenceSelectionIssues(
 export function buildTimelineLinkedReferenceGroups(
   timelineEvent: TimelineEvent,
   referenceMaps: TimelineReferenceMaps
-) {
+): TimelineLinkedReferenceGroup[] {
   return [
     buildReferenceGroup({
       label: "Books",
@@ -299,7 +299,9 @@ function buildMissingReferenceMessage(
   return missingIds.length > 0 ? `Missing ${label}: ${missingIds.join(", ")}.` : null;
 }
 
-function buildReferenceGroup(config: ReferenceListConfig) {
+function buildReferenceGroup(
+  config: ReferenceListConfig
+): TimelineLinkedReferenceGroup | null {
   if (config.eventIds.length === 0) {
     return null;
   }

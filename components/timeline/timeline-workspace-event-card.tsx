@@ -8,7 +8,8 @@ import {
 } from "@/lib/timeline/references";
 import {
   formatTimelineEnumValue,
-  formatTimelineEventRange,
+  formatDetailedTimelineEventRange,
+  formatTimelineEventSequenceLabel,
   getTimelineEventChronologyLabel,
   getTimelineWorkspaceIssues,
   hasTimelineContinuityLinks,
@@ -39,12 +40,10 @@ export function TimelineWorkspaceEventCard({
     referenceSets
   );
   const chronologyLabel = getTimelineEventChronologyLabel(timelineEvent);
-  const numericRangeLabel = formatTimelineEventRange(
-    timelineEvent.yearStart,
-    timelineEvent.yearEnd
-  );
+  const numericRangeLabel = formatDetailedTimelineEventRange(timelineEvent);
   const showNumericRange =
     chronologyLabel !== numericRangeLabel && timelineEvent.displayDateLabel.trim().length > 0;
+  const sequenceLabel = formatTimelineEventSequenceLabel(timelineEvent);
   const allReferenceGroups = referenceMaps
     ? buildTimelineLinkedReferenceGroups(timelineEvent, referenceMaps)
     : [];
@@ -80,6 +79,7 @@ export function TimelineWorkspaceEventCard({
 
         <div className="flex flex-wrap gap-2 text-xs font-medium">
           {showNumericRange ? <Badge>{numericRangeLabel}</Badge> : null}
+          {sequenceLabel ? <Badge>{sequenceLabel}</Badge> : null}
           <Badge>{formatTimelineEnumValue(timelineEvent.eventType)}</Badge>
           <Badge>{formatTimelineEnumValue(timelineEvent.status)}</Badge>
         </div>

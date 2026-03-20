@@ -10,8 +10,10 @@ import { useTimelineFormOptions } from "@/hooks/use-timeline-form-options";
 import { buildTimelineLinkedReferenceGroups } from "@/lib/timeline/references";
 import { useTimelineEvent } from "@/hooks/use-timeline-event";
 import {
+  formatDetailedTimelineEventRange,
+  formatTimelineEventBoundaryLabel,
   formatTimelineEnumValue,
-  formatTimelineEventRange,
+  formatTimelineEventSequenceLabel,
   getTimelineWorkspaceIssues,
 } from "@/lib/timeline/workspace";
 
@@ -50,6 +52,12 @@ export default function TimelineEventDetailPage() {
     timelineEvent && !formOptions.loading && !formOptions.error
       ? getTimelineWorkspaceIssues(timelineEvent, knownTimelineEventIds, formOptions.referenceSets)
       : [];
+  const startDateLabel = timelineEvent
+    ? formatTimelineEventBoundaryLabel(timelineEvent, "start")
+    : null;
+  const endDateLabel = timelineEvent
+    ? formatTimelineEventBoundaryLabel(timelineEvent, "end")
+    : null;
 
   return (
     <PageShell
@@ -140,9 +148,16 @@ export default function TimelineEventDetailPage() {
               <DetailItem label="Status" value={formatEnumValue(timelineEvent.status)} />
               <DetailItem label="Event type" value={formatEnumValue(timelineEvent.eventType)} />
               <DetailItem
-                label="Year range"
-                value={formatTimelineEventRange(timelineEvent.yearStart, timelineEvent.yearEnd)}
+                label="Chronology range"
+                value={formatDetailedTimelineEventRange(timelineEvent)}
               />
+              <DetailItem label="Start date" value={startDateLabel ?? "None"} />
+              <DetailItem label="End date" value={endDateLabel ?? "None"} />
+              <DetailItem
+                label="Sequence within date"
+                value={formatTimelineEventSequenceLabel(timelineEvent) ?? "None"}
+              />
+              <DetailItem label="Time label" value={timelineEvent.timeOfDayLabel || "None"} />
               <DetailItem
                 label="Display date label"
                 value={timelineEvent.displayDateLabel || "None"}

@@ -102,3 +102,9 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: Shared timeline reference validation expansion
 - Decision: Timeline linked-label resolution and missing-link warnings should be derived from already loaded project-scoped slice records at read time rather than copied into timeline event documents as duplicated display metadata.
 - Why it stays in force: This keeps `timeline_events` as the source of truth for linked IDs only, avoids stale duplicated labels, preserves the flat project-scoped model, and lets timeline surfaces improve their inspection UI without changing persisted chronology data.
+
+### D-016
+
+- Origin: Chronology precision expansion
+- Decision: Timeline chronology precision should remain embedded directly on `timeline_events` as start/end year fields with optional month/day boundaries, optional same-date sequence ordering, and an optional freeform time label instead of introducing a second date object model or separate chronology-order records.
+- Why it stays in force: This keeps the chronology model simple enough for the current single-author workflow, preserves compatibility with existing timeline data, improves ordering for tightly clustered events, and avoids turning the first-pass timeline into a heavier persistence system before the product proves it needs calendar-system or timestamp-level complexity.

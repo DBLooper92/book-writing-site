@@ -47,7 +47,13 @@ export type TimelineEvent = {
   confidence: TimelineEventConfidence;
   eventType: TimelineEventType;
   yearStart: number | null;
+  monthStart: number | null;
+  dayStart: number | null;
   yearEnd: number | null;
+  monthEnd: number | null;
+  dayEnd: number | null;
+  chronologyOrder: number | null;
+  timeOfDayLabel: string;
   displayDateLabel: string;
   eraId: string | null;
   bookIds: string[];
@@ -77,7 +83,13 @@ export type TimelineEventFormValues = {
   status: TimelineEventStatus;
   eventType: TimelineEventType;
   yearStart: string;
+  monthStart: string;
+  dayStart: string;
   yearEnd: string;
+  monthEnd: string;
+  dayEnd: string;
+  chronologyOrder: string;
+  timeOfDayLabel: string;
   displayDateLabel: string;
   eraId: string;
   bookIds: string[];
@@ -105,7 +117,13 @@ export type NormalizedTimelineEventFormValues = {
   status: TimelineEventStatus;
   eventType: TimelineEventType;
   yearStart: number | null;
+  monthStart: number | null;
+  dayStart: number | null;
   yearEnd: number | null;
+  monthEnd: number | null;
+  dayEnd: number | null;
+  chronologyOrder: number | null;
+  timeOfDayLabel: string;
   displayDateLabel: string;
   eraId: string | null;
   bookIds: string[];
@@ -113,6 +131,12 @@ export type NormalizedTimelineEventFormValues = {
   sceneIds: string[];
   characterIds: string[];
   locationIds: string[];
+  factionIds: string[];
+  cultureIds: string[];
+  technologyIds: string[];
+  religionIds: string[];
+  plotThreadIds: string[];
+  themeIds: string[];
   causes: string[];
   consequences: string[];
   predecessorEventIds: string[];
@@ -175,7 +199,13 @@ export function createEmptyTimelineEventFormValues(): TimelineEventFormValues {
     status: DEFAULT_TIMELINE_EVENT_STATUS,
     eventType: DEFAULT_TIMELINE_EVENT_TYPE,
     yearStart: "",
+    monthStart: "",
+    dayStart: "",
     yearEnd: "",
+    monthEnd: "",
+    dayEnd: "",
+    chronologyOrder: "",
+    timeOfDayLabel: "",
     displayDateLabel: "",
     eraId: "",
     bookIds: [],
@@ -208,7 +238,17 @@ export function timelineEventToFormValues(
     eventType: timelineEvent.eventType,
     yearStart:
       typeof timelineEvent.yearStart === "number" ? String(timelineEvent.yearStart) : "",
+    monthStart:
+      typeof timelineEvent.monthStart === "number" ? String(timelineEvent.monthStart) : "",
+    dayStart: typeof timelineEvent.dayStart === "number" ? String(timelineEvent.dayStart) : "",
     yearEnd: typeof timelineEvent.yearEnd === "number" ? String(timelineEvent.yearEnd) : "",
+    monthEnd: typeof timelineEvent.monthEnd === "number" ? String(timelineEvent.monthEnd) : "",
+    dayEnd: typeof timelineEvent.dayEnd === "number" ? String(timelineEvent.dayEnd) : "",
+    chronologyOrder:
+      typeof timelineEvent.chronologyOrder === "number"
+        ? String(timelineEvent.chronologyOrder)
+        : "",
+    timeOfDayLabel: timelineEvent.timeOfDayLabel,
     displayDateLabel: timelineEvent.displayDateLabel,
     eraId: timelineEvent.eraId ?? "",
     bookIds: timelineEvent.bookIds,
@@ -240,7 +280,13 @@ export function normalizeTimelineEventFormValues(
     status: coerceTimelineEventStatus(values.status),
     eventType: coerceTimelineEventType(values.eventType),
     yearStart: parseIntegerOrNull(values.yearStart),
+    monthStart: parseIntegerOrNull(values.monthStart),
+    dayStart: parseIntegerOrNull(values.dayStart),
     yearEnd: parseIntegerOrNull(values.yearEnd),
+    monthEnd: parseIntegerOrNull(values.monthEnd),
+    dayEnd: parseIntegerOrNull(values.dayEnd),
+    chronologyOrder: parseIntegerOrNull(values.chronologyOrder),
+    timeOfDayLabel: values.timeOfDayLabel.trim(),
     displayDateLabel: values.displayDateLabel.trim(),
     eraId: values.eraId.trim() || null,
     bookIds: normalizeSelectedIds(values.bookIds),
@@ -275,9 +321,52 @@ export function validateNormalizedTimelineEventFormValues(
   if (
     typeof values.yearStart === "number" &&
     typeof values.yearEnd === "number" &&
-    values.yearEnd < values.yearStart
+    compareChronologyParts(
+      values.yearStart,
+      values.monthStart,
+      values.dayStart,
+      values.yearEnd,
+      values.monthEnd,
+      values.dayEnd
+    ) > 0
   ) {
-    errors.push("End year cannot be earlier than start year.");
+    errors.push("End date cannot be earlier than start date.");
+  }
+
+  if (!isMonthInRange(values.monthStart)) {
+    errors.push("Start month must be between 1 and 12.");
+  }
+
+  if (!isMonthInRange(values.monthEnd)) {
+    errors.push("End month must be between 1 and 12.");
+  }
+
+  if (!isDayInRange(values.dayStart)) {
+    errors.push("Start day must be between 1 and 31.");
+  }
+
+  if (!isDayInRange(values.dayEnd)) {
+    errors.push("End day must be between 1 and 31.");
+  }
+
+  if (values.monthStart !== null && values.yearStart === null) {
+    errors.push("Start month requires a start year.");
+  }
+
+  if (values.dayStart !== null && values.monthStart === null) {
+    errors.push("Start day requires a start month.");
+  }
+
+  if (values.monthEnd !== null && values.yearEnd === null) {
+    errors.push("End month requires an end year.");
+  }
+
+  if (values.dayEnd !== null && values.monthEnd === null) {
+    errors.push("End day requires an end month.");
+  }
+
+  if (values.chronologyOrder !== null && values.yearStart === null && values.yearEnd === null) {
+    errors.push("Sequence within date requires at least a dated year placement.");
   }
 
   const currentTimelineEventId = context.currentTimelineEventId?.trim() ?? "";
@@ -326,7 +415,13 @@ export function buildTimelineEventDocument({
     confidence: DEFAULT_TIMELINE_EVENT_CONFIDENCE,
     eventType: values.eventType,
     yearStart: values.yearStart,
+    monthStart: values.monthStart,
+    dayStart: values.dayStart,
     yearEnd: values.yearEnd,
+    monthEnd: values.monthEnd,
+    dayEnd: values.dayEnd,
+    chronologyOrder: values.chronologyOrder,
+    timeOfDayLabel: values.timeOfDayLabel,
     displayDateLabel: values.displayDateLabel,
     eraId: values.eraId,
     bookIds: values.bookIds,
@@ -461,6 +556,41 @@ function parseIntegerOrNull(value: string) {
 
   const parsed = Number.parseInt(normalized, 10);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isMonthInRange(value: number | null) {
+  return value === null || (value >= 1 && value <= 12);
+}
+
+function isDayInRange(value: number | null) {
+  return value === null || (value >= 1 && value <= 31);
+}
+
+function compareChronologyParts(
+  leftYear: number | null,
+  leftMonth: number | null,
+  leftDay: number | null,
+  rightYear: number | null,
+  rightMonth: number | null,
+  rightDay: number | null
+) {
+  const leftTuple = [leftYear, leftMonth, leftDay];
+  const rightTuple = [rightYear, rightMonth, rightDay];
+
+  for (let index = 0; index < leftTuple.length; index += 1) {
+    const leftValue = leftTuple[index];
+    const rightValue = rightTuple[index];
+
+    if (leftValue === null || rightValue === null) {
+      continue;
+    }
+
+    if (leftValue !== rightValue) {
+      return leftValue - rightValue;
+    }
+  }
+
+  return 0;
 }
 
 function normalizeEnumCandidate(value: string) {

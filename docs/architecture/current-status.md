@@ -77,7 +77,8 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - detail page
 - edit page
 - reusable form, card, and detail-section components
-- validation for impossible year ranges and self-referential continuity links
+- chronology fields for year, optional month/day boundaries, same-date sequence ordering, and optional time labels
+- validation for impossible date ranges, invalid month/day precision, and self-referential continuity links
 - picker-style linked-slice editing for books, chapters, scenes, characters, locations, eras, continuity, and several worldbuilding slices
 - shared reference lookups that resolve linked IDs into labels and warnings across the form, detail page, and workspace
 
@@ -92,10 +93,11 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - compressed time-jump markers for large year gaps without proportional blank spacing
 - filters for search, status, event type, dating coverage, and link scope
 - direct linked navigation to existing slice detail routes from timeline records
-- validation warnings for invalid year ranges, missing continuity IDs, and missing linked slice records
+- chronology sorting that uses year, optional month/day precision, and same-date sequence ordering
+- validation warnings for invalid date ranges, missing continuity IDs, and missing linked slice records
 - timeline insertion links that can prefill predecessor, successor, and shared-year context on the create page
 - inline timeline composer sheet for create-from-notch and edit-selected flows inside `/timeline`
-- selected-block inspection with resolved linked labels and warning summaries inside `/timeline`
+- selected-block inspection with resolved linked labels, chronology detail, and warning summaries inside `/timeline`
 
 ### Characters
 
@@ -344,7 +346,7 @@ Canonical types already reserve many relationship fields, and Timeline Events no
 
 ### Timeline Logic Depth
 
-The `/timeline` workspace now exists as a real route-level visual chronology surface and timeline events now support first-pass continuity editing, linked-slice pickers, inline workspace authoring, and shared linked-ID validation, but deeper chronology precision and more detailed date models are still future work.
+The `/timeline` workspace now exists as a real route-level visual chronology surface and timeline events now support first-pass continuity editing, linked-slice pickers, inline workspace authoring, shared linked-ID validation, and year/month/day chronology precision with same-date ordering. Richer calendar systems, true timestamps, and more advanced continuity automation are still future work.
 
 ## Planned Later
 

@@ -143,30 +143,39 @@ export function buildTimelineWorkspaceModel(
 }
 
 export function compareTimelineEvents(left: TimelineEvent, right: TimelineEvent) {
-  const leftYearStart = left.yearStart;
-  const rightYearStart = right.yearStart;
+  const startComparison = compareTimelineEventDates(
+    left.yearStart,
+    left.monthStart,
+    left.dayStart,
+    right.yearStart,
+    right.monthStart,
+    right.dayStart
+  );
 
-  if (typeof leftYearStart === "number" && typeof rightYearStart === "number") {
-    if (leftYearStart !== rightYearStart) {
-      return leftYearStart - rightYearStart;
-    }
-  } else if (typeof leftYearStart === "number") {
-    return -1;
-  } else if (typeof rightYearStart === "number") {
-    return 1;
+  if (startComparison !== 0) {
+    return startComparison;
   }
 
-  const leftYearEnd = left.yearEnd;
-  const rightYearEnd = right.yearEnd;
+  const orderComparison = compareNullablePrecisionValue(
+    left.chronologyOrder,
+    right.chronologyOrder
+  );
 
-  if (typeof leftYearEnd === "number" && typeof rightYearEnd === "number") {
-    if (leftYearEnd !== rightYearEnd) {
-      return leftYearEnd - rightYearEnd;
-    }
-  } else if (typeof leftYearEnd === "number") {
-    return -1;
-  } else if (typeof rightYearEnd === "number") {
-    return 1;
+  if (orderComparison !== 0) {
+    return orderComparison;
+  }
+
+  const endComparison = compareTimelineEventDates(
+    left.yearEnd,
+    left.monthEnd,
+    left.dayEnd,
+    right.yearEnd,
+    right.monthEnd,
+    right.dayEnd
+  );
+
+  if (endComparison !== 0) {
+    return endComparison;
   }
 
   return left.title.localeCompare(right.title);
@@ -191,6 +200,55 @@ export function formatTimelineEventRange(
   return "Undated";
 }
 
+export function formatDetailedTimelineEventRange(timelineEvent: TimelineEvent) {
+  const startLabel = formatTimelineEventBoundaryLabel(timelineEvent, "start");
+  const endLabel = formatTimelineEventBoundaryLabel(timelineEvent, "end");
+
+  if (startLabel && endLabel) {
+    return appendTimeOfDayLabel(
+      startLabel === endLabel ? startLabel : `${startLabel} to ${endLabel}`,
+      timelineEvent.timeOfDayLabel
+    );
+  }
+
+  if (startLabel) {
+    return appendTimeOfDayLabel(`From ${startLabel}`, timelineEvent.timeOfDayLabel);
+  }
+
+  if (endLabel) {
+    return appendTimeOfDayLabel(`Until ${endLabel}`, timelineEvent.timeOfDayLabel);
+  }
+
+  if (timelineEvent.timeOfDayLabel.trim()) {
+    return timelineEvent.timeOfDayLabel.trim();
+  }
+
+  return "Undated";
+}
+
+export function formatTimelineEventSequenceLabel(timelineEvent: TimelineEvent) {
+  return typeof timelineEvent.chronologyOrder === "number"
+    ? `Sequence ${timelineEvent.chronologyOrder}`
+    : null;
+}
+
+export function formatTimelineEventBoundaryLabel(
+  timelineEvent: TimelineEvent,
+  boundary: "start" | "end"
+) {
+  return boundary === "start"
+    ? formatPartialTimelineDate(
+        timelineEvent.yearStart,
+        timelineEvent.monthStart,
+        timelineEvent.dayStart
+      )
+    : formatPartialTimelineDate(
+        timelineEvent.yearEnd,
+        timelineEvent.monthEnd,
+        timelineEvent.dayEnd
+      );
+}
+
 export function formatTimelineEnumValue(value: string) {
   if (!value) {
     return "Unknown";
@@ -202,10 +260,7 @@ export function formatTimelineEnumValue(value: string) {
 }
 
 export function getTimelineEventChronologyLabel(timelineEvent: TimelineEvent) {
-  return (
-    timelineEvent.displayDateLabel ||
-    formatTimelineEventRange(timelineEvent.yearStart, timelineEvent.yearEnd)
-  );
+  return timelineEvent.displayDateLabel || formatDetailedTimelineEventRange(timelineEvent);
 }
 
 export function getTimelineEventAnchorYear(timelineEvent: TimelineEvent) {
@@ -249,13 +304,11 @@ export function getTimelineWorkspaceIssues(
   }
 
   if (
-    typeof timelineEvent.yearStart === "number" &&
-    typeof timelineEvent.yearEnd === "number" &&
-    timelineEvent.yearEnd < timelineEvent.yearStart
+    hasInvalidTimelineEventDateRange(timelineEvent)
   ) {
     issues.push({
       severity: "warning",
-      message: "End year is earlier than start year.",
+      message: "End date is earlier than start date.",
     });
   }
 
@@ -328,6 +381,89 @@ function buildTimelineWorkspaceYearGroups(
       label: String(anchorYear),
       events,
     }));
+}
+
+function hasInvalidTimelineEventDateRange(timelineEvent: TimelineEvent) {
+  return (
+    typeof timelineEvent.yearStart === "number" &&
+    typeof timelineEvent.yearEnd === "number" &&
+    compareTimelineEventDates(
+      timelineEvent.yearStart,
+      timelineEvent.monthStart,
+      timelineEvent.dayStart,
+      timelineEvent.yearEnd,
+      timelineEvent.monthEnd,
+      timelineEvent.dayEnd
+    ) > 0
+  );
+}
+
+function compareTimelineEventDates(
+  leftYear: number | null,
+  leftMonth: number | null,
+  leftDay: number | null,
+  rightYear: number | null,
+  rightMonth: number | null,
+  rightDay: number | null
+) {
+  const yearComparison = compareNullablePrecisionValue(leftYear, rightYear);
+
+  if (yearComparison !== 0) {
+    return yearComparison;
+  }
+
+  const monthComparison = compareNullablePrecisionValue(leftMonth, rightMonth);
+
+  if (monthComparison !== 0) {
+    return monthComparison;
+  }
+
+  return compareNullablePrecisionValue(leftDay, rightDay);
+}
+
+function compareNullablePrecisionValue(left: number | null, right: number | null) {
+  if (typeof left === "number" && typeof right === "number") {
+    return left - right;
+  }
+
+  if (typeof left === "number") {
+    return 1;
+  }
+
+  if (typeof right === "number") {
+    return -1;
+  }
+
+  return 0;
+}
+
+function formatPartialTimelineDate(
+  year: number | null,
+  month: number | null,
+  day: number | null
+) {
+  if (typeof year !== "number") {
+    return null;
+  }
+
+  if (typeof month !== "number") {
+    return String(year);
+  }
+
+  if (typeof day !== "number") {
+    return `${year}-${padDatePart(month)}`;
+  }
+
+  return `${year}-${padDatePart(month)}-${padDatePart(day)}`;
+}
+
+function appendTimeOfDayLabel(value: string, timeOfDayLabel: string) {
+  const normalized = timeOfDayLabel.trim();
+  return normalized ? `${value} (${normalized})` : value;
+}
+
+function padDatePart(value: number) {
+  return String(value).padStart(2, "0");
 }
 
 function matchesTimelineWorkspaceFilters(

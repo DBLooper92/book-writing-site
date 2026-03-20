@@ -18,8 +18,10 @@ import {
   type TimelineLinkedReferenceGroup,
 } from "@/lib/timeline/references";
 import {
+  formatDetailedTimelineEventRange,
+  formatTimelineEventBoundaryLabel,
   formatTimelineEnumValue,
-  formatTimelineEventRange,
+  formatTimelineEventSequenceLabel,
   getTimelineEventChronologyLabel,
   getTimelineWorkspaceIssues,
 } from "@/lib/timeline/workspace";
@@ -74,6 +76,25 @@ export function TimelineWorkspaceVisual({
     !formOptions.loading && !formOptions.error ? formOptions.referenceMaps : null;
   const availableReferenceSets =
     !formOptions.loading && !formOptions.error ? formOptions.referenceSets : null;
+  const selectedChronologyLabel = selectedTimelineEvent
+    ? getTimelineEventChronologyLabel(selectedTimelineEvent)
+    : null;
+  const selectedDetailedRange = selectedTimelineEvent
+    ? formatDetailedTimelineEventRange(selectedTimelineEvent)
+    : null;
+  const selectedStartDate = selectedTimelineEvent
+    ? formatTimelineEventBoundaryLabel(selectedTimelineEvent, "start")
+    : null;
+  const selectedEndDate = selectedTimelineEvent
+    ? formatTimelineEventBoundaryLabel(selectedTimelineEvent, "end")
+    : null;
+  const selectedSequenceLabel = selectedTimelineEvent
+    ? formatTimelineEventSequenceLabel(selectedTimelineEvent)
+    : null;
+  const showSelectedDetailedRange =
+    !!selectedTimelineEvent &&
+    selectedChronologyLabel !== selectedDetailedRange &&
+    selectedTimelineEvent.displayDateLabel.trim().length > 0;
 
   function registerEventRef(eventId: string, node: HTMLDivElement | null) {
     if (node) {
@@ -150,7 +171,7 @@ export function TimelineWorkspaceVisual({
           </div>
         </aside>
 
-        <section className="rounded-[2rem] border border-zinc-200 bg-[linear-gradient(180deg,#fffdf8_0%,#ffffff_45%,#fffdf7_100%)] p-6 shadow-sm md:p-8">
+        <section className="rounded-4xl border border-zinc-200 bg-[linear-gradient(180deg,#fffdf8_0%,#ffffff_45%,#fffdf7_100%)] p-6 shadow-sm md:p-8">
           <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -192,7 +213,7 @@ export function TimelineWorkspaceVisual({
             </div>
 
             {selectedTimelineEvent ? (
-              <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50/80 p-4">
+              <div className="rounded-3xl border border-amber-200 bg-amber-50/80 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-900">
                   Selected block
                 </p>
@@ -206,7 +227,7 @@ export function TimelineWorkspaceVisual({
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-600">
                       <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
-                        {getTimelineEventChronologyLabel(selectedTimelineEvent)}
+                        {selectedChronologyLabel}
                       </span>
                       <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
                         {formatTimelineEnumValue(selectedTimelineEvent.eventType)}
@@ -214,13 +235,36 @@ export function TimelineWorkspaceVisual({
                       <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
                         {formatTimelineEnumValue(selectedTimelineEvent.status)}
                       </span>
-                      <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
-                        {formatTimelineEventRange(
-                          selectedTimelineEvent.yearStart,
-                          selectedTimelineEvent.yearEnd
-                        )}
-                      </span>
+                      {showSelectedDetailedRange ? (
+                        <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
+                          {selectedDetailedRange}
+                        </span>
+                      ) : null}
+                      {selectedSequenceLabel ? (
+                        <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
+                          {selectedSequenceLabel}
+                        </span>
+                      ) : null}
                     </div>
+                    {(selectedStartDate || selectedEndDate || selectedTimelineEvent.timeOfDayLabel) ? (
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-600">
+                        {selectedStartDate ? (
+                          <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
+                            Start: {selectedStartDate}
+                          </span>
+                        ) : null}
+                        {selectedEndDate ? (
+                          <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
+                            End: {selectedEndDate}
+                          </span>
+                        ) : null}
+                        {selectedTimelineEvent.timeOfDayLabel ? (
+                          <span className="rounded-full bg-white px-3 py-1 ring-1 ring-amber-200">
+                            Time: {selectedTimelineEvent.timeOfDayLabel}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap gap-3">
                     <Link
@@ -271,7 +315,7 @@ export function TimelineWorkspaceVisual({
           </div>
 
           <div className="relative">
-            <div className="absolute bottom-10 left-6 top-10 w-px bg-gradient-to-b from-amber-300 via-zinc-300 to-amber-300 md:left-1/2 md:-translate-x-1/2" />
+            <div className="absolute bottom-10 left-6 top-10 w-px bg-linear-to-b from-amber-300 via-zinc-300 to-amber-300 md:left-1/2 md:-translate-x-1/2" />
 
             <div className="space-y-5 md:space-y-6">
               {layout.items.map((item) => {

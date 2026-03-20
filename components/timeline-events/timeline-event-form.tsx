@@ -131,11 +131,58 @@ export function TimelineEventForm({
           inputMode="numeric"
         />
         <Field
+          label="Start month"
+          value={values.monthStart}
+          onChange={(value) => updateField("monthStart", value)}
+          placeholder="3"
+          inputMode="numeric"
+          hint="Optional. Use 1-12 when the event needs tighter placement."
+        />
+        <Field
+          label="Start day"
+          value={values.dayStart}
+          onChange={(value) => updateField("dayStart", value)}
+          placeholder="17"
+          inputMode="numeric"
+          hint="Optional. Requires a start month."
+        />
+        <Field
           label="End year"
           value={values.yearEnd}
           onChange={(value) => updateField("yearEnd", value)}
           placeholder="412"
           inputMode="numeric"
+        />
+        <Field
+          label="End month"
+          value={values.monthEnd}
+          onChange={(value) => updateField("monthEnd", value)}
+          placeholder="3"
+          inputMode="numeric"
+          hint="Optional. Use when the event spans across a range."
+        />
+        <Field
+          label="End day"
+          value={values.dayEnd}
+          onChange={(value) => updateField("dayEnd", value)}
+          placeholder="18"
+          inputMode="numeric"
+          hint="Optional. Requires an end month."
+        />
+        <Field
+          label="Sequence within date"
+          value={values.chronologyOrder}
+          onChange={(value) => updateField("chronologyOrder", value)}
+          placeholder="2"
+          inputMode="numeric"
+          hint="Use this to order events that share the same dated placement."
+        />
+        <Field
+          label="Time label"
+          value={values.timeOfDayLabel}
+          onChange={(value) => updateField("timeOfDayLabel", value)}
+          placeholder="Late evening"
+          hint="Optional. Human-readable time context for the same day."
         />
         <SelectField
           label="Era"

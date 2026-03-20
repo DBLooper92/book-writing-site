@@ -31,16 +31,17 @@ Implemented now as the seventh full entity slice and the first dedicated chronol
 
 - timeline event documents must live under `users/{uid}/projects/{projectId}/timeline_events/{eventId}`
 - the slice follows the same list/create/detail/edit pattern as the existing entity slices
+- chronology data currently uses start/end year fields with optional month/day precision, an optional same-date sequence number, and an optional freeform time label
 - the current form uses picker-style inputs for the main linked manuscript, character, location, worldbuilding, era, and continuity references already backed by real slices
 - linked labels and warnings should resolve from already loaded project-scoped slice data instead of storing duplicate display metadata on timeline events
 - create-page prefills from `/timeline` should stay optional conveniences, not a second authoring model or a second persistence shape
 - Firestore docs are normalized before use in the UI
 - readable IDs are generated from the title with collision handling
-- create and update writes should reject impossible year ranges and self-referential continuity links
+- create and update writes should reject impossible date ranges, invalid month/day precision, and self-referential continuity links
 
 ## Current Role In The Architecture
 
-Timeline Events turns chronology into a real project-scoped slice and now powers the working `/timeline` workspace as well. It gives Books, Chapters, Scenes, Characters, Locations, and several worldbuilding slices a real chronology target to reference instead of relying on seed-only event documents, while keeping all timeline authoring grounded in one normalized document shape.
+Timeline Events turns chronology into a real project-scoped slice and now powers the working `/timeline` workspace as well. It gives Books, Chapters, Scenes, Characters, Locations, and several worldbuilding slices a real chronology target to reference instead of relying on seed-only event documents, while keeping all timeline authoring grounded in one normalized document shape that now supports year/month/day placement, same-date ordering, and optional time labels.
 
 ## What Remains Later
 
@@ -48,3 +49,4 @@ Timeline Events turns chronology into a real project-scoped slice and now powers
 - richer entity pickers and linked navigation beyond the current first-pass connected slices
 - deeper validation across manuscript and worldbuilding references
 - richer continuity editing than the current picker-based predecessor/successor links and create-page prefills
+- chronology models beyond the current year/month/day plus sequence approach

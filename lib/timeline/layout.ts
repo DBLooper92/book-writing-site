@@ -1,4 +1,8 @@
-import { compareTimelineEvents, getTimelineEventAnchorYear } from "@/lib/timeline/workspace";
+import {
+  compareTimelineEvents,
+  formatDetailedTimelineEventRange,
+  getTimelineEventAnchorYear,
+} from "@/lib/timeline/workspace";
 import type { TimelineEvent } from "@/types/timeline-event";
 
 export type TimelineLayoutEventItem = {
@@ -224,21 +228,7 @@ function getChronologyLabel(timelineEvent: TimelineEvent) {
     return timelineEvent.displayDateLabel.trim();
   }
 
-  if (typeof timelineEvent.yearStart === "number" && typeof timelineEvent.yearEnd === "number") {
-    return timelineEvent.yearStart === timelineEvent.yearEnd
-      ? String(timelineEvent.yearStart)
-      : `${timelineEvent.yearStart}-${timelineEvent.yearEnd}`;
-  }
-
-  if (typeof timelineEvent.yearStart === "number") {
-    return `From ${timelineEvent.yearStart}`;
-  }
-
-  if (typeof timelineEvent.yearEnd === "number") {
-    return `Until ${timelineEvent.yearEnd}`;
-  }
-
-  return "Undated";
+  return formatDetailedTimelineEventRange(timelineEvent);
 }
 
 function formatGapLabel(gapYears: number) {

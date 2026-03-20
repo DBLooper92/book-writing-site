@@ -72,7 +72,7 @@ export default function TimelinePage() {
         </StateCard>
       ) : loading ? (
         <StateCard tone="neutral">Loading timeline workspace...</StateCard>
-      ) : !activeProjectId || !activeProject ? (
+      ) : !uid || !activeProjectId || !activeProject ? (
         <StateCard tone="neutral">
           No active project selected. Choose one on the{" "}
           <Link href="/projects" className="font-medium underline">

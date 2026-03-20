@@ -30,15 +30,15 @@ This file tracks the short-term development direction implied by the current rep
 
 ## Next Recommended Focus
 
-- chronology precision and deeper timeline inspection polish
+- timeline-linked creation flow and deeper workspace inspection
 
 Reason:
-The current long-term entity set now has first-pass slices, `/timeline` is a real visual workspace, and timeline authoring now includes insertion notches, an inline composer sheet, picker-style linking, linked-label resolution, and first-pass linked-ID validation. The next biggest value is making closely clustered events easier to order and making block inspection richer without leaving the workspace.
+The current long-term entity set now has first-pass slices, `/timeline` is a real visual workspace, and timeline authoring now includes insertion notches, an inline composer sheet, picker-style linking, linked-label resolution, shared linked-ID validation, and year/month/day chronology precision with same-date ordering. The next biggest value is reducing context switching further by letting timeline authoring create missing linked records inline and by making block inspection denser without leaving the workspace.
 
 Recommended scope for that pass:
 
 - keep `/timeline` derived from `timeline_events` rather than introducing a second chronology collection
-- add richer chronology precision beyond the current year-first model where that can be done without destabilizing existing data
+- let the timeline composer create or stub missing linked records for the most-used slices without inventing a second persistence model
 - surface deeper inline summaries or hover/detail previews from timeline blocks and quick-nav items
 - tighten chronology integrity checks around predecessor/successor and linked manuscript records
 - keep extending linked navigation where existing IDs already point at real slices
