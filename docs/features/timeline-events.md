@@ -38,6 +38,7 @@ Implemented now as the seventh full entity slice and the first dedicated chronol
 - workspace cards should stay lightweight and open event inspection/editing in-place instead of routing authors away from `/timeline`
 - the current form uses picker-style inputs for the main linked manuscript, character, location, worldbuilding, era, and continuity references already backed by real slices
 - the current form can also open inline create lightboxes for those linked picker slices and should auto-select the new record back into the still-open event editor
+- timeline event detail chips opened from the workspace should inspect linked slice records in nested lightboxes instead of navigating away from the current timeline overlay flow
 - linked labels and warnings should resolve from already loaded project-scoped slice data instead of storing duplicate display metadata on timeline events
 - query-driven workspace prefills should stay optional conveniences, not a second authoring model or a second persistence shape
 - Firestore docs are normalized before use in the UI
@@ -46,7 +47,7 @@ Implemented now as the seventh full entity slice and the first dedicated chronol
 
 ## Current Role In The Architecture
 
-Timeline Events turns chronology into a real project-scoped slice and now powers `/timeline` as the sole top-level chronology surface. It gives Books, Chapters, Scenes, Characters, Locations, and several worldbuilding slices a real chronology target to reference instead of relying on seed-only event documents, while keeping all timeline authoring grounded in one normalized document shape that now supports year/month/day placement, same-date ordering, optional time labels, in-place workspace viewing/editing, and nested linked-record creation from the event editor itself.
+Timeline Events turns chronology into a real project-scoped slice and now powers `/timeline` as the sole top-level chronology surface. It gives Books, Chapters, Scenes, Characters, Locations, and several worldbuilding slices a real chronology target to reference instead of relying on seed-only event documents, while keeping all timeline authoring grounded in one normalized document shape that now supports year/month/day placement, same-date ordering, optional time labels, in-place workspace viewing/editing, nested linked-record detail inspection, and nested linked-record creation from the event editor itself.
 
 ## What Remains Later
 

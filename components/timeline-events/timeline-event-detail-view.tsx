@@ -5,6 +5,7 @@ import Link from "next/link";
 import { TimelineEventDetailSection } from "@/components/timeline-events/timeline-event-detail-section";
 import {
   buildTimelineLinkedReferenceGroups,
+  type TimelineLinkedReferenceItem,
   type TimelineReferenceMaps,
   type TimelineReferenceSets,
 } from "@/lib/timeline/references";
@@ -19,6 +20,7 @@ import type { TimelineEvent } from "@/types/timeline-event";
 
 type TimelineEventDetailViewProps = {
   knownTimelineEventIds: ReadonlySet<string>;
+  onOpenLinkedRecord?: (item: TimelineLinkedReferenceItem) => void;
   referenceMaps: TimelineReferenceMaps;
   referenceSets: TimelineReferenceSets;
   timelineEvent: TimelineEvent;
@@ -26,6 +28,7 @@ type TimelineEventDetailViewProps = {
 
 export function TimelineEventDetailView({
   knownTimelineEventIds,
+  onOpenLinkedRecord,
   referenceMaps,
   referenceSets,
   timelineEvent,
@@ -104,7 +107,12 @@ export function TimelineEventDetailView({
       <TimelineEventDetailSection title="Chronology and manuscript links">
         <div className="grid gap-4 lg:grid-cols-2">
           {manuscriptGroups.map((group) => (
-            <LinkedGroupBlock key={group.label} label={group.label} items={group.items} />
+            <LinkedGroupBlock
+              key={group.label}
+              label={group.label}
+              items={group.items}
+              onOpenLinkedRecord={onOpenLinkedRecord}
+            />
           ))}
         </div>
       </TimelineEventDetailSection>
@@ -112,7 +120,12 @@ export function TimelineEventDetailView({
       <TimelineEventDetailSection title="Entity links">
         <div className="grid gap-4 lg:grid-cols-2">
           {entityGroups.map((group) => (
-            <LinkedGroupBlock key={group.label} label={group.label} items={group.items} />
+            <LinkedGroupBlock
+              key={group.label}
+              label={group.label}
+              items={group.items}
+              onOpenLinkedRecord={onOpenLinkedRecord}
+            />
           ))}
         </div>
       </TimelineEventDetailSection>
@@ -171,9 +184,11 @@ function ListBlock({ label, values }: { label: string; values: string[] }) {
 function LinkedGroupBlock({
   label,
   items,
+  onOpenLinkedRecord,
 }: {
   label: string;
-  items: Array<{ id: string; label: string; href: string; missing: boolean }>;
+  items: TimelineLinkedReferenceItem[];
+  onOpenLinkedRecord?: (item: TimelineLinkedReferenceItem) => void;
 }) {
   return (
     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
@@ -181,17 +196,31 @@ function LinkedGroupBlock({
       <div className="mt-3 flex flex-wrap gap-2">
         {items.length > 0 ? (
           items.map((item) => (
-            <Link
-              key={`${label}-${item.id}`}
-              href={item.href}
-              className={`rounded-full px-3 py-1 text-sm transition ${
-                item.missing
-                  ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200"
-                  : "bg-white text-zinc-700 ring-1 ring-zinc-200 hover:bg-zinc-100"
-              }`}
-            >
-              {item.label}
-            </Link>
+            item.missing ? (
+              <span
+                key={`${label}-${item.id}`}
+                className="rounded-full bg-amber-100 px-3 py-1 text-sm text-amber-900 ring-1 ring-amber-200"
+              >
+                {item.label}
+              </span>
+            ) : onOpenLinkedRecord ? (
+              <button
+                key={`${label}-${item.id}`}
+                type="button"
+                onClick={() => onOpenLinkedRecord(item)}
+                className="rounded-full bg-white px-3 py-1 text-sm text-zinc-700 ring-1 ring-zinc-200 transition hover:bg-zinc-100"
+              >
+                {item.label}
+              </button>
+            ) : (
+              <Link
+                key={`${label}-${item.id}`}
+                href={item.href}
+                className="rounded-full bg-white px-3 py-1 text-sm text-zinc-700 ring-1 ring-zinc-200 transition hover:bg-zinc-100"
+              >
+                {item.label}
+              </Link>
+            )
           ))
         ) : (
           <span className="text-sm text-zinc-500">None</span>

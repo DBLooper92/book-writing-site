@@ -38,7 +38,23 @@ export type TimelineReferenceMaps = {
   timelineEventIds: ReadonlyMap<string, TimelineReferenceOption>;
 };
 
+export type TimelineLinkedRecordType =
+  | "book"
+  | "chapter"
+  | "scene"
+  | "character"
+  | "location"
+  | "era"
+  | "faction"
+  | "culture"
+  | "religion"
+  | "technology"
+  | "plotThread"
+  | "theme"
+  | "timelineEvent";
+
 export type TimelineLinkedReferenceItem = {
+  entityType: TimelineLinkedRecordType;
   id: string;
   label: string;
   href: string;
@@ -69,6 +85,7 @@ export type TimelineReferenceSelection = {
 };
 
 type ReferenceListConfig = {
+  entityType: TimelineLinkedRecordType;
   eventIds: string[];
   label: string;
   basePath: string;
@@ -190,6 +207,7 @@ export function buildTimelineLinkedReferenceGroups(
 ): TimelineLinkedReferenceGroup[] {
   return [
     buildReferenceGroup({
+      entityType: "book",
       label: "Books",
       eventIds: timelineEvent.bookIds,
       basePath: "/books",
@@ -197,6 +215,7 @@ export function buildTimelineLinkedReferenceGroups(
       optionMap: referenceMaps.bookIds,
     }),
     buildReferenceGroup({
+      entityType: "chapter",
       label: "Chapters",
       eventIds: timelineEvent.chapterIds,
       basePath: "/chapters",
@@ -204,6 +223,7 @@ export function buildTimelineLinkedReferenceGroups(
       optionMap: referenceMaps.chapterIds,
     }),
     buildReferenceGroup({
+      entityType: "scene",
       label: "Scenes",
       eventIds: timelineEvent.sceneIds,
       basePath: "/scenes",
@@ -211,6 +231,7 @@ export function buildTimelineLinkedReferenceGroups(
       optionMap: referenceMaps.sceneIds,
     }),
     buildReferenceGroup({
+      entityType: "character",
       label: "Characters",
       eventIds: timelineEvent.characterIds,
       basePath: "/characters",
@@ -218,6 +239,7 @@ export function buildTimelineLinkedReferenceGroups(
       optionMap: referenceMaps.characterIds,
     }),
     buildReferenceGroup({
+      entityType: "location",
       label: "Locations",
       eventIds: timelineEvent.locationIds,
       basePath: "/locations",
@@ -225,6 +247,7 @@ export function buildTimelineLinkedReferenceGroups(
       optionMap: referenceMaps.locationIds,
     }),
     buildReferenceGroup({
+      entityType: "era",
       label: "Era",
       eventIds: timelineEvent.eraId ? [timelineEvent.eraId] : [],
       basePath: "/eras",
@@ -232,6 +255,7 @@ export function buildTimelineLinkedReferenceGroups(
       optionMap: referenceMaps.eraIds,
     }),
     buildReferenceGroup({
+      entityType: "faction",
       label: "Factions",
       eventIds: timelineEvent.factionIds,
       basePath: "/factions",
@@ -239,6 +263,7 @@ export function buildTimelineLinkedReferenceGroups(
       optionMap: referenceMaps.factionIds,
     }),
     buildReferenceGroup({
+      entityType: "culture",
       label: "Cultures",
       eventIds: timelineEvent.cultureIds,
       basePath: "/cultures",
@@ -246,6 +271,7 @@ export function buildTimelineLinkedReferenceGroups(
       optionMap: referenceMaps.cultureIds,
     }),
     buildReferenceGroup({
+      entityType: "religion",
       label: "Religions",
       eventIds: timelineEvent.religionIds,
       basePath: "/religions",
@@ -253,6 +279,7 @@ export function buildTimelineLinkedReferenceGroups(
       optionMap: referenceMaps.religionIds,
     }),
     buildReferenceGroup({
+      entityType: "technology",
       label: "Technologies",
       eventIds: timelineEvent.technologyIds,
       basePath: "/technologies",
@@ -260,6 +287,7 @@ export function buildTimelineLinkedReferenceGroups(
       optionMap: referenceMaps.technologyIds,
     }),
     buildReferenceGroup({
+      entityType: "plotThread",
       label: "Plot threads",
       eventIds: timelineEvent.plotThreadIds,
       basePath: "/plot-threads",
@@ -267,6 +295,7 @@ export function buildTimelineLinkedReferenceGroups(
       optionMap: referenceMaps.plotThreadIds,
     }),
     buildReferenceGroup({
+      entityType: "theme",
       label: "Themes",
       eventIds: timelineEvent.themeIds,
       basePath: "/themes",
@@ -274,6 +303,7 @@ export function buildTimelineLinkedReferenceGroups(
       optionMap: referenceMaps.themeIds,
     }),
     buildReferenceGroup({
+      entityType: "timelineEvent",
       label: "Predecessors",
       eventIds: timelineEvent.predecessorEventIds,
       basePath: "/timeline-events",
@@ -281,6 +311,7 @@ export function buildTimelineLinkedReferenceGroups(
       optionMap: referenceMaps.timelineEventIds,
     }),
     buildReferenceGroup({
+      entityType: "timelineEvent",
       label: "Successors",
       eventIds: timelineEvent.successorEventIds,
       basePath: "/timeline-events",
@@ -312,6 +343,7 @@ function buildReferenceGroup(
       const option = config.optionMap.get(id);
 
       return {
+        entityType: config.entityType,
         id,
         label: option?.label ?? id,
         href: `${config.basePath}/${id}`,

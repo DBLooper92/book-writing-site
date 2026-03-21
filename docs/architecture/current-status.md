@@ -99,6 +99,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - query-driven timeline create entry points that can prefill predecessor, successor, and shared-year context inside `/timeline`
 - inline timeline composer sheet for create-from-notch and edit-in-place flows inside `/timeline`
 - nested inline-create lightboxes from the timeline event editor so linked books, chapters, scenes, characters, locations, eras, themes, plot threads, technologies, religions, cultures, factions, and continuity events can be created without leaving the workspace sheet
+- nested linked-record detail lightboxes from timeline event linked chips so authors can inspect referenced slice records without leaving the timeline overlay stack
 - in-place event detail lightbox from timeline cards and selected-block actions
 - first-event creation inside `/timeline` even when the active project has no existing timeline records
 - lightweight selected-block summary with modal inspection from `/timeline`
