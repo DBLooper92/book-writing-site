@@ -53,7 +53,7 @@ export function TimelineWorkspaceVisual({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [filtersPinned, setFiltersPinned] = useState(true);
+  const [filtersPinned, setFiltersPinned] = useState(false);
   const [requestedSelectedEventId, setRequestedSelectedEventId] = useState<string | null>(null);
   const [viewerEventId, setViewerEventId] = useState<string | null>(null);
   const [localComposerState, setLocalComposerState] = useState<
@@ -85,8 +85,6 @@ export function TimelineWorkspaceVisual({
     timelineEvents.some((timelineEvent) => timelineEvent.id === requestedSelectedEventId)
       ? requestedSelectedEventId
       : timelineEvents[0]?.id ?? null;
-  const selectedTimelineEvent =
-    timelineEvents.find((timelineEvent) => timelineEvent.id === selectedEventId) ?? null;
   const viewingTimelineEvent =
     viewerEventId && timelineEvents.some((timelineEvent) => timelineEvent.id === viewerEventId)
       ? timelineEvents.find((timelineEvent) => timelineEvent.id === viewerEventId) ?? null
@@ -175,15 +173,12 @@ export function TimelineWorkspaceVisual({
                   fullWidth
                 />
               </div>
-              <p className="mt-4 text-sm leading-6 text-zinc-600">
-                Jump to any block without moving the left rail out of view.
-              </p>
             </div>
 
-            <div className="flex-1 px-3 py-3">
+            <div className="flex-1">
               {layout.quickNavItems.length > 0 ? (
-                <div className="space-y-2">
-                  {layout.quickNavItems.map((quickNavItem) => {
+                <div className="border-b border-zinc-200">
+                  {layout.quickNavItems.map((quickNavItem, index) => {
                     const isSelected = quickNavItem.eventId === selectedEventId;
 
                     return (
@@ -191,36 +186,36 @@ export function TimelineWorkspaceVisual({
                         key={quickNavItem.eventId}
                         type="button"
                         onClick={() => focusEvent(quickNavItem.eventId)}
-                        className={`w-full rounded-[1.25rem] border px-4 py-3 text-left transition ${
+                        className={`w-full border-t border-zinc-200 px-5 py-4 text-left transition ${
                           isSelected
-                            ? "border-zinc-950 bg-zinc-950 text-white"
-                            : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50"
+                            ? "bg-zinc-950 text-white"
+                            : index % 2 === 0
+                              ? "bg-white text-zinc-700 hover:bg-zinc-100"
+                              : "bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p
-                              className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${
-                                isSelected ? "text-white/70" : "text-zinc-500"
-                              }`}
-                            >
-                              Block {quickNavItem.position}
-                            </p>
-                            <p
-                              className={`mt-2 truncate text-sm font-semibold tracking-tight ${
-                                isSelected ? "text-white" : "text-zinc-950"
-                              }`}
-                            >
-                              {quickNavItem.title}
-                            </p>
-                            <p
-                              className={`mt-2 text-[11px] uppercase tracking-[0.18em] ${
-                                isSelected ? "text-white/65" : "text-zinc-500"
-                              }`}
-                            >
-                              {quickNavItem.chronologyLabel}
-                            </p>
-                          </div>
+                        <div className="min-w-0">
+                          <p
+                            className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${
+                              isSelected ? "text-white/70" : "text-zinc-500"
+                            }`}
+                          >
+                            Block {quickNavItem.position}
+                          </p>
+                          <p
+                            className={`mt-2 truncate text-sm font-semibold tracking-tight ${
+                              isSelected ? "text-white" : "text-zinc-950"
+                            }`}
+                          >
+                            {quickNavItem.title}
+                          </p>
+                          <p
+                            className={`mt-2 text-[11px] uppercase tracking-[0.18em] ${
+                              isSelected ? "text-white/65" : "text-zinc-500"
+                            }`}
+                          >
+                            {quickNavItem.chronologyLabel}
+                          </p>
                         </div>
                       </button>
                     );
@@ -251,6 +246,15 @@ export function TimelineWorkspaceVisual({
           </div>
 
           <div className="space-y-6 p-4 sm:p-6 xl:p-8">
+            <div className="flex justify-end">
+              <Link
+                href={buildTimelineCreateHref()}
+                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+              >
+                Create timeline event
+              </Link>
+            </div>
+
             {stats.totalEvents === 0 ? (
               <TimelineStateCard>
                 No timeline events exist in {activeProjectTitle} yet. Use the create button or the
@@ -267,24 +271,6 @@ export function TimelineWorkspaceVisual({
 
             {(stats.totalEvents === 0 || timelineEvents.length > 0) && (
               <section className="pb-8">
-                <div className="mb-6 flex flex-wrap gap-3">
-                  <Link
-                    href={buildTimelineCreateHref()}
-                    className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-                  >
-                    Create timeline event
-                  </Link>
-                  {selectedTimelineEvent ? (
-                    <button
-                      type="button"
-                      onClick={() => openViewer(selectedTimelineEvent.id)}
-                      className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-                    >
-                      View selected event
-                    </button>
-                  ) : null}
-                </div>
-
                 <div className="relative">
                   <div className="absolute bottom-10 left-6 top-10 w-px bg-linear-to-b from-zinc-300 via-zinc-200 to-zinc-300 md:left-1/2 md:-translate-x-1/2" />
 

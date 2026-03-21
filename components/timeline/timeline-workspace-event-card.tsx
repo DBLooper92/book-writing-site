@@ -1,3 +1,6 @@
+import {
+  formatTimelineEventBoundaryLabel,
+} from "@/lib/timeline/workspace";
 import type { TimelineEvent } from "@/types/timeline-event";
 
 type TimelineWorkspaceEventCardProps = {
@@ -36,7 +39,9 @@ export function TimelineWorkspaceEventCard({
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-200 pt-4">
-        <p className="min-w-0 truncate text-sm text-zinc-600">{timelineEvent.id}</p>
+        <p className="min-w-0 truncate text-sm text-zinc-600">
+          {formatTimelineEventStartLabel(timelineEvent)}
+        </p>
         <button
           type="button"
           onClick={() => onView(timelineEvent.id)}
@@ -47,4 +52,23 @@ export function TimelineWorkspaceEventCard({
       </div>
     </article>
   );
+}
+
+function formatTimelineEventStartLabel(timelineEvent: TimelineEvent) {
+  const startLabel = formatTimelineEventBoundaryLabel(timelineEvent, "start");
+  const timeLabel = timelineEvent.timeOfDayLabel.trim();
+
+  if (startLabel && timeLabel) {
+    return `${startLabel} ${timeLabel}`;
+  }
+
+  if (startLabel) {
+    return startLabel;
+  }
+
+  if (timeLabel) {
+    return timeLabel;
+  }
+
+  return "Undated start";
 }
