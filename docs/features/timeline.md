@@ -26,6 +26,7 @@ Implemented now as the first derived workspace built on top of an existing slice
 - chronology ordering, grouping, and filtering are derived from normalized `TimelineEvent` records
 - chronology precision currently uses start/end year with optional month/day fields, plus an optional same-date sequence number and optional time label
 - insertion notches are derived UI affordances, not stored Firestore documents
+- saving a notch-created event without a start or end year should confirm the choice, then inherit the most recent earlier dated block's year when one exists so the new block stays anchored near the clicked insertion point
 - numbered timeline markers are derived from the current sorted chronology and should always renumber from top to bottom as the visible order changes
 - large chronology gaps should compress into labeled jumps instead of proportional empty space
 - undated events stay visible in the same derived chronology surface rather than disappearing from the workspace

@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase/client";
-import { compareTimelineEvents } from "@/lib/timeline/workspace";
+import { sortTimelineEvents } from "@/lib/timeline/workspace";
 import {
   buildTimelineEventDocument,
   coerceTimelineEventCanonLevel,
@@ -59,13 +59,11 @@ export function observeTimelineEventsForProject(
   return onSnapshot(
     timelineEventsRef,
     (snapshot) => {
-      const timelineEvents = snapshot.docs
-        .map((timelineEventDoc) =>
-          normalizeTimelineEventDocument(timelineEventDoc.id, projectId, timelineEventDoc.data())
-        )
-        .sort(compareTimelineEvents);
+      const timelineEvents = snapshot.docs.map((timelineEventDoc) =>
+        normalizeTimelineEventDocument(timelineEventDoc.id, projectId, timelineEventDoc.data())
+      );
 
-      callback(timelineEvents);
+      callback(sortTimelineEvents(timelineEvents));
     },
     (error) => {
       errorCallback?.(error);

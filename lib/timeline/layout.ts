@@ -1,7 +1,7 @@
 import {
-  compareTimelineEvents,
   formatDetailedTimelineEventRange,
   getTimelineEventAnchorYear,
+  sortTimelineEvents,
 } from "@/lib/timeline/workspace";
 import type { TimelineEvent } from "@/types/timeline-event";
 
@@ -28,6 +28,7 @@ export type TimelineLayoutInsertionItem = {
   id: string;
   label: string;
   helperText: string;
+  fallbackYear: string;
   previousEventId: string | null;
   nextEventId: string | null;
   previousEventTitle: string | null;
@@ -58,10 +59,11 @@ const MIN_GAP_HEIGHT_PX = 88;
 const MAX_GAP_HEIGHT_PX = 188;
 
 export function buildTimelineLayoutModel(timelineEvents: TimelineEvent[]): TimelineLayoutModel {
-  const sortedTimelineEvents = [...timelineEvents].sort(compareTimelineEvents);
+  const sortedTimelineEvents = sortTimelineEvents(timelineEvents);
   const items: TimelineLayoutItem[] = [];
+  let mostRecentAnchorYear: number | null = null;
 
-  items.push(buildInsertionItem(null, sortedTimelineEvents[0] ?? null));
+  items.push(buildInsertionItem(null, sortedTimelineEvents[0] ?? null, mostRecentAnchorYear));
 
   sortedTimelineEvents.forEach((timelineEvent, index) => {
     const position = index + 1;
@@ -84,7 +86,13 @@ export function buildTimelineLayoutModel(timelineEvents: TimelineEvent[]): Timel
       }
     }
 
-    items.push(buildInsertionItem(timelineEvent, nextTimelineEvent));
+    const anchorYear = getTimelineEventAnchorYear(timelineEvent);
+
+    if (typeof anchorYear === "number") {
+      mostRecentAnchorYear = anchorYear;
+    }
+
+    items.push(buildInsertionItem(timelineEvent, nextTimelineEvent, mostRecentAnchorYear));
   });
 
   return {
@@ -100,7 +108,8 @@ export function buildTimelineLayoutModel(timelineEvents: TimelineEvent[]): Timel
 
 function buildInsertionItem(
   previousTimelineEvent: TimelineEvent | null,
-  nextTimelineEvent: TimelineEvent | null
+  nextTimelineEvent: TimelineEvent | null,
+  fallbackAnchorYear: number | null
 ): TimelineLayoutInsertionItem {
   const previousAnchorYear = previousTimelineEvent
     ? getTimelineEventAnchorYear(previousTimelineEvent)
@@ -126,6 +135,7 @@ function buildInsertionItem(
       nextTimelineEvent,
       sharedAnchorYear
     ),
+    fallbackYear: typeof fallbackAnchorYear === "number" ? String(fallbackAnchorYear) : "",
     previousEventId: previousTimelineEvent?.id ?? null,
     nextEventId: nextTimelineEvent?.id ?? null,
     previousEventTitle: previousTimelineEvent?.title ?? null,

@@ -110,7 +110,7 @@ export function buildTimelineWorkspaceModel(
   timelineEvents: TimelineEvent[],
   filters: TimelineWorkspaceFilters
 ): TimelineWorkspaceModel {
-  const sortedTimelineEvents = [...timelineEvents].sort(compareTimelineEvents);
+  const sortedTimelineEvents = sortTimelineEvents(timelineEvents);
   const filteredEvents = sortedTimelineEvents.filter((timelineEvent) =>
     matchesTimelineWorkspaceFilters(timelineEvent, filters)
   );
@@ -142,18 +142,34 @@ export function buildTimelineWorkspaceModel(
   };
 }
 
-export function compareTimelineEvents(left: TimelineEvent, right: TimelineEvent) {
-  const startComparison = compareTimelineEventDates(
-    left.yearStart,
-    left.monthStart,
-    left.dayStart,
-    right.yearStart,
-    right.monthStart,
-    right.dayStart
-  );
+export function sortTimelineEvents(timelineEvents: TimelineEvent[]) {
+  const baseSortedTimelineEvents = [...timelineEvents].sort(compareTimelineEvents);
+  return reorderTimelineEventsWithinAnchorGroups(baseSortedTimelineEvents);
+}
 
-  if (startComparison !== 0) {
-    return startComparison;
+export function compareTimelineEvents(left: TimelineEvent, right: TimelineEvent) {
+  const startYearComparison = compareNullablePrecisionValue(left.yearStart, right.yearStart);
+
+  if (startYearComparison !== 0) {
+    return startYearComparison;
+  }
+
+  const insertionComparison = compareTimelineEventAdjacency(left, right);
+
+  if (insertionComparison !== 0) {
+    return insertionComparison;
+  }
+
+  const startMonthComparison = compareNullablePrecisionValue(left.monthStart, right.monthStart);
+
+  if (startMonthComparison !== 0) {
+    return startMonthComparison;
+  }
+
+  const startDayComparison = compareNullablePrecisionValue(left.dayStart, right.dayStart);
+
+  if (startDayComparison !== 0) {
+    return startDayComparison;
   }
 
   const orderComparison = compareNullablePrecisionValue(
@@ -435,6 +451,170 @@ function compareNullablePrecisionValue(left: number | null, right: number | null
   }
 
   return 0;
+}
+
+function compareTimelineEventAdjacency(left: TimelineEvent, right: TimelineEvent) {
+  const leftBeforeRight =
+    left.successorEventIds.includes(right.id) || right.predecessorEventIds.includes(left.id);
+  const leftAfterRight =
+    left.predecessorEventIds.includes(right.id) || right.successorEventIds.includes(left.id);
+
+  if (leftBeforeRight === leftAfterRight) {
+    return 0;
+  }
+
+  return leftBeforeRight ? -1 : 1;
+}
+
+function reorderTimelineEventsWithinAnchorGroups(timelineEvents: TimelineEvent[]) {
+  if (timelineEvents.length < 2) {
+    return timelineEvents;
+  }
+
+  const orderedTimelineEvents: TimelineEvent[] = [];
+  let currentGroup: TimelineEvent[] = [];
+  let currentAnchorKey: string | null = null;
+
+  for (const timelineEvent of timelineEvents) {
+    const anchorKey = getTimelineAnchorGroupKey(timelineEvent);
+
+    if (currentGroup.length === 0 || anchorKey === currentAnchorKey) {
+      currentGroup.push(timelineEvent);
+      currentAnchorKey = anchorKey;
+      continue;
+    }
+
+    orderedTimelineEvents.push(...resolveTimelineAdjacencyOrder(currentGroup));
+    currentGroup = [timelineEvent];
+    currentAnchorKey = anchorKey;
+  }
+
+  if (currentGroup.length > 0) {
+    orderedTimelineEvents.push(...resolveTimelineAdjacencyOrder(currentGroup));
+  }
+
+  return orderedTimelineEvents;
+}
+
+function resolveTimelineAdjacencyOrder(timelineEvents: TimelineEvent[]) {
+  if (timelineEvents.length < 2) {
+    return timelineEvents;
+  }
+
+  const timelineEventById = new Map(
+    timelineEvents.map((timelineEvent) => [timelineEvent.id, timelineEvent])
+  );
+  const baseIndexById = new Map(
+    timelineEvents.map((timelineEvent, index) => [timelineEvent.id, index])
+  );
+  const indegreeById = new Map(timelineEvents.map((timelineEvent) => [timelineEvent.id, 0]));
+  const adjacencyById = new Map(timelineEvents.map((timelineEvent) => [timelineEvent.id, new Set<string>()]));
+
+  for (const timelineEvent of timelineEvents) {
+    for (const predecessorId of timelineEvent.predecessorEventIds) {
+      addTimelineAdjacencyEdge(
+        adjacencyById,
+        indegreeById,
+        predecessorId,
+        timelineEvent.id,
+        timelineEventById
+      );
+    }
+
+    for (const successorId of timelineEvent.successorEventIds) {
+      addTimelineAdjacencyEdge(
+        adjacencyById,
+        indegreeById,
+        timelineEvent.id,
+        successorId,
+        timelineEventById
+      );
+    }
+  }
+
+  const readyIds = timelineEvents
+    .filter((timelineEvent) => (indegreeById.get(timelineEvent.id) ?? 0) === 0)
+    .map((timelineEvent) => timelineEvent.id);
+  const orderedTimelineEvents: TimelineEvent[] = [];
+
+  while (readyIds.length > 0) {
+    const nextId = readyIds.shift();
+
+    if (!nextId) {
+      continue;
+    }
+
+    const timelineEvent = timelineEventById.get(nextId);
+
+    if (!timelineEvent) {
+      continue;
+    }
+
+    orderedTimelineEvents.push(timelineEvent);
+
+    adjacencyById.get(nextId)?.forEach((linkedId) => {
+      const nextIndegree = (indegreeById.get(linkedId) ?? 0) - 1;
+      indegreeById.set(linkedId, nextIndegree);
+
+      if (nextIndegree === 0) {
+        insertTimelineIdByBaseIndex(readyIds, linkedId, baseIndexById);
+      }
+    });
+  }
+
+  if (orderedTimelineEvents.length === timelineEvents.length) {
+    return orderedTimelineEvents;
+  }
+
+  const orderedIds = new Set(orderedTimelineEvents.map((timelineEvent) => timelineEvent.id));
+  return [
+    ...orderedTimelineEvents,
+    ...timelineEvents.filter((timelineEvent) => !orderedIds.has(timelineEvent.id)),
+  ];
+}
+
+function addTimelineAdjacencyEdge(
+  adjacencyById: Map<string, Set<string>>,
+  indegreeById: Map<string, number>,
+  fromId: string,
+  toId: string,
+  timelineEventById: Map<string, TimelineEvent>
+) {
+  if (!timelineEventById.has(fromId) || !timelineEventById.has(toId) || fromId === toId) {
+    return;
+  }
+
+  const linkedIds = adjacencyById.get(fromId);
+
+  if (!linkedIds || linkedIds.has(toId)) {
+    return;
+  }
+
+  linkedIds.add(toId);
+  indegreeById.set(toId, (indegreeById.get(toId) ?? 0) + 1);
+}
+
+function insertTimelineIdByBaseIndex(
+  readyIds: string[],
+  nextId: string,
+  baseIndexById: Map<string, number>
+) {
+  const nextIndex = baseIndexById.get(nextId) ?? Number.MAX_SAFE_INTEGER;
+  const insertAt = readyIds.findIndex(
+    (readyId) => (baseIndexById.get(readyId) ?? Number.MAX_SAFE_INTEGER) > nextIndex
+  );
+
+  if (insertAt === -1) {
+    readyIds.push(nextId);
+    return;
+  }
+
+  readyIds.splice(insertAt, 0, nextId);
+}
+
+function getTimelineAnchorGroupKey(timelineEvent: TimelineEvent) {
+  const anchorYear = getTimelineEventAnchorYear(timelineEvent);
+  return typeof anchorYear === "number" ? String(anchorYear) : "undated";
 }
 
 function formatPartialTimelineDate(

@@ -41,6 +41,7 @@ Implemented now as the seventh full entity slice and the first dedicated chronol
 - timeline event detail chips opened from the workspace should inspect linked slice records in nested lightboxes instead of navigating away from the current timeline overlay flow
 - linked labels and warnings should resolve from already loaded project-scoped slice data instead of storing duplicate display metadata on timeline events
 - query-driven workspace prefills should stay optional conveniences, not a second authoring model or a second persistence shape
+- create flows opened from timeline insertion notches should confirm blank-year saves and, when confirmed, inherit the most recent earlier dated block's year if one exists; otherwise they remain undated
 - Firestore docs are normalized before use in the UI
 - readable IDs are generated from the title with collision handling
 - create and update writes should reject impossible date ranges, invalid month/day precision, and self-referential continuity links

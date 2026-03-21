@@ -51,7 +51,17 @@ export function TimelineEventComposerSheet({
       return;
     }
 
-    const newTimelineEventId = await createTimelineEventForProject(uid, activeProjectId, values);
+    const resolvedValues = resolveTimelineCreateValues(values, insertionItem ?? null);
+
+    if (!resolvedValues) {
+      return;
+    }
+
+    const newTimelineEventId = await createTimelineEventForProject(
+      uid,
+      activeProjectId,
+      resolvedValues
+    );
     onSaved(newTimelineEventId);
   }
 
@@ -112,4 +122,57 @@ function buildInsertionInitialValues(insertionItem: TimelineLayoutInsertionItem 
   initialValues.successorEventIds = insertionItem.nextEventId ? [insertionItem.nextEventId] : [];
 
   return initialValues;
+}
+
+function resolveTimelineCreateValues(
+  values: NormalizedTimelineEventFormValues,
+  insertionItem: TimelineLayoutInsertionItem | null
+) {
+  if (typeof values.yearStart === "number" || typeof values.yearEnd === "number") {
+    return values;
+  }
+
+  const fallbackYear = parseInsertionFallbackYear(insertionItem?.fallbackYear ?? "");
+  const shouldContinue = window.confirm(buildMissingYearConfirmationMessage(fallbackYear));
+
+  if (!shouldContinue) {
+    return null;
+  }
+
+  if (fallbackYear === null) {
+    return values;
+  }
+
+  return {
+    ...values,
+    yearStart: fallbackYear,
+    yearEnd: fallbackYear,
+  };
+}
+
+function parseInsertionFallbackYear(value: string) {
+  const normalized = value.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(normalized, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function buildMissingYearConfirmationMessage(fallbackYear: number | null) {
+  if (typeof fallbackYear === "number") {
+    return [
+      "Save without a year?",
+      "",
+      `If you continue, this block will inherit ${fallbackYear} from the most recent earlier dated block so it stays anchored to this insertion point.`,
+    ].join("\n");
+  }
+
+  return [
+    "Save without a year?",
+    "",
+    "There is no earlier dated block before this insertion point, so this event will stay undated if you continue.",
+  ].join("\n");
 }
