@@ -86,6 +86,7 @@ export function TimelineEventComposerSheet({
             key={formKey}
             currentTimelineEventId={timelineEvent?.id ?? null}
             initialValues={initialValues}
+            inlineCreationContext={{ activeProjectId, uid }}
             onCancel={onClose}
             submitLabel={isEditMode ? "Save changes" : "Create timeline event"}
             onSubmit={handleSubmit}

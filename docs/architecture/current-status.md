@@ -80,6 +80,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - chronology fields for year, optional month/day boundaries, same-date sequence ordering, and optional time labels
 - validation for impossible date ranges, invalid month/day precision, and self-referential continuity links
 - picker-style linked-slice editing for books, chapters, scenes, characters, locations, eras, continuity, and several worldbuilding slices
+- inline lightbox creation for the linked timeline-event picker slices with automatic reselection back into the still-open event form
 - shared reference lookups that resolve linked IDs into labels and warnings across the form, detail page, and workspace
 
 ### Timeline Workspace
@@ -97,6 +98,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - validation warnings for invalid date ranges, missing continuity IDs, and missing linked slice records
 - query-driven timeline create entry points that can prefill predecessor, successor, and shared-year context inside `/timeline`
 - inline timeline composer sheet for create-from-notch and edit-in-place flows inside `/timeline`
+- nested inline-create lightboxes from the timeline event editor so linked books, chapters, scenes, characters, locations, eras, themes, plot threads, technologies, religions, cultures, factions, and continuity events can be created without leaving the workspace sheet
 - in-place event detail lightbox from timeline cards and selected-block actions
 - first-event creation inside `/timeline` even when the active project has no existing timeline records
 - lightweight selected-block summary with modal inspection from `/timeline`

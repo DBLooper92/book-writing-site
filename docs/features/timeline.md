@@ -31,13 +31,14 @@ Implemented now as the first derived workspace built on top of an existing slice
 - undated events stay visible in the same derived chronology surface rather than disappearing from the workspace
 - inline workspace authoring should still write to the same `timeline_events` documents and reuse the same normalization and validation path as the dedicated detail/edit surfaces
 - workspace event viewing and editing should prefer in-place lightboxes and sheets over routing authors away from `/timeline`
+- the workspace event editor can open nested inline-create lightboxes for the current linked timeline-event picker slices and should reselect the newly created record without closing the editor
 - linked warnings should derive from already loaded project-scoped slice records instead of introducing a separate validation collection
 - linked navigation should prefer routes that already exist for the referenced project-scoped slices
 - workspace warnings should stay derived from loaded timeline data rather than introducing extra validation-only persistence
 
 ## Current Role In The Architecture
 
-The Timeline workspace turns `/timeline` into the sole top-level project-scoped chronology surface without changing the Firestore model. It now gives the existing `timeline_events` slice a center-line visual timeline, dense quick navigation, derived insertion points, query-driven create entry points, in-place event lightboxes, inline create/edit entry points, timeline-specific filters, year/month/day-aware chronology ordering, and first-pass integrity warnings while keeping timeline data grounded in the same normalized event records used elsewhere in the app.
+The Timeline workspace turns `/timeline` into the sole top-level project-scoped chronology surface without changing the Firestore model. It now gives the existing `timeline_events` slice a center-line visual timeline, dense quick navigation, derived insertion points, query-driven create entry points, in-place event lightboxes, inline create/edit entry points, nested linked-record creation lightboxes inside the event editor, timeline-specific filters, year/month/day-aware chronology ordering, and first-pass integrity warnings while keeping timeline data grounded in the same normalized event records used elsewhere in the app.
 
 ## What Remains Later
 

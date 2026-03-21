@@ -95,6 +95,7 @@ export default function EditTimelineEventPage() {
           <TimelineEventForm
             currentTimelineEventId={timelineEventId}
             initialValues={timelineEventToFormValues(timelineEvent)}
+            inlineCreationContext={uid && activeProjectId ? { activeProjectId, uid } : null}
             submitLabel="Save changes"
             onSubmit={handleUpdateTimelineEvent}
           />
