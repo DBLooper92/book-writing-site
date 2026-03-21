@@ -30,7 +30,6 @@ import { createReligionForProject } from "@/lib/firebase/religions";
 import { createSceneForProject } from "@/lib/firebase/scenes";
 import { createTechnologyForProject } from "@/lib/firebase/technologies";
 import { createThemeForProject } from "@/lib/firebase/themes";
-import { createTimelineEventForProject } from "@/lib/firebase/timeline-events";
 import {
   buildTimelineReferenceMap,
   buildTimelineReferenceSet,
@@ -74,9 +73,7 @@ type CreateableTimelineFieldKey =
   | "religionIds"
   | "technologyIds"
   | "plotThreadIds"
-  | "themeIds"
-  | "predecessorEventIds"
-  | "successorEventIds";
+  | "themeIds";
 
 type TimelineInlineCreateTarget =
   | "era"
@@ -90,8 +87,7 @@ type TimelineInlineCreateTarget =
   | "religion"
   | "technology"
   | "plotThread"
-  | "theme"
-  | "timelineEvent";
+  | "theme";
 
 type TimelineInlineCreateState = {
   description: string;
@@ -143,8 +139,8 @@ export function TimelineEventForm({
             technologyIds: values.technologyIds,
             plotThreadIds: values.plotThreadIds,
             themeIds: values.themeIds,
-            predecessorEventIds: values.predecessorEventIds,
-            successorEventIds: values.successorEventIds,
+            predecessorEventIds: [],
+            successorEventIds: [],
           },
           formOptions.referenceSets
         )
@@ -228,67 +224,6 @@ export function TimelineEventForm({
             onChange={(value) => updateField("eventType", value)}
             options={TIMELINE_EVENT_TYPE_OPTIONS}
           />
-          <Field
-            label="Start year"
-            value={values.yearStart}
-            onChange={(value) => updateField("yearStart", value)}
-            placeholder="412"
-            inputMode="numeric"
-          />
-          <Field
-            label="Start month"
-            value={values.monthStart}
-            onChange={(value) => updateField("monthStart", value)}
-            placeholder="3"
-            inputMode="numeric"
-            hint="Optional. Use 1-12 when the event needs tighter placement."
-          />
-          <Field
-            label="Start day"
-            value={values.dayStart}
-            onChange={(value) => updateField("dayStart", value)}
-            placeholder="17"
-            inputMode="numeric"
-            hint="Optional. Requires a start month."
-          />
-          <Field
-            label="End year"
-            value={values.yearEnd}
-            onChange={(value) => updateField("yearEnd", value)}
-            placeholder="412"
-            inputMode="numeric"
-          />
-          <Field
-            label="End month"
-            value={values.monthEnd}
-            onChange={(value) => updateField("monthEnd", value)}
-            placeholder="3"
-            inputMode="numeric"
-            hint="Optional. Use when the event spans across a range."
-          />
-          <Field
-            label="End day"
-            value={values.dayEnd}
-            onChange={(value) => updateField("dayEnd", value)}
-            placeholder="18"
-            inputMode="numeric"
-            hint="Optional. Requires an end month."
-          />
-          <Field
-            label="Sequence within date"
-            value={values.chronologyOrder}
-            onChange={(value) => updateField("chronologyOrder", value)}
-            placeholder="2"
-            inputMode="numeric"
-            hint="Use this to order events that share the same dated placement."
-          />
-          <Field
-            label="Time label"
-            value={values.timeOfDayLabel}
-            onChange={(value) => updateField("timeOfDayLabel", value)}
-            placeholder="Late evening"
-            hint="Optional. Human-readable time context for the same day."
-          />
           <SelectField
             label="Era"
             value={values.eraId}
@@ -313,6 +248,95 @@ export function TimelineEventForm({
               ) : null
             }
           />
+        </section>
+
+        <section className="space-y-4">
+          <SectionHeader
+            title="Chronology"
+            description="Timeline position now comes from these fields. Editing them will move the block in the visual timeline."
+          />
+          <div className="grid gap-4 xl:grid-cols-2">
+            <ChronologyPanel
+              description="Use the earliest known placement for this event. Year drives the main timeline position."
+              title="Start date and time"
+            >
+              <div className="grid gap-4 md:grid-cols-3">
+                <Field
+                  label="Start year"
+                  value={values.yearStart}
+                  onChange={(value) => updateChronologyField("yearStart", value)}
+                  placeholder="412"
+                  inputMode="numeric"
+                  hint="Required before month or day can be used."
+                />
+                <Field
+                  label="Start month"
+                  value={values.monthStart}
+                  onChange={(value) => updateChronologyField("monthStart", value)}
+                  placeholder="3"
+                  inputMode="numeric"
+                  hint="Optional. Use 1-12 for tighter placement."
+                />
+                <Field
+                  label="Start day"
+                  value={values.dayStart}
+                  onChange={(value) => updateChronologyField("dayStart", value)}
+                  placeholder="17"
+                  inputMode="numeric"
+                  hint="Optional. Requires a month."
+                />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field
+                  label="Sequence within date"
+                  value={values.chronologyOrder}
+                  onChange={(value) => updateChronologyField("chronologyOrder", value)}
+                  placeholder="2"
+                  inputMode="numeric"
+                  hint="Use this when multiple events share the same dated placement."
+                />
+                <Field
+                  label="Time label"
+                  value={values.timeOfDayLabel}
+                  onChange={(value) => updateField("timeOfDayLabel", value)}
+                  placeholder="Late evening"
+                  hint="Optional human-readable time context."
+                />
+              </div>
+            </ChronologyPanel>
+
+            <ChronologyPanel
+              description="Use the ending point only when the event spans over time. Leave blank for one-moment events."
+              title="End date and time"
+            >
+              <div className="grid gap-4 md:grid-cols-3">
+                <Field
+                  label="End year"
+                  value={values.yearEnd}
+                  onChange={(value) => updateChronologyField("yearEnd", value)}
+                  placeholder="412"
+                  inputMode="numeric"
+                  hint="Optional for instantaneous events."
+                />
+                <Field
+                  label="End month"
+                  value={values.monthEnd}
+                  onChange={(value) => updateChronologyField("monthEnd", value)}
+                  placeholder="3"
+                  inputMode="numeric"
+                  hint="Optional. Requires an end year."
+                />
+                <Field
+                  label="End day"
+                  value={values.dayEnd}
+                  onChange={(value) => updateChronologyField("dayEnd", value)}
+                  placeholder="18"
+                  inputMode="numeric"
+                  hint="Optional. Requires an end month."
+                />
+              </div>
+            </ChronologyPanel>
+          </div>
         </section>
 
         <TextareaField
@@ -600,59 +624,6 @@ export function TimelineEventForm({
           />
         </section>
 
-        <section className="space-y-4">
-          <SectionHeader
-            title="Continuity links"
-            description="Define what leads into this event and what follows from it."
-          />
-          <div className="grid gap-4 lg:grid-cols-2">
-            <MultiPickerField
-              addLabel="timeline event"
-              createActionLabel="Create predecessor"
-              label="Predecessor events"
-              values={values.predecessorEventIds}
-              options={formOptions.timelineEventOptions}
-              onChange={(nextValues) => updateField("predecessorEventIds", nextValues)}
-              hint="Events that feed into this one."
-              loading={formOptions.loading}
-              onCreate={
-                inlineCreationContext
-                  ? () =>
-                      openInlineCreate({
-                        description:
-                          "Create a new earlier timeline event and link it as a predecessor.",
-                        fieldKey: "predecessorEventIds",
-                        target: "timelineEvent",
-                        title: "Create predecessor event",
-                      })
-                  : undefined
-              }
-            />
-            <MultiPickerField
-              addLabel="timeline event"
-              createActionLabel="Create successor"
-              label="Successor events"
-              values={values.successorEventIds}
-              options={formOptions.timelineEventOptions}
-              onChange={(nextValues) => updateField("successorEventIds", nextValues)}
-              hint="Events that happen because of this one."
-              loading={formOptions.loading}
-              onCreate={
-                inlineCreationContext
-                  ? () =>
-                      openInlineCreate({
-                        description:
-                          "Create a new later timeline event and link it as a successor.",
-                        fieldKey: "successorEventIds",
-                        target: "timelineEvent",
-                        title: "Create successor event",
-                      })
-                  : undefined
-              }
-            />
-          </div>
-        </section>
-
         <TextareaField
           label="Public wiki summary"
           value={values.publicWikiSummary}
@@ -734,6 +705,28 @@ export function TimelineEventForm({
       ...current,
       [key]: value,
     }));
+  }
+
+  function updateChronologyField(
+    key:
+      | "yearStart"
+      | "monthStart"
+      | "dayStart"
+      | "yearEnd"
+      | "monthEnd"
+      | "dayEnd"
+      | "chronologyOrder",
+    value: string
+  ) {
+    const sanitizedValue = sanitizeChronologyInput(key, value);
+
+    setValues((current) =>
+      applyChronologyFieldUpdate(current, key, sanitizedValue)
+    );
+
+    if (error) {
+      setError(null);
+    }
   }
 }
 
@@ -902,6 +895,24 @@ function MultiPickerField({
 
       {hint ? <p className="mt-3 text-xs text-zinc-500">{hint}</p> : null}
     </div>
+  );
+}
+
+function ChronologyPanel({
+  children,
+  description,
+  title,
+}: {
+  children: ReactNode;
+  description: string;
+  title: string;
+}) {
+  return (
+    <section className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5">
+      <h4 className="text-base font-semibold tracking-tight text-zinc-950">{title}</h4>
+      <p className="mt-2 text-sm leading-6 text-zinc-600">{description}</p>
+      <div className="mt-4 space-y-4">{children}</div>
+    </section>
   );
 }
 
@@ -1195,28 +1206,6 @@ function TimelineInlineCreateLightbox({
           />
         </InlineCreateShell>
       );
-    case "timelineEvent":
-      return (
-        <InlineCreateShell description={state.description} onClose={onClose} title={state.title}>
-          <TimelineEventForm
-            inlineCreationContext={null}
-            onCancel={onClose}
-            submitLabel="Create timeline event"
-            onSubmit={async (values) => {
-              const timelineEventId = await createTimelineEventForProject(
-                uid,
-                activeProjectId,
-                values
-              );
-              onCreated({
-                value: timelineEventId,
-                label: values.title,
-                meta: buildTimelineEventMeta(values),
-              });
-            }}
-          />
-        </InlineCreateShell>
-      );
   }
 }
 
@@ -1305,10 +1294,6 @@ function mergeTimelineFormOptions(
     temporaryOptionsByTarget.plotThread
   );
   const themeOptions = mergeReferenceOptions(base.themeOptions, temporaryOptionsByTarget.theme);
-  const timelineEventOptions = mergeReferenceOptions(
-    base.timelineEventOptions,
-    temporaryOptionsByTarget.timelineEvent
-  );
 
   return {
     ...base,
@@ -1324,7 +1309,7 @@ function mergeTimelineFormOptions(
     technologyOptions,
     plotThreadOptions,
     themeOptions,
-    timelineEventOptions,
+    timelineEventOptions: base.timelineEventOptions,
     referenceSets: {
       bookIds: buildTimelineReferenceSet(bookOptions),
       chapterIds: buildTimelineReferenceSet(chapterOptions),
@@ -1338,7 +1323,7 @@ function mergeTimelineFormOptions(
       technologyIds: buildTimelineReferenceSet(technologyOptions),
       plotThreadIds: buildTimelineReferenceSet(plotThreadOptions),
       themeIds: buildTimelineReferenceSet(themeOptions),
-      timelineEventIds: buildTimelineReferenceSet(timelineEventOptions),
+      timelineEventIds: buildTimelineReferenceSet(base.timelineEventOptions),
     },
     referenceMaps: {
       bookIds: buildTimelineReferenceMap(bookOptions),
@@ -1353,7 +1338,7 @@ function mergeTimelineFormOptions(
       technologyIds: buildTimelineReferenceMap(technologyOptions),
       plotThreadIds: buildTimelineReferenceMap(plotThreadOptions),
       themeIds: buildTimelineReferenceMap(themeOptions),
-      timelineEventIds: buildTimelineReferenceMap(timelineEventOptions),
+      timelineEventIds: buildTimelineReferenceMap(base.timelineEventOptions),
     },
   } satisfies TimelineFormOptionsResult;
 }
@@ -1403,6 +1388,66 @@ function appendUniqueValue(values: string[], nextValue: string) {
   return values.includes(nextValue) ? values : [...values, nextValue];
 }
 
+function sanitizeChronologyInput(
+  key:
+    | "yearStart"
+    | "monthStart"
+    | "dayStart"
+    | "yearEnd"
+    | "monthEnd"
+    | "dayEnd"
+    | "chronologyOrder",
+  value: string
+) {
+  if (key === "yearStart" || key === "yearEnd") {
+    const trimmedValue = value.trimStart();
+    const hasNegativeSign = trimmedValue.startsWith("-");
+    const digitsOnly = trimmedValue.replace(/\D/g, "");
+
+    return hasNegativeSign ? `-${digitsOnly}` : digitsOnly;
+  }
+
+  return value.replace(/[^0-9]/g, "");
+}
+
+function applyChronologyFieldUpdate(
+  current: TimelineEventFormValues,
+  key:
+    | "yearStart"
+    | "monthStart"
+    | "dayStart"
+    | "yearEnd"
+    | "monthEnd"
+    | "dayEnd"
+    | "chronologyOrder",
+  value: string
+) {
+  const next = {
+    ...current,
+    [key]: value,
+  };
+
+  if (key === "yearStart" && !value.trim()) {
+    next.monthStart = "";
+    next.dayStart = "";
+  }
+
+  if (key === "monthStart" && !value.trim()) {
+    next.dayStart = "";
+  }
+
+  if (key === "yearEnd" && !value.trim()) {
+    next.monthEnd = "";
+    next.dayEnd = "";
+  }
+
+  if (key === "monthEnd" && !value.trim()) {
+    next.dayEnd = "";
+  }
+
+  return next;
+}
+
 function buildYearMeta(startYear: number | null, endYear: number | null) {
   if (typeof startYear === "number" && typeof endYear === "number") {
     return startYear === endYear ? String(startYear) : `${startYear}-${endYear}`;
@@ -1417,41 +1462,4 @@ function buildYearMeta(startYear: number | null, endYear: number | null) {
   }
 
   return undefined;
-}
-
-function buildTimelineEventMeta(values: NormalizedTimelineEventFormValues) {
-  if (values.displayDateLabel) {
-    return values.displayDateLabel;
-  }
-
-  const start = buildTimelineEventDatePart(values.yearStart, values.monthStart, values.dayStart);
-  const end = buildTimelineEventDatePart(values.yearEnd, values.monthEnd, values.dayEnd);
-
-  if (start && end && start !== end) {
-    return `${start} - ${end}`;
-  }
-
-  return start ?? end ?? undefined;
-}
-
-function buildTimelineEventDatePart(
-  year: number | null,
-  month: number | null,
-  day: number | null
-) {
-  if (typeof year !== "number") {
-    return null;
-  }
-
-  const parts = [String(year)];
-
-  if (typeof month === "number") {
-    parts.push(String(month).padStart(2, "0"));
-  }
-
-  if (typeof day === "number") {
-    parts.push(String(day).padStart(2, "0"));
-  }
-
-  return parts.join("-");
 }

@@ -302,22 +302,6 @@ export function buildTimelineLinkedReferenceGroups(
       knownIds: new Set(referenceMaps.themeIds.keys()),
       optionMap: referenceMaps.themeIds,
     }),
-    buildReferenceGroup({
-      entityType: "timelineEvent",
-      label: "Predecessors",
-      eventIds: timelineEvent.predecessorEventIds,
-      basePath: "/timeline-events",
-      knownIds: new Set(referenceMaps.timelineEventIds.keys()),
-      optionMap: referenceMaps.timelineEventIds,
-    }),
-    buildReferenceGroup({
-      entityType: "timelineEvent",
-      label: "Successors",
-      eventIds: timelineEvent.successorEventIds,
-      basePath: "/timeline-events",
-      knownIds: new Set(referenceMaps.timelineEventIds.keys()),
-      optionMap: referenceMaps.timelineEventIds,
-    }),
   ].filter((group): group is TimelineLinkedReferenceGroup => group !== null);
 }
 

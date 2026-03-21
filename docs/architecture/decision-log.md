@@ -114,3 +114,9 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: Timeline surface consolidation
 - Decision: `/timeline` is the only top-level timeline browse/create surface, while `/timeline-events` detail and edit routes remain supporting views over the same `timeline_events` records.
 - Why it stays in force: This reduces redundant chronology navigation, keeps creation inside the higher-value visual workspace, and preserves one source of truth without removing the dedicated record-level routes that still help with inspection and focused editing.
+
+### D-018
+
+- Origin: Timeline chronology simplification pass
+- Decision: Dated timeline events must sort strictly from their chronology fields, while insertion hints from timeline notches may remain only as hidden ordering help for undated events instead of a user-authored continuity model.
+- Why it stays in force: This matches the product expectation that editing date fields should move blocks directly, avoids letting hidden relationship data override explicit chronology, keeps the workspace derived from `timeline_events`, and still preserves a lightweight way to keep undated blocks stable without introducing a second persisted ordering model.

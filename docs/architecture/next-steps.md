@@ -30,19 +30,19 @@ This file tracks the short-term development direction implied by the current rep
 
 ## Next Recommended Focus
 
-- timeline-linked creation flow and deeper workspace inspection
+- chronology integrity and cost-aware timeline loading
 
 Reason:
-The current long-term entity set now has first-pass slices, `/timeline` is a real visual workspace, and timeline authoring now includes insertion notches, an inline composer sheet, picker-style linking, linked-label resolution, shared linked-ID validation, and year/month/day chronology precision with same-date ordering. The next biggest value is reducing context switching further by letting timeline authoring create missing linked records inline and by making block inspection denser without leaving the workspace.
+The current long-term entity set now has first-pass slices, `/timeline` is a real visual workspace, and timeline authoring already includes insertion notches, an inline composer sheet, picker-style linking, nested inline linked-record creation, nested linked-record inspection, shared linked-ID validation, and year/month/day chronology precision with same-date ordering. The next biggest value is making chronology rules harder to contradict and making the timeline route cheaper to keep open.
 
 Recommended scope for that pass:
 
 - keep `/timeline` derived from `timeline_events` rather than introducing a second chronology collection
-- let the timeline composer create or stub missing linked records for the most-used slices without inventing a second persistence model
-- surface deeper inline summaries or hover/detail previews from timeline blocks and quick-nav items
-- tighten chronology integrity checks around predecessor/successor and linked manuscript records
-- keep extending linked navigation where existing IDs already point at real slices
-- refresh docs as the timeline layer becomes more precise and inspectable
+- tighten chronology integrity checks around partial dates, same-date sequence ordering, and multi-day ranges now that dated placement is date-first
+- decide whether the current freeform `timeOfDayLabel` should stay display-only or grow into a real sortable time field for same-day events
+- reduce duplicate and always-on listeners in the timeline workspace by sharing or lazily loading picker/detail reference data where possible
+- extend timeline linking only where there is clear workflow payoff, starting with already-implemented slices that authors are likely to need inside chronology work
+- refresh docs as the continuity rules and timeline loading strategy become more explicit
 
 ## Follow-Up Cleanup Items
 
@@ -73,5 +73,5 @@ Recommended scope for that pass:
 - dedicated delete flow for Attachments
 - dedicated delete flow for AI Sessions
 - richer cross-entity pickers, linked navigation, and validation
-- deeper timeline continuity features on top of the current `/timeline` workspace
+- richer chronology tooling on top of the current `/timeline` workspace
 - later specialized slices building on top of `ai_sessions` and richer file workflows

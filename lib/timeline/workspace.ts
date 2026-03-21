@@ -144,20 +144,24 @@ export function buildTimelineWorkspaceModel(
 
 export function sortTimelineEvents(timelineEvents: TimelineEvent[]) {
   const baseSortedTimelineEvents = [...timelineEvents].sort(compareTimelineEvents);
-  return reorderTimelineEventsWithinAnchorGroups(baseSortedTimelineEvents);
+  return reorderUndatedTimelineEvents(baseSortedTimelineEvents);
 }
 
 export function compareTimelineEvents(left: TimelineEvent, right: TimelineEvent) {
-  const startYearComparison = compareNullablePrecisionValue(left.yearStart, right.yearStart);
+  const startYearComparison = compareTimelineAnchorYear(
+    getTimelineEventAnchorYear(left),
+    getTimelineEventAnchorYear(right)
+  );
 
   if (startYearComparison !== 0) {
     return startYearComparison;
   }
 
-  const insertionComparison = compareTimelineEventAdjacency(left, right);
+  const leftAnchorYear = getTimelineEventAnchorYear(left);
+  const rightAnchorYear = getTimelineEventAnchorYear(right);
 
-  if (insertionComparison !== 0) {
-    return insertionComparison;
+  if (leftAnchorYear === null && rightAnchorYear === null) {
+    return compareUndatedTimelineEvents(left, right);
   }
 
   const startMonthComparison = compareNullablePrecisionValue(left.monthStart, right.monthStart);
@@ -300,24 +304,10 @@ export function hasTimelineContinuityLinks(timelineEvent: TimelineEvent) {
 
 export function getTimelineWorkspaceIssues(
   timelineEvent: TimelineEvent,
-  knownTimelineEventIds: ReadonlySet<string>,
+  _knownTimelineEventIds: ReadonlySet<string>,
   referenceSets?: TimelineReferenceSets | null
 ): TimelineWorkspaceIssue[] {
   const issues: TimelineWorkspaceIssue[] = [];
-
-  if (timelineEvent.predecessorEventIds.includes(timelineEvent.id)) {
-    issues.push({
-      severity: "warning",
-      message: "This event lists itself as a predecessor.",
-    });
-  }
-
-  if (timelineEvent.successorEventIds.includes(timelineEvent.id)) {
-    issues.push({
-      severity: "warning",
-      message: "This event lists itself as a successor.",
-    });
-  }
 
   if (
     hasInvalidTimelineEventDateRange(timelineEvent)
@@ -325,39 +315,6 @@ export function getTimelineWorkspaceIssues(
     issues.push({
       severity: "warning",
       message: "End date is earlier than start date.",
-    });
-  }
-
-  const missingPredecessors = timelineEvent.predecessorEventIds.filter(
-    (eventId) => !knownTimelineEventIds.has(eventId)
-  );
-
-  if (missingPredecessors.length > 0) {
-    issues.push({
-      severity: "warning",
-      message: `Missing predecessor IDs: ${missingPredecessors.join(", ")}.`,
-    });
-  }
-
-  const missingSuccessors = timelineEvent.successorEventIds.filter(
-    (eventId) => !knownTimelineEventIds.has(eventId)
-  );
-
-  if (missingSuccessors.length > 0) {
-    issues.push({
-      severity: "warning",
-      message: `Missing successor IDs: ${missingSuccessors.join(", ")}.`,
-    });
-  }
-
-  const overlappingContinuityIds = timelineEvent.predecessorEventIds.filter((eventId) =>
-    timelineEvent.successorEventIds.includes(eventId)
-  );
-
-  if (overlappingContinuityIds.length > 0) {
-    issues.push({
-      severity: "warning",
-      message: `IDs appear in both predecessor and successor lists: ${overlappingContinuityIds.join(", ")}.`,
     });
   }
 
@@ -453,47 +410,83 @@ function compareNullablePrecisionValue(left: number | null, right: number | null
   return 0;
 }
 
-function compareTimelineEventAdjacency(left: TimelineEvent, right: TimelineEvent) {
-  const leftBeforeRight =
-    left.successorEventIds.includes(right.id) || right.predecessorEventIds.includes(left.id);
-  const leftAfterRight =
-    left.predecessorEventIds.includes(right.id) || right.successorEventIds.includes(left.id);
-
-  if (leftBeforeRight === leftAfterRight) {
-    return 0;
+function compareTimelineAnchorYear(left: number | null, right: number | null) {
+  if (typeof left === "number" && typeof right === "number") {
+    return left - right;
   }
 
-  return leftBeforeRight ? -1 : 1;
+  if (typeof left === "number") {
+    return -1;
+  }
+
+  if (typeof right === "number") {
+    return 1;
+  }
+
+  return 0;
 }
 
-function reorderTimelineEventsWithinAnchorGroups(timelineEvents: TimelineEvent[]) {
+function compareUndatedTimelineEvents(left: TimelineEvent, right: TimelineEvent) {
+  const createdAtComparison = compareTimelineEventCreatedAt(left, right);
+
+  if (createdAtComparison !== 0) {
+    return createdAtComparison;
+  }
+
+  return left.title.localeCompare(right.title);
+}
+
+function compareTimelineEventCreatedAt(left: TimelineEvent, right: TimelineEvent) {
+  const leftCreatedAt = left.createdAt?.toMillis() ?? null;
+  const rightCreatedAt = right.createdAt?.toMillis() ?? null;
+
+  if (typeof leftCreatedAt === "number" && typeof rightCreatedAt === "number") {
+    return leftCreatedAt - rightCreatedAt;
+  }
+
+  if (typeof leftCreatedAt === "number") {
+    return -1;
+  }
+
+  if (typeof rightCreatedAt === "number") {
+    return 1;
+  }
+
+  return 0;
+}
+
+function reorderUndatedTimelineEvents(timelineEvents: TimelineEvent[]) {
   if (timelineEvents.length < 2) {
     return timelineEvents;
   }
 
   const orderedTimelineEvents: TimelineEvent[] = [];
   let currentGroup: TimelineEvent[] = [];
-  let currentAnchorKey: string | null = null;
+  let currentGroupIsUndated = false;
 
   for (const timelineEvent of timelineEvents) {
-    const anchorKey = getTimelineAnchorGroupKey(timelineEvent);
+    const isUndated = getTimelineEventAnchorYear(timelineEvent) === null;
 
-    if (currentGroup.length === 0 || anchorKey === currentAnchorKey) {
+    if (currentGroup.length === 0 || isUndated === currentGroupIsUndated) {
       currentGroup.push(timelineEvent);
-      currentAnchorKey = anchorKey;
+      currentGroupIsUndated = isUndated;
       continue;
     }
 
-    orderedTimelineEvents.push(...resolveTimelineAdjacencyOrder(currentGroup));
+    orderedTimelineEvents.push(...flushTimelineGroup(currentGroup, currentGroupIsUndated));
     currentGroup = [timelineEvent];
-    currentAnchorKey = anchorKey;
+    currentGroupIsUndated = isUndated;
   }
 
   if (currentGroup.length > 0) {
-    orderedTimelineEvents.push(...resolveTimelineAdjacencyOrder(currentGroup));
+    orderedTimelineEvents.push(...flushTimelineGroup(currentGroup, currentGroupIsUndated));
   }
 
   return orderedTimelineEvents;
+}
+
+function flushTimelineGroup(timelineEvents: TimelineEvent[], isUndated: boolean) {
+  return isUndated ? resolveTimelineAdjacencyOrder(timelineEvents) : timelineEvents;
 }
 
 function resolveTimelineAdjacencyOrder(timelineEvents: TimelineEvent[]) {
@@ -610,11 +603,6 @@ function insertTimelineIdByBaseIndex(
   }
 
   readyIds.splice(insertAt, 0, nextId);
-}
-
-function getTimelineAnchorGroupKey(timelineEvent: TimelineEvent) {
-  const anchorYear = getTimelineEventAnchorYear(timelineEvent);
-  return typeof anchorYear === "number" ? String(anchorYear) : "undated";
 }
 
 function formatPartialTimelineDate(

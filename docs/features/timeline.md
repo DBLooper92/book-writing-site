@@ -25,6 +25,7 @@ Implemented now as the first derived workspace built on top of an existing slice
 - `/timeline` is the only top-level timeline browse/create surface; legacy `/timeline-events` index and new routes should only redirect here
 - chronology ordering, grouping, and filtering are derived from normalized `TimelineEvent` records
 - chronology precision currently uses start/end year with optional month/day fields, plus an optional same-date sequence number and optional time label
+- dated events sort strictly from chronology fields, while undated blocks can still preserve notch insertion order through hidden internal predecessor/successor hints
 - the workspace UI now uses a split-pane layout with a left quick-map rail, a top filter bar, and a direct chronology pane instead of stacked summary cards above the timeline
 - insertion notches are derived UI affordances, not stored Firestore documents
 - saving a notch-created event without a start or end year should confirm the choice, then inherit the most recent earlier dated block's year when one exists so the new block stays anchored near the clicked insertion point
@@ -48,7 +49,9 @@ The Timeline workspace turns `/timeline` into the sole top-level project-scoped 
 
 ## What Remains Later
 
+- tighter chronology integrity checks around partial dates, same-date ordering, and range precision
+- a decision on whether `timeOfDayLabel` should stay display-only or gain a real sortable time value
+- lighter-weight or lazy reference loading so the workspace does not need every connected slice subscribed on first paint
 - linked-ID validation against more entity slices than the current first-pass connected set
-- richer timeline authoring flows such as hover summaries, deeper block inspection, and more contextual insertion behavior
 - richer chronology models beyond the current year/month/day plus sequence fields, such as calendar-system support or finer-grained timestamps
 - denser or zoomed chronology views for era-scale navigation

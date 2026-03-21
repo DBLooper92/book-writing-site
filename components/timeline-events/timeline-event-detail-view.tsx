@@ -35,7 +35,7 @@ export function TimelineEventDetailView({
 }: TimelineEventDetailViewProps) {
   const linkedGroups = buildTimelineLinkedReferenceGroups(timelineEvent, referenceMaps);
   const manuscriptGroups = linkedGroups.filter((group) =>
-    ["Books", "Chapters", "Scenes", "Predecessors", "Successors"].includes(group.label)
+    ["Books", "Chapters", "Scenes"].includes(group.label)
   );
   const entityGroups = linkedGroups.filter((group) =>
     [
@@ -104,7 +104,7 @@ export function TimelineEventDetailView({
         </div>
       </TimelineEventDetailSection>
 
-      <TimelineEventDetailSection title="Chronology and manuscript links">
+      <TimelineEventDetailSection title="Manuscript links">
         <div className="grid gap-4 lg:grid-cols-2">
           {manuscriptGroups.map((group) => (
             <LinkedGroupBlock

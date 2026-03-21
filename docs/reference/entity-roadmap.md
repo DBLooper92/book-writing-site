@@ -42,7 +42,7 @@ The long-term story-bible model is expected to include at least:
 
 - `none`
 
-Reason: The current long-term entity set now has first-pass slices, so the next value comes from deeper workspace behavior and cross-slice navigation rather than another new collection.
+Reason: The current long-term entity set now has first-pass slices, so the next value comes from chronology integrity, lighter reference loading, and high-value cross-slice navigation rather than another new collection.
 
 ### Manuscript And Chronology Tier
 
@@ -66,4 +66,4 @@ Reason: File metadata and tracked AI workflow records now exist as real slices, 
 
 ## Practical Rule
 
-Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Chapters, Scenes, Characters, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions are already in place; the next biggest value comes from deeper timeline workspace authoring, linked navigation, chronology validation, and richer operational workflows built on top of that structure.
+Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Chapters, Scenes, Characters, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions are already in place; the next biggest value comes from stronger chronology integrity, lighter timeline reference loading, broader high-value linking across the slices that already exist, and richer operational workflows built on top of that structure.
