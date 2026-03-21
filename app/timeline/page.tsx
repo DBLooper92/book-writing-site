@@ -22,7 +22,7 @@ export default function TimelinePage() {
   } = useTimelineWorkspace();
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-6rem)] w-full max-w-400 flex-col px-4 pb-4 pt-4 xl:h-[calc(100vh-6rem)] xl:min-h-0">
+    <main className="flex min-h-[calc(100vh-6rem)] w-full flex-col pt-4 xl:h-[calc(100vh-6rem)] xl:min-h-0 xl:pt-0">
       <h1 className="sr-only">Timeline</h1>
 
       {!user ? (

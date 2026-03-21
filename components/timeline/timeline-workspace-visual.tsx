@@ -161,7 +161,7 @@ export function TimelineWorkspaceVisual({
 
   return (
     <>
-      <section className="grid flex-1 rounded-4xl border border-zinc-200 bg-white shadow-[0_28px_75px_-40px_rgba(24,24,27,0.45)] xl:grid-cols-[22rem_minmax(0,1fr)] xl:overflow-hidden">
+      <section className="grid flex-1 xl:grid-cols-[22rem_minmax(0,1fr)] xl:overflow-hidden">
         <aside className="border-b border-zinc-200 bg-[#fafaf8] xl:h-full xl:overflow-hidden xl:border-b-0 xl:border-r xl:shadow-[20px_0_40px_-32px_rgba(24,24,27,0.55)]">
           <div className="flex h-full flex-col xl:sticky xl:top-0 xl:overflow-y-auto">
             <div className="border-b border-zinc-200 px-5 py-5 sm:px-6">
