@@ -15,8 +15,10 @@ type TimelineWorkspaceControlsProps = {
   totalCount: number;
   visibleCount: number;
   hasActiveFilters: boolean;
+  pinned: boolean;
   onChange: (updates: Partial<TimelineWorkspaceFilters>) => void;
   onReset: () => void;
+  onTogglePinned: () => void;
 };
 
 export function TimelineWorkspaceControls({
@@ -24,38 +26,53 @@ export function TimelineWorkspaceControls({
   totalCount,
   visibleCount,
   hasActiveFilters,
+  pinned,
   onChange,
   onReset,
+  onTogglePinned,
 }: TimelineWorkspaceControlsProps) {
   return (
-    <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <section className="border-b border-zinc-200 bg-white/92 px-4 py-4 backdrop-blur sm:px-6 sm:py-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
             Timeline filters
-          </h2>
+          </p>
           <p className="mt-2 text-sm leading-6 text-zinc-600">
             Showing {visibleCount} of {totalCount} events from the active project.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onReset}
-          disabled={!hasActiveFilters}
-          className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:border-zinc-100 disabled:text-zinc-400"
-        >
-          Reset filters
-        </button>
+        <div className="flex flex-wrap gap-2 lg:justify-end">
+          <button
+            type="button"
+            onClick={onTogglePinned}
+            className={`inline-flex h-10 items-center justify-center rounded-full border px-4 text-sm font-medium transition ${
+              pinned
+                ? "border-zinc-950 bg-zinc-950 text-white hover:bg-zinc-800"
+                : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+            }`}
+          >
+            {pinned ? "Unpin filters" : "Pin filters"}
+          </button>
+          <button
+            type="button"
+            onClick={onReset}
+            disabled={!hasActiveFilters}
+            className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:border-zinc-100 disabled:text-zinc-400"
+          >
+            Reset filters
+          </button>
+        </div>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <Field label="Search">
           <input
             value={filters.search}
             onChange={(event) => onChange({ search: event.target.value })}
             placeholder="Search title, summary, IDs, causes..."
-            className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400"
+            className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400 focus:bg-white"
           />
         </Field>
 
@@ -122,7 +139,7 @@ function SelectField<Value extends string>({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as Value)}
-        className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400"
+        className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400 focus:bg-white"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

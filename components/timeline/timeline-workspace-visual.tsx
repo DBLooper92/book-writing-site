@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { TimelineEventComposerSheet } from "@/components/timeline/timeline-event-composer-sheet";
 import { TimelineEventDetailLightbox } from "@/components/timeline/timeline-event-detail-lightbox";
+import { TimelineWorkspaceControls } from "@/components/timeline/timeline-workspace-controls";
 import { TimelineWorkspaceEventCard } from "@/components/timeline/timeline-workspace-event-card";
 import { useTimelineFormOptions } from "@/hooks/use-timeline-form-options";
 import {
@@ -20,23 +21,40 @@ import {
   clearTimelineCreateSearchParams,
   hasTimelineCreateSearchParams,
 } from "@/lib/timeline/create-route";
-import { formatTimelineEnumValue } from "@/lib/timeline/workspace";
+import {
+  formatTimelineEnumValue,
+  type TimelineWorkspaceFilters,
+  type TimelineWorkspaceStats,
+} from "@/lib/timeline/workspace";
 import type { TimelineEvent, TimelineEventFormValues } from "@/types/timeline-event";
 
 type TimelineWorkspaceVisualProps = {
   activeProjectId: string;
+  activeProjectTitle: string;
+  filters: TimelineWorkspaceFilters;
+  hasActiveFilters: boolean;
+  onChange: (updates: Partial<TimelineWorkspaceFilters>) => void;
+  onReset: () => void;
+  stats: TimelineWorkspaceStats;
   timelineEvents: TimelineEvent[];
   uid: string;
 };
 
 export function TimelineWorkspaceVisual({
   activeProjectId,
+  activeProjectTitle,
+  filters,
+  hasActiveFilters,
+  onChange,
+  onReset,
+  stats,
   timelineEvents,
   uid,
 }: TimelineWorkspaceVisualProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [filtersPinned, setFiltersPinned] = useState(true);
   const [requestedSelectedEventId, setRequestedSelectedEventId] = useState<string | null>(null);
   const [viewerEventId, setViewerEventId] = useState<string | null>(null);
   const [localComposerState, setLocalComposerState] = useState<
@@ -137,100 +155,135 @@ export function TimelineWorkspaceVisual({
     });
   }
 
+  const filterBarClassName = filtersPinned
+    ? "xl:sticky xl:top-0 xl:z-20 xl:shadow-[0_18px_45px_-36px_rgba(24,24,27,0.55)]"
+    : "";
+
   return (
     <>
-      <section className="grid gap-6 xl:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm xl:sticky xl:top-6 xl:self-start">
-          <div className="flex items-start justify-between gap-3">
-            <div>
+      <section className="grid flex-1 rounded-4xl border border-zinc-200 bg-white shadow-[0_28px_75px_-40px_rgba(24,24,27,0.45)] xl:grid-cols-[22rem_minmax(0,1fr)] xl:overflow-hidden">
+        <aside className="border-b border-zinc-200 bg-[#fafaf8] xl:h-full xl:overflow-hidden xl:border-b-0 xl:border-r xl:shadow-[20px_0_40px_-32px_rgba(24,24,27,0.55)]">
+          <div className="flex h-full flex-col xl:sticky xl:top-0 xl:overflow-y-auto">
+            <div className="border-b border-zinc-200 px-5 py-5 sm:px-6">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
                 Quick map
               </p>
-              <h2 className="mt-2 text-lg font-semibold tracking-tight text-zinc-950">
-                Timeline blocks
-              </h2>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <QuickMapStat label="Visible events" value={String(stats.visibleEvents)} />
+                <QuickMapStat
+                  label="Chronology range"
+                  value={formatVisibleRange(stats.earliestVisibleYear, stats.latestVisibleYear)}
+                />
+              </div>
+              <p className="mt-4 text-sm leading-6 text-zinc-600">
+                Jump to any block without moving the left rail out of view.
+              </p>
             </div>
-            <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600">
-              {layout.quickNavItems.length}
-            </span>
-          </div>
 
-          <p className="mt-3 text-sm leading-6 text-zinc-600">
-            Jump by block number while the main timeline stays spaced and readable.
-          </p>
+            <div className="flex-1 px-3 py-3">
+              {layout.quickNavItems.length > 0 ? (
+                <div className="space-y-2">
+                  {layout.quickNavItems.map((quickNavItem) => {
+                    const isSelected = quickNavItem.eventId === selectedEventId;
 
-          <div className="mt-5 max-h-[70vh] space-y-2 overflow-y-auto pr-1">
-            {layout.quickNavItems.map((quickNavItem) => {
-              const isSelected = quickNavItem.eventId === selectedEventId;
-
-              return (
-                <button
-                  key={quickNavItem.eventId}
-                  type="button"
-                  onClick={() => focusEvent(quickNavItem.eventId)}
-                  className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                    isSelected
-                      ? "border-amber-300 bg-amber-50 text-zinc-950"
-                      : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-white"
-                  }`}
-                >
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                    Block {quickNavItem.position}
-                  </p>
-                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                    {quickNavItem.chronologyLabel}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold tracking-tight">{quickNavItem.title}</p>
-                  <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                    {isSelected ? "Selected block" : "Focus block"}
-                  </p>
-                </button>
-              );
-            })}
+                    return (
+                      <button
+                        key={quickNavItem.eventId}
+                        type="button"
+                        onClick={() => focusEvent(quickNavItem.eventId)}
+                        className={`w-full rounded-[1.25rem] border px-4 py-3 text-left transition ${
+                          isSelected
+                            ? "border-zinc-950 bg-zinc-950 text-white"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p
+                              className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${
+                                isSelected ? "text-white/70" : "text-zinc-500"
+                              }`}
+                            >
+                              Block {quickNavItem.position}
+                            </p>
+                            <p
+                              className={`mt-2 truncate text-sm font-semibold tracking-tight ${
+                                isSelected ? "text-white" : "text-zinc-950"
+                              }`}
+                            >
+                              {quickNavItem.title}
+                            </p>
+                            <p
+                              className={`mt-2 text-[11px] uppercase tracking-[0.18em] ${
+                                isSelected ? "text-white/65" : "text-zinc-500"
+                              }`}
+                            >
+                              {quickNavItem.chronologyLabel}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-3xl border border-dashed border-zinc-300 bg-white px-4 py-5 text-sm leading-6 text-zinc-600">
+                  No visible blocks yet. Create a timeline event or loosen the filters to rebuild
+                  the quick map.
+                </div>
+              )}
+            </div>
           </div>
         </aside>
 
-        <section className="rounded-4xl border border-zinc-200 bg-[linear-gradient(180deg,#fffdf8_0%,#ffffff_45%,#fffdf7_100%)] p-6 shadow-sm md:p-8">
-          <div className="mb-6 flex flex-col gap-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                  Core chronology
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-                  Visual timeline
-                </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">
-                  Blank notches are insertion points. Large jumps compress into labeled time skips
-                  so long histories stay readable without losing chronological context.
-                </p>
-              </div>
+        <section className="min-h-0 bg-[linear-gradient(180deg,#fcfcfb_0%,#f8f8f6_100%)] xl:overflow-y-auto">
+          <div className={filterBarClassName}>
+            <TimelineWorkspaceControls
+              filters={filters}
+              totalCount={stats.totalEvents}
+              visibleCount={stats.visibleEvents}
+              hasActiveFilters={hasActiveFilters}
+              pinned={filtersPinned}
+              onChange={onChange}
+              onReset={onReset}
+              onTogglePinned={() => setFiltersPinned((current) => !current)}
+            />
+          </div>
 
-              <div className="flex flex-wrap gap-3">
-                <Link
-                  href={buildTimelineCreateHref()}
-                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-                >
-                  Create timeline event
-                </Link>
-                {selectedTimelineEvent ? (
-                  <button
-                    type="button"
-                    onClick={() => openViewer(selectedTimelineEvent.id)}
-                    className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+          <div className="space-y-6 p-4 sm:p-6 xl:p-8">
+            <section className="rounded-3xl border border-zinc-200 bg-white/85 px-5 py-4 shadow-[0_18px_45px_-38px_rgba(24,24,27,0.45)] backdrop-blur">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                    Chronology
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-600">
+                    Use the quick map to jump between blocks, then add new events from the open
+                    notches in the main timeline.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    href={buildTimelineCreateHref()}
+                    className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
                   >
-                    View selected event
-                  </button>
-                ) : null}
+                    Create timeline event
+                  </Link>
+                  {selectedTimelineEvent ? (
+                    <button
+                      type="button"
+                      onClick={() => openViewer(selectedTimelineEvent.id)}
+                      className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+                    >
+                      View selected event
+                    </button>
+                  ) : null}
+                </div>
               </div>
-            </div>
 
-            {selectedTimelineEvent ? (
-              <div className="rounded-3xl border border-amber-200 bg-amber-50/70 px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-900">
-                  Selected block
-                </p>
-                <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              {selectedTimelineEvent ? (
+                <div className="mt-4 flex flex-col gap-2 border-t border-zinc-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-base font-semibold tracking-tight text-zinc-950">
                       {selectedTimelineEvent.title}
@@ -239,56 +292,70 @@ export function TimelineWorkspaceVisual({
                       {formatTimelineEnumValue(selectedTimelineEvent.status)}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => openViewer(selectedTimelineEvent.id)}
-                    className="inline-flex h-10 items-center justify-center rounded-full bg-white px-4 text-sm font-medium text-zinc-700 ring-1 ring-amber-200 transition hover:bg-amber-100/50"
-                  >
-                    View Event
-                  </button>
+                  <p className="text-sm text-zinc-600">
+                    Selected block {layout.quickNavItems.find((item) => item.eventId === selectedTimelineEvent.id)?.position ?? 1}
+                  </p>
                 </div>
-              </div>
+              ) : null}
+            </section>
+
+            {stats.totalEvents === 0 ? (
+              <TimelineStateCard>
+                No timeline events exist in {activeProjectTitle} yet. Use the create button or the
+                first insertion notch below to start the chronology.
+              </TimelineStateCard>
             ) : null}
-          </div>
 
-          <div className="relative">
-            <div className="absolute bottom-10 left-6 top-10 w-px bg-linear-to-b from-amber-300 via-zinc-300 to-amber-300 md:left-1/2 md:-translate-x-1/2" />
+            {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
+              <TimelineStateCard>
+                No timeline events match the current filters. Reset or adjust the filters to bring
+                blocks back into view.
+              </TimelineStateCard>
+            ) : null}
 
-            <div className="space-y-5 md:space-y-6">
-              {layout.items.map((item) => {
-                if (item.kind === "event") {
-                  return (
-                    <TimelineEventRow
-                      key={item.id}
-                      eventItem={item}
-                      isSelected={item.timelineEvent.id === selectedEventId}
-                      onSelect={focusEvent}
-                      onView={openViewer}
-                      registerRef={registerEventRef}
-                    />
-                  );
-                }
+            {(stats.totalEvents === 0 || timelineEvents.length > 0) && (
+              <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-[0_20px_45px_-38px_rgba(24,24,27,0.4)] sm:p-6">
+                <div className="relative">
+                  <div className="absolute bottom-10 left-6 top-10 w-px bg-linear-to-b from-zinc-300 via-zinc-200 to-zinc-300 md:left-1/2 md:-translate-x-1/2" />
 
-                if (item.kind === "gap") {
-                  return <TimelineGapRow key={item.id} gapItem={item} />;
-                }
+                  <div className="space-y-5 md:space-y-6">
+                    {layout.items.map((item) => {
+                      if (item.kind === "event") {
+                        return (
+                          <TimelineEventRow
+                            key={item.id}
+                            eventItem={item}
+                            isSelected={item.timelineEvent.id === selectedEventId}
+                            onSelect={focusEvent}
+                            onView={openViewer}
+                            registerRef={registerEventRef}
+                          />
+                        );
+                      }
 
-                return (
-                  <TimelineInsertionRow
-                    key={item.id}
-                    insertionItem={item}
-                    onOpenComposer={(nextInsertionItem) =>
-                      setLocalComposerState({
-                        initialValuesOverride: null,
-                        mode: "create",
-                        insertionItem: nextInsertionItem,
-                        source: "local",
-                      })
-                    }
-                  />
-                );
-              })}
-            </div>
+                      if (item.kind === "gap") {
+                        return <TimelineGapRow key={item.id} gapItem={item} />;
+                      }
+
+                      return (
+                        <TimelineInsertionRow
+                          key={item.id}
+                          insertionItem={item}
+                          onOpenComposer={(nextInsertionItem) =>
+                            setLocalComposerState({
+                              initialValuesOverride: null,
+                              mode: "create",
+                              insertionItem: nextInsertionItem,
+                              source: "local",
+                            })
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+            )}
           </div>
         </section>
       </section>
@@ -335,6 +402,31 @@ export function TimelineWorkspaceVisual({
   );
 }
 
+function QuickMapStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[1.25rem] border border-zinc-200 bg-white px-4 py-3">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+        {label}
+      </p>
+      <p className="mt-2 text-lg font-semibold tracking-tight text-zinc-950">{value}</p>
+    </div>
+  );
+}
+
+function TimelineStateCard({ children }: { children: ReactNode }) {
+  return (
+    <section className="rounded-3xl border border-zinc-300 bg-zinc-50 px-5 py-4 text-sm leading-6 text-zinc-600">
+      {children}
+    </section>
+  );
+}
+
 function TimelineEventRow({
   eventItem,
   isSelected,
@@ -370,8 +462,8 @@ function TimelineEventRow({
           onClick={() => onSelect(eventItem.timelineEvent.id)}
           className={`flex min-h-12 min-w-12 items-center justify-center rounded-full border-4 px-2 text-sm font-semibold tabular-nums transition ${
             isSelected
-              ? "border-amber-200 bg-amber-400 text-amber-950"
-              : "border-white bg-zinc-950 text-white hover:bg-zinc-800"
+              ? "border-zinc-200 bg-zinc-950 text-white"
+              : "border-white bg-zinc-300 text-zinc-950 hover:bg-zinc-400"
           }`}
           aria-label={`Focus ${eventItem.timelineEvent.title}`}
         >
@@ -391,7 +483,7 @@ function TimelineGapRow({ gapItem }: { gapItem: TimelineLayoutGapItem }) {
       }}
     >
       <div className="absolute left-6 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center md:left-1/2">
-        <div className="rounded-full border border-amber-200 bg-white/90 px-4 py-2 text-center shadow-sm backdrop-blur">
+        <div className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-center shadow-sm">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
             Time jump
           </p>
@@ -422,7 +514,7 @@ function TimelineInsertionRow({
         <button
           type="button"
           onClick={() => onOpenComposer(insertionItem)}
-          className="flex h-11 w-11 items-center justify-center rounded-full border-4 border-white bg-amber-400 text-xl font-semibold text-amber-950 shadow-sm transition hover:bg-amber-300"
+          className="flex h-11 w-11 items-center justify-center rounded-full border-4 border-white bg-zinc-950 text-xl font-semibold text-white shadow-sm transition hover:bg-zinc-800"
           aria-label={insertionItem.label}
         >
           +
@@ -473,4 +565,12 @@ function TimelineEventPendingLightbox({
       </div>
     </div>
   );
+}
+
+function formatVisibleRange(earliestYear: number | null, latestYear: number | null) {
+  if (typeof earliestYear !== "number" || typeof latestYear !== "number") {
+    return "Undated";
+  }
+
+  return earliestYear === latestYear ? String(earliestYear) : `${earliestYear}-${latestYear}`;
 }

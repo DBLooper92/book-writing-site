@@ -3,11 +3,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { PageShell } from "@/components/layout/page-shell";
-import { TimelineWorkspaceControls } from "@/components/timeline/timeline-workspace-controls";
 import { TimelineWorkspaceVisual } from "@/components/timeline/timeline-workspace-visual";
 import { useTimelineWorkspace } from "@/hooks/use-timeline-workspace";
-import { buildTimelineCreateHref } from "@/lib/timeline/create-route";
 
 export default function TimelinePage() {
   const {
@@ -25,37 +22,8 @@ export default function TimelinePage() {
   } = useTimelineWorkspace();
 
   return (
-    <PageShell
-      eyebrow="Timeline"
-      title="Timeline workspace"
-      description="Browse and author chronology as a project-scoped visual timeline built directly on top of timeline_events. This pass keeps timeline creation inside the workspace with a center-line layout, quick navigation, derived insertion notches, and compressed time-jump markers."
-    >
-      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
-              Active project context
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
-              {activeProject
-                ? `Viewing chronology for ${activeProject.title} (${activeProject.id}).`
-                : "Choose an active project to browse timeline data."}
-            </p>
-            <p className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Scope: users/{`{uid}`}/projects/{activeProjectId ?? "{projectId}"}/timeline_events
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href={buildTimelineCreateHref()}
-              className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-            >
-              Create timeline event
-            </Link>
-          </div>
-        </div>
-      </section>
+    <main className="mx-auto flex min-h-[calc(100vh-6rem)] w-full max-w-400 flex-col px-4 pb-4 pt-4 xl:h-[calc(100vh-6rem)] xl:min-h-0">
+      <h1 className="sr-only">Timeline</h1>
 
       {!user ? (
         <StateCard tone="warning">
@@ -78,87 +46,19 @@ export default function TimelinePage() {
       ) : error ? (
         <StateCard tone="error">{error}</StateCard>
       ) : (
-        <>
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              label="Visible events"
-              value={String(workspace.stats.visibleEvents)}
-              description={`${workspace.stats.totalEvents} total in the active project.`}
-            />
-            <StatCard
-              label="Dated events"
-              value={String(workspace.stats.datedEvents)}
-              description={`${workspace.stats.undatedEvents} undated event${workspace.stats.undatedEvents === 1 ? "" : "s"} still need placement.`}
-            />
-            <StatCard
-              label="Chronology range"
-              value={formatVisibleRange(
-                workspace.stats.earliestVisibleYear,
-                workspace.stats.latestVisibleYear
-              )}
-              description="Based on the visible filtered result set."
-            />
-            <StatCard
-              label="Continuity-linked"
-              value={String(workspace.stats.continuityLinkedEvents)}
-              description={`${workspace.stats.archivedEvents} archived event${workspace.stats.archivedEvents === 1 ? "" : "s"} across the whole project.`}
-            />
-          </section>
-
-          <TimelineWorkspaceControls
-            filters={filters}
-            totalCount={workspace.stats.totalEvents}
-            visibleCount={workspace.stats.visibleEvents}
-            hasActiveFilters={hasActiveFilters}
-            onChange={updateFilters}
-            onReset={resetFilters}
-          />
-
-          {workspace.stats.totalEvents === 0 ? (
-            <>
-              <StateCard tone="neutral">
-                No timeline events exist in {activeProject.title} yet. Use the create button or
-                the first insertion notch below to start the chronology.
-              </StateCard>
-              <TimelineWorkspaceVisual
-                activeProjectId={activeProjectId}
-                timelineEvents={workspace.filteredEvents}
-                uid={uid}
-              />
-            </>
-          ) : workspace.filteredEvents.length === 0 ? (
-            <StateCard tone="neutral">
-              No timeline events match the current filters. Adjust or reset the filters to
-              restore the chronology view.
-            </StateCard>
-          ) : (
-            <TimelineWorkspaceVisual
-              activeProjectId={activeProjectId}
-              timelineEvents={workspace.filteredEvents}
-              uid={uid}
-            />
-          )}
-        </>
+        <TimelineWorkspaceVisual
+          activeProjectId={activeProjectId}
+          activeProjectTitle={activeProject.title}
+          filters={filters}
+          hasActiveFilters={hasActiveFilters}
+          onChange={updateFilters}
+          onReset={resetFilters}
+          stats={workspace.stats}
+          timelineEvents={workspace.filteredEvents}
+          uid={uid}
+        />
       )}
-    </PageShell>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  description,
-}: {
-  label: string;
-  value: string;
-  description: string;
-}) {
-  return (
-    <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">{label}</p>
-      <p className="mt-3 text-3xl font-semibold tracking-tight text-zinc-950">{value}</p>
-      <p className="mt-3 text-sm leading-6 text-zinc-600">{description}</p>
-    </section>
+    </main>
   );
 }
 
@@ -177,16 +77,10 @@ function StateCard({
         : "border-zinc-300 bg-zinc-50 text-zinc-600";
 
   return (
-    <section className={`rounded-3xl border p-6 text-sm leading-6 ${className}`}>
-      {children}
+    <section className="flex flex-1 items-center justify-center">
+      <div className={`w-full max-w-3xl rounded-4xl border p-6 text-sm leading-6 ${className}`}>
+        {children}
+      </div>
     </section>
   );
-}
-
-function formatVisibleRange(earliestYear: number | null, latestYear: number | null) {
-  if (typeof earliestYear !== "number" || typeof latestYear !== "number") {
-    return "Undated";
-  }
-
-  return earliestYear === latestYear ? String(earliestYear) : `${earliestYear}-${latestYear}`;
 }

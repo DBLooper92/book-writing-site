@@ -88,12 +88,13 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - working `/timeline` route built on `timeline_events` as the sole top-level timeline surface
 - shared chronology utilities for sorting, filtering, grouping, and formatting normalized timeline records
 - timeline workspace hook for active-project chronology browsing
+- split-pane workspace layout with a floating quick-map rail and a dedicated chronology pane on large screens
 - center-line visual chronology with alternating event blocks
 - derived numeric block markers that renumber from the current sorted chronology
-- sticky quick-navigation list for dense event scanning and jump-to-block behavior
+- sticky quick-map rail with embedded visible-event and chronology-range stats plus jump-to-block behavior
 - derived insertion notches before, between, and after event blocks
 - compressed time-jump markers for large year gaps without proportional blank spacing
-- filters for search, status, event type, dating coverage, and link scope
+- filters for search, status, event type, dating coverage, and link scope, plus pin/unpin behavior for the chronology-pane filter bar
 - chronology sorting that uses year, optional month/day precision, and same-date sequence ordering
 - validation warnings for invalid date ranges, missing continuity IDs, and missing linked slice records
 - query-driven timeline create entry points that can prefill predecessor, successor, and shared-year context inside `/timeline`
