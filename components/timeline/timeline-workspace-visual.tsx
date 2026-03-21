@@ -22,7 +22,6 @@ import {
   hasTimelineCreateSearchParams,
 } from "@/lib/timeline/create-route";
 import {
-  formatTimelineEnumValue,
   type TimelineWorkspaceFilters,
   type TimelineWorkspaceStats,
 } from "@/lib/timeline/workspace";
@@ -165,14 +164,15 @@ export function TimelineWorkspaceVisual({
         <aside className="border-b border-zinc-200 bg-[#fafaf8] xl:h-full xl:overflow-hidden xl:border-b-0 xl:border-r xl:shadow-[20px_0_40px_-32px_rgba(24,24,27,0.55)]">
           <div className="flex h-full flex-col xl:sticky xl:top-0 xl:overflow-y-auto">
             <div className="border-b border-zinc-200 px-5 py-5 sm:px-6">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                Quick map
-              </p>
               <div className="mt-4 grid grid-cols-2 gap-3">
-                <QuickMapStat label="Visible events" value={String(stats.visibleEvents)} />
+                <QuickMapStat label="Total events" value={String(stats.totalEvents)} />
+                <QuickMapStat label="Showing now" value={String(stats.visibleEvents)} />
+              </div>
+              <div className="mt-3">
                 <QuickMapStat
                   label="Chronology range"
-                  value={formatVisibleRange(stats.earliestVisibleYear, stats.latestVisibleYear)}
+                  value={formatChronologySpan(timelineEvents)}
+                  fullWidth
                 />
               </div>
               <p className="mt-4 text-sm leading-6 text-zinc-600">
@@ -251,19 +251,23 @@ export function TimelineWorkspaceVisual({
           </div>
 
           <div className="space-y-6 p-4 sm:p-6 xl:p-8">
-            <section className="rounded-3xl border border-zinc-200 bg-white/85 px-5 py-4 shadow-[0_18px_45px_-38px_rgba(24,24,27,0.45)] backdrop-blur">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                    Chronology
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-zinc-600">
-                    Use the quick map to jump between blocks, then add new events from the open
-                    notches in the main timeline.
-                  </p>
-                </div>
+            {stats.totalEvents === 0 ? (
+              <TimelineStateCard>
+                No timeline events exist in {activeProjectTitle} yet. Use the create button or the
+                first insertion notch below to start the chronology.
+              </TimelineStateCard>
+            ) : null}
 
-                <div className="flex flex-wrap gap-3">
+            {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
+              <TimelineStateCard>
+                No timeline events match the current filters. Reset or adjust the filters to bring
+                blocks back into view.
+              </TimelineStateCard>
+            ) : null}
+
+            {(stats.totalEvents === 0 || timelineEvents.length > 0) && (
+              <section className="pb-8">
+                <div className="mb-6 flex flex-wrap gap-3">
                   <Link
                     href={buildTimelineCreateHref()}
                     className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
@@ -280,41 +284,7 @@ export function TimelineWorkspaceVisual({
                     </button>
                   ) : null}
                 </div>
-              </div>
 
-              {selectedTimelineEvent ? (
-                <div className="mt-4 flex flex-col gap-2 border-t border-zinc-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-base font-semibold tracking-tight text-zinc-950">
-                      {selectedTimelineEvent.title}
-                    </p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      {formatTimelineEnumValue(selectedTimelineEvent.status)}
-                    </p>
-                  </div>
-                  <p className="text-sm text-zinc-600">
-                    Selected block {layout.quickNavItems.find((item) => item.eventId === selectedTimelineEvent.id)?.position ?? 1}
-                  </p>
-                </div>
-              ) : null}
-            </section>
-
-            {stats.totalEvents === 0 ? (
-              <TimelineStateCard>
-                No timeline events exist in {activeProjectTitle} yet. Use the create button or the
-                first insertion notch below to start the chronology.
-              </TimelineStateCard>
-            ) : null}
-
-            {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
-              <TimelineStateCard>
-                No timeline events match the current filters. Reset or adjust the filters to bring
-                blocks back into view.
-              </TimelineStateCard>
-            ) : null}
-
-            {(stats.totalEvents === 0 || timelineEvents.length > 0) && (
-              <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-[0_20px_45px_-38px_rgba(24,24,27,0.4)] sm:p-6">
                 <div className="relative">
                   <div className="absolute bottom-10 left-6 top-10 w-px bg-linear-to-b from-zinc-300 via-zinc-200 to-zinc-300 md:left-1/2 md:-translate-x-1/2" />
 
@@ -405,12 +375,18 @@ export function TimelineWorkspaceVisual({
 function QuickMapStat({
   label,
   value,
+  fullWidth = false,
 }: {
   label: string;
   value: string;
+  fullWidth?: boolean;
 }) {
   return (
-    <div className="rounded-[1.25rem] border border-zinc-200 bg-white px-4 py-3">
+    <div
+      className={`rounded-[1.25rem] border border-zinc-200 bg-white px-4 py-3 ${
+        fullWidth ? "w-full" : ""
+      }`}
+    >
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
         {label}
       </p>
@@ -567,10 +543,134 @@ function TimelineEventPendingLightbox({
   );
 }
 
-function formatVisibleRange(earliestYear: number | null, latestYear: number | null) {
-  if (typeof earliestYear !== "number" || typeof latestYear !== "number") {
+function formatChronologySpan(timelineEvents: TimelineEvent[]) {
+  const earliestDate = getTimelineBoundaryDate(timelineEvents, "earliest");
+  const latestDate = getTimelineBoundaryDate(timelineEvents, "latest");
+
+  if (!earliestDate || !latestDate || latestDate.getTime() < earliestDate.getTime()) {
     return "Undated";
   }
 
-  return earliestYear === latestYear ? String(earliestYear) : `${earliestYear}-${latestYear}`;
+  const parts = getDurationParts(earliestDate, latestDate);
+
+  return [
+    formatDurationPart(parts.years, "yr"),
+    formatDurationPart(parts.months, "mo"),
+    formatDurationPart(parts.weeks, "wk"),
+    formatDurationPart(parts.days, "day"),
+    formatDurationPart(parts.minutes, "min"),
+    formatDurationPart(parts.seconds, "sec"),
+  ].join(" ");
+}
+
+function getTimelineBoundaryDate(
+  timelineEvents: TimelineEvent[],
+  boundary: "earliest" | "latest"
+) {
+  const dates = timelineEvents
+    .map((timelineEvent) => buildTimelineBoundaryDate(timelineEvent, boundary))
+    .filter((value): value is Date => value instanceof Date);
+
+  if (dates.length === 0) {
+    return null;
+  }
+
+  return new Date(
+    boundary === "earliest"
+      ? Math.min(...dates.map((value) => value.getTime()))
+      : Math.max(...dates.map((value) => value.getTime()))
+  );
+}
+
+function buildTimelineBoundaryDate(
+  timelineEvent: TimelineEvent,
+  boundary: "earliest" | "latest"
+) {
+  const year =
+    boundary === "earliest"
+      ? timelineEvent.yearStart ?? timelineEvent.yearEnd
+      : timelineEvent.yearEnd ?? timelineEvent.yearStart;
+
+  if (typeof year !== "number") {
+    return null;
+  }
+
+  const monthValue =
+    boundary === "earliest"
+      ? timelineEvent.monthStart ?? timelineEvent.monthEnd ?? 1
+      : timelineEvent.monthEnd ?? timelineEvent.monthStart ?? 12;
+  const dayValue =
+    boundary === "earliest"
+      ? timelineEvent.dayStart ?? timelineEvent.dayEnd ?? 1
+      : timelineEvent.dayEnd ??
+        timelineEvent.dayStart ??
+        getDaysInMonth(year, monthValue);
+
+  return new Date(Date.UTC(year, monthValue - 1, dayValue));
+}
+
+function getDurationParts(startDate: Date, endDate: Date) {
+  let cursor = new Date(startDate.getTime());
+  let years = 0;
+  let months = 0;
+
+  while (addUtcYears(cursor, 1).getTime() <= endDate.getTime()) {
+    cursor = addUtcYears(cursor, 1);
+    years += 1;
+  }
+
+  while (addUtcMonths(cursor, 1).getTime() <= endDate.getTime()) {
+    cursor = addUtcMonths(cursor, 1);
+    months += 1;
+  }
+
+  const remainingMs = endDate.getTime() - cursor.getTime();
+  const totalDays = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
+  const weeks = Math.floor(totalDays / 7);
+  const days = totalDays % 7;
+  const remainingMinutes = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 1000));
+  const minutes = remainingMinutes;
+  const seconds = Math.floor((remainingMs % (60 * 1000)) / 1000);
+
+  return {
+    years,
+    months,
+    weeks,
+    days,
+    minutes,
+    seconds,
+  };
+}
+
+function addUtcYears(date: Date, yearsToAdd: number) {
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear() + yearsToAdd,
+      date.getUTCMonth(),
+      Math.min(date.getUTCDate(), getDaysInMonth(date.getUTCFullYear() + yearsToAdd, date.getUTCMonth() + 1))
+    )
+  );
+}
+
+function addUtcMonths(date: Date, monthsToAdd: number) {
+  const targetMonthIndex = date.getUTCMonth() + monthsToAdd;
+  const targetYear = date.getUTCFullYear() + Math.floor(targetMonthIndex / 12);
+  const normalizedMonthIndex = ((targetMonthIndex % 12) + 12) % 12;
+  const targetMonth = normalizedMonthIndex + 1;
+
+  return new Date(
+    Date.UTC(
+      targetYear,
+      normalizedMonthIndex,
+      Math.min(date.getUTCDate(), getDaysInMonth(targetYear, targetMonth))
+    )
+  );
+}
+
+function getDaysInMonth(year: number, month: number) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function formatDurationPart(value: number, label: string) {
+  return `${value}${label}`;
 }

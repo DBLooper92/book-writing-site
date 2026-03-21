@@ -25,13 +25,14 @@ Implemented now as the first derived workspace built on top of an existing slice
 - `/timeline` is the only top-level timeline browse/create surface; legacy `/timeline-events` index and new routes should only redirect here
 - chronology ordering, grouping, and filtering are derived from normalized `TimelineEvent` records
 - chronology precision currently uses start/end year with optional month/day fields, plus an optional same-date sequence number and optional time label
-- the workspace UI now uses a split-pane layout with a left quick-map rail and a right chronology pane instead of stacked summary cards above the timeline
+- the workspace UI now uses a split-pane layout with a left quick-map rail, a top filter bar, and a direct chronology pane instead of stacked summary cards above the timeline
 - insertion notches are derived UI affordances, not stored Firestore documents
 - saving a notch-created event without a start or end year should confirm the choice, then inherit the most recent earlier dated block's year when one exists so the new block stays anchored near the clicked insertion point
 - numbered timeline markers are derived from the current sorted chronology and should always renumber from top to bottom as the visible order changes
 - large chronology gaps should compress into labeled jumps instead of proportional empty space
 - undated events stay visible in the same derived chronology surface rather than disappearing from the workspace
 - the quick-map rail should keep its own scroll area on large screens so authors can scan blocks without moving the main timeline pane
+- the right side should stay reduced to the filter bar plus the chronology itself, without a separate overview card above the visual timeline
 - the filter bar sits at the top of the chronology pane and can be pinned or unpinned without changing the underlying filter model
 - inline workspace authoring should still write to the same `timeline_events` documents and reuse the same normalization and validation path as the dedicated detail/edit surfaces
 - workspace event viewing and editing should prefer in-place lightboxes and sheets over routing authors away from `/timeline`
