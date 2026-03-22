@@ -19,7 +19,10 @@ export async function signUpWithEmail(email: string, password: string) {
 
   const normalizedUser = normalizeSupabaseUser(result.data.user);
 
-  if (normalizedUser) {
+  // When email confirmation is enabled, Supabase may create the user without
+  // returning an authenticated session yet. In that case, profile upsert must
+  // wait until the user actually signs in and the auth listener runs.
+  if (normalizedUser && result.data.session) {
     await upsertUserProfile({
       uid: normalizedUser.uid,
       email: normalizedUser.email,
