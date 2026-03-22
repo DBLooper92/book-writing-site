@@ -27,7 +27,7 @@ export default function NewTechnologyPage() {
     <PageShell
       eyebrow="Technologies"
       title="Create technology"
-      description="Start a new technology inside the currently active project. This first-pass form stays small, but it writes into the full project-scoped technology document shape."
+      description="Start a new technology inside the currently active project. This first-pass form stays small, but it writes into the full project-scoped technology record shape."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

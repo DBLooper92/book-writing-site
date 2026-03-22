@@ -18,7 +18,7 @@ export default function OutlineDetailPage() {
     <PageShell
       eyebrow="Outlines"
       title={outline?.title ?? "Outline detail"}
-      description="Outline records are loaded from the active project's nested outlines collection so planning documents stay scoped to the current story bible."
+      description="Outline records are loaded from the active project's scoped outlines rows so planning records stay scoped to the current story bible."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

@@ -33,7 +33,7 @@ export default function EditTechnologyPage() {
     <PageShell
       eyebrow="Technologies"
       title={technology ? `Edit ${technology.name}` : "Edit technology"}
-      description="Update the first set of structured technology fields and write the changes back to the currently active project's nested technology document."
+      description="Update the first set of structured technology fields and write the changes back to the currently active project's scoped technology row."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

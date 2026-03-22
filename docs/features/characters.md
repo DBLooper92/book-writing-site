@@ -20,7 +20,7 @@ Implemented now. Characters is the reference entity slice for the repo.
 
 ## Important Rules
 
-- character documents must stay project-scoped and map cleanly to `characters` rows keyed by `user_id`, `project_id`, and `id` during the Supabase migration
+- character records must stay project-scoped and map cleanly to `characters` rows keyed by `user_id`, `project_id`, and `id`
 - the current UI depends on the active project
 - the form is intentionally smaller than the full canonical character type
 - normalized records are used consistently in the UI

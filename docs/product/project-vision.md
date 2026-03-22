@@ -68,4 +68,6 @@ The project should remain:
 
 ## Current Stage
 
-Today, the repo is still in an early infrastructure stage. It already has authenticated project workspaces, an active project concept, a dev seeding flow, and initial Books, Chapters, Characters, Locations, and Notes slices. Scene-writing, timeline, and AI-writing surfaces are still planned layers, not finished product areas.
+Today, the repo is in an early but working product stage. It already has Supabase Auth, authenticated project workspaces, active-project switching, a dev seeding flow, and first-pass slices across the current story-bible surface including Books, Chapters, Scenes, Characters, Relationships, Timeline Events, Notes, worldbuilding entities, Attachments, and AI Sessions.
+
+The Timeline workspace now exists as a real top-level chronology surface derived from `timeline_events`. Attachments and AI Sessions are implemented as metadata-first slices, while richer upload/storage workflow, deeper chronology tooling, and richer AI-writing operations are still future work.

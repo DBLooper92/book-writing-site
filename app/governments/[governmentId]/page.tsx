@@ -18,7 +18,7 @@ export default function GovernmentDetailPage() {
     <PageShell
       eyebrow="Governments"
       title={government?.name ?? "Government detail"}
-      description="Government records are loaded from the active project's nested governments collection so civic-power references stay scoped to the current story bible."
+      description="Government records are loaded from the active project's scoped governments rows so civic-power references stay scoped to the current story bible."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

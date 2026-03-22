@@ -1,8 +1,6 @@
-# Firestore Patterns
+# Scoping And Data Patterns
 
-This file keeps its historical name because older repo guidance still links here, but the active runtime is Supabase-only.
-
-## Non-Negotiable Path Rule
+## Non-Negotiable Scope Rule
 
 Do not create global story-bible entity tables or rows.
 
@@ -14,13 +12,12 @@ Use:
 
 Do not use:
 
-- `characters/{characterId}`
-- `locations/{locationId}`
-- any other unscoped shared entity rows
+- unscoped entity rows without both `user_id` and `project_id`
+- shared global story-bible tables that bypass active-project ownership
 
-## Path Scoping
+## Scope In Data Helpers
 
-Data helpers should accept `uid` and `projectId` explicitly for entity operations. This keeps ownership obvious and makes project scope impossible to ignore.
+Data helpers should accept `uid` and `projectId` explicitly for entity operations. This keeps ownership obvious and makes project scope difficult to ignore by accident.
 
 ## Cost Discipline
 
@@ -98,20 +95,20 @@ Use partial updates for edit flows so unedited fields survive early-form iterati
 
 ## Seed Compatibility
 
-Seeded docs and user-created docs should converge on the same canonical shape after normalization.
+Seeded rows and user-created rows should converge on the same canonical shape after normalization.
 
 That means:
 
-- seeded docs should use the same field names as real slices
+- seed rows should use the same field names as real slices
 - normalizers should tolerate partial or legacy shapes
-- new UI code should not special-case seed documents
+- new UI code should not special-case seeded records
 
-## Future Collection Guidance
+## Future Table Guidance
 
-When introducing a new entity collection:
+When introducing a new entity table:
 
-1. pick a stable plural collection name
-2. keep it nested under the project
+1. pick a stable plural table name
+2. require `user_id`, `project_id`, and readable `id`
 3. define readable ID and slug rules
 4. normalize all reads
 5. keep seed data compatible with the canonical type

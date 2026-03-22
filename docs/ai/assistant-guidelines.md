@@ -17,7 +17,7 @@ For meaningful development work, read:
 1. `../../AGENTS.md`
 2. `../README.md`
 3. `../architecture/current-status.md`
-4. `../architecture/firestore-structure.md`
+4. `../architecture/project-scope-model.md`
 5. relevant files under `../patterns/`
 6. relevant files under `../features/`
 

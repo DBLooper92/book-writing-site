@@ -6,12 +6,12 @@ Implemented now.
 
 ## What Exists
 
-- project listing under `users/{uid}/projects`
+- project listing through the Supabase `projects` table
 - active project observation
 - active project switching from the header dropdown and projects page without navigating away from the current route
 - project creation from a dedicated `/projects/new` screen
 - project rename
-- active project stored on `users/{uid}.activeProjectId`
+- active project stored on `profiles.active_project_id`
 - compact header project control that shows `Project` until an active project exists, then shows the active project title
 - header project menu option that opens the project create screen
 
@@ -19,7 +19,7 @@ Implemented now.
 
 - all entity slice reads should assume the active project is the current data scope
 - no active project means slice pages should stop and show a helpful state
-- project creation should also ensure the user document exists
+- project creation should also ensure the profile row exists
 - project IDs are readable slug-style IDs with numeric suffixes on collision
 
 ## What Remains Later

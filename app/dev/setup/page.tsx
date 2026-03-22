@@ -7,7 +7,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import {
   initializeStoryBibleDevData,
-  STORY_BIBLE_STRUCTURE_PATHS,
+  STORY_BIBLE_SEED_ROW_PREVIEW,
   type StoryBibleInitSummary,
 } from "@/lib/supabase/dev-init";
 
@@ -53,7 +53,7 @@ export default function DevSetupPage() {
 
       setInitState({
         tone: "success",
-        text: `Initialization finished. Created ${summary.createdCount} path(s), updated ${summary.updatedCount}, skipped ${summary.skippedCount}.`,
+        text: `Initialization finished. Created ${summary.createdCount} row target(s), updated ${summary.updatedCount}, skipped ${summary.skippedCount}.`,
         summary,
       });
     } catch (error) {
@@ -160,7 +160,7 @@ export default function DevSetupPage() {
             be inspected in the active Supabase-backed runtime immediately.
           </p>
           <pre className="mt-4 overflow-x-auto rounded-2xl bg-zinc-950 p-4 text-xs leading-6 text-zinc-100">
-            {STORY_BIBLE_STRUCTURE_PATHS.join("\n")}
+            {STORY_BIBLE_SEED_ROW_PREVIEW.join("\n")}
           </pre>
         </div>
 
@@ -170,13 +170,13 @@ export default function DevSetupPage() {
           </h2>
           {initState.summary ? (
             <div className="mt-4 space-y-4 text-sm leading-6 text-zinc-600">
-              <SummaryBlock label="Created paths" paths={initState.summary.createdPaths} />
-              <SummaryBlock label="Updated paths" paths={initState.summary.updatedPaths} />
-              <SummaryBlock label="Skipped paths" paths={initState.summary.skippedPaths} />
+              <SummaryBlock label="Created rows" rows={initState.summary.createdRows} />
+              <SummaryBlock label="Updated rows" rows={initState.summary.updatedRows} />
+              <SummaryBlock label="Skipped rows" rows={initState.summary.skippedRows} />
             </div>
           ) : (
             <p className="mt-4 text-sm leading-6 text-zinc-600">
-              Run the initializer to see the exact scoped seed paths that were
+              Run the initializer to see the exact scoped seed rows that were
               created, updated, or skipped.
             </p>
           )}
@@ -210,12 +210,12 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SummaryBlock({ label, paths }: { label: string; paths: string[] }) {
+function SummaryBlock({ label, rows }: { label: string; rows: string[] }) {
   return (
     <div>
       <h3 className="text-sm font-semibold text-zinc-950">{label}</h3>
       <pre className="mt-2 overflow-x-auto rounded-2xl bg-zinc-100 p-4 text-xs text-zinc-700">
-        {paths.length ? paths.join("\n") : "None"}
+        {rows.length ? rows.join("\n") : "None"}
       </pre>
     </div>
   );

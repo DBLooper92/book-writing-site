@@ -30,7 +30,7 @@ export default function EditChapterPage() {
     <PageShell
       eyebrow="Chapters"
       title={chapter ? `Edit ${chapter.title}` : "Edit chapter"}
-      description="Update the first set of structured chapter fields and write the changes back to the currently active project's nested chapter document."
+      description="Update the first set of structured chapter fields and write the changes back to the currently active project's scoped chapter row."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

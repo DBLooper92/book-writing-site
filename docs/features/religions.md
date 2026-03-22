@@ -20,7 +20,7 @@ Implemented now.
 
 ## Important Rules
 
-- religion documents must stay project-scoped and map cleanly to `religions` rows keyed by `user_id`, `project_id`, and `id` during the Supabase migration
+- religion records must stay project-scoped and map cleanly to `religions` rows keyed by `user_id`, `project_id`, and `id`
 - the slice follows the same list/create/detail/edit pattern used by the existing canon slices
 - the initial form stays intentionally smaller than the canonical religion shape
 - seeded religion documents and user-created religion documents normalize into the same UI-ready type

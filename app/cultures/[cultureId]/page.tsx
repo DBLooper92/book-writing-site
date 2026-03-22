@@ -18,7 +18,7 @@ export default function CultureDetailPage() {
     <PageShell
       eyebrow="Cultures"
       title={culture?.name ?? "Culture detail"}
-      description="Culture records are loaded from the active project's nested cultures collection so every detail view stays scoped to the current story bible."
+      description="Culture records are loaded from the active project's scoped cultures rows so every detail view stays scoped to the current story bible."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

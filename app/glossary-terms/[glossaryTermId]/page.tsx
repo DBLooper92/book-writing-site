@@ -19,7 +19,7 @@ export default function GlossaryTermDetailPage() {
     <PageShell
       eyebrow="Glossary Terms"
       title={glossaryTerm?.term ?? glossaryTerm?.title ?? "Glossary term detail"}
-      description="Glossary records are loaded from the active project's nested glossary_terms collection so vocabulary and lore terms stay scoped to the current story bible."
+      description="Glossary records are loaded from the active project's scoped glossary_terms rows so vocabulary and lore terms stay scoped to the current story bible."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

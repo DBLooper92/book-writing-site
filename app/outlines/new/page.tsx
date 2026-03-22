@@ -27,7 +27,7 @@ export default function NewOutlinePage() {
     <PageShell
       eyebrow="Outlines"
       title="Create outline"
-      description="Start a new outline inside the currently active project. This first-pass form stays small, but it writes into the full project-scoped outline document shape."
+      description="Start a new outline inside the currently active project. This first-pass form stays small, but it writes into the full project-scoped outline record shape."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

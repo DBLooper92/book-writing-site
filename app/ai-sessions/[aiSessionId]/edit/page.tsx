@@ -33,7 +33,7 @@ export default function EditAiSessionPage() {
     <PageShell
       eyebrow="AI Sessions"
       title={aiSession ? `Edit ${aiSession.title}` : "Edit AI session"}
-      description="Update the first set of structured AI session fields and write the changes back to the currently active project's nested ai_sessions document."
+      description="Update the first set of structured AI session fields and write the changes back to the currently active project's scoped ai_sessions row."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

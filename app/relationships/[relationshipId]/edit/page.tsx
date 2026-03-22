@@ -34,7 +34,7 @@ export default function EditRelationshipPage() {
     <PageShell
       eyebrow="Relationships"
       title={relationship ? `Edit ${relationship.title}` : "Edit relationship"}
-      description="Update the first set of structured relationship fields and write the changes back to the currently active project's nested relationship document."
+      description="Update the first set of structured relationship fields and write the changes back to the currently active project's scoped relationship row."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

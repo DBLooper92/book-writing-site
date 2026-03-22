@@ -18,7 +18,7 @@ export default function TechnologyDetailPage() {
     <PageShell
       eyebrow="Technologies"
       title={technology?.name ?? "Technology detail"}
-      description="Technology records are loaded from the active project's nested technologies collection so infrastructure and system records stay scoped to the current story bible."
+      description="Technology records are loaded from the active project's scoped technologies rows so infrastructure and system records stay scoped to the current story bible."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

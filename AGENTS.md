@@ -37,7 +37,7 @@ Implemented now:
 - auth with email/password
 - user-owned projects
 - active project switching via `profiles.active_project_id`
-- dev initializer that seeds a default project and starter docs
+- dev initializer that seeds a default project and starter rows
 - books slice with list, create, detail, and edit flows
 - chapters slice with list, create, detail, and edit flows
 - scenes slice with list, create, detail, and edit flows
@@ -106,12 +106,12 @@ Docs must stay honest about what is implemented now, what is partial, and what i
 
 - `README.md`
 - `docs/README.md`
-- `docs/architecture/firestore-structure.md`
+- `docs/architecture/project-scope-model.md`
 - `docs/architecture/current-status.md`
 - `docs/architecture/decision-log.md`
 - `docs/architecture/next-steps.md`
 - `docs/patterns/entity-slice-pattern.md`
-- `docs/patterns/firestore-patterns.md`
+- `docs/patterns/scoping-and-data-patterns.md`
 - `docs/patterns/typing-and-normalization.md`
 - `docs/patterns/ui-patterns.md`
 - `docs/features/books.md`

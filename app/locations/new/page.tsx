@@ -27,7 +27,7 @@ export default function NewLocationPage() {
     <PageShell
       eyebrow="Locations"
       title="Create location"
-      description="Start a new location inside the currently active project. This initial form is intentionally focused, but writes into the full project-scoped location document shape."
+      description="Start a new location inside the currently active project. This initial form is intentionally focused, but writes into the full project-scoped location record shape."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

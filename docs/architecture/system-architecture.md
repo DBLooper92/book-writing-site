@@ -115,9 +115,9 @@ Not yet implemented as full features:
 
 ## Related Docs
 
-- `firestore-structure.md`
+- `project-scope-model.md`
 - `current-status.md`
 - `../patterns/entity-slice-pattern.md`
-- `../patterns/firestore-patterns.md`
+- `../patterns/scoping-and-data-patterns.md`
 - `../patterns/typing-and-normalization.md`
 - `../patterns/ui-patterns.md`

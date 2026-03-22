@@ -30,7 +30,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - project creation from a dedicated `/projects/new` page
 - project rename
 - active project switching from the Projects page and header dropdown without route changes
-- `activeProjectId` stored on the current Supabase-backed profile row
+- `profiles.active_project_id` stored on the current Supabase-backed profile row
 - last usable in-app route remembered client-side and only resumed when it still matches the same user and active project
 - simple fetch/refetch-oriented project data layer with client-side refresh triggers instead of realtime listeners
 
@@ -38,7 +38,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 
 - deterministic initializer at `app/dev/setup`
 - default project seeding for the authenticated profile and `default-story-bible`
-- starter documents for many planned collections
+- starter rows for many planned collections
 - rerunnable merge/skip behavior for seed data
 
 ### Books

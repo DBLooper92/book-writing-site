@@ -18,7 +18,7 @@ export default function LanguageDetailPage() {
     <PageShell
       eyebrow="Languages"
       title={language?.name ?? "Language detail"}
-      description="Language records are loaded from the active project's nested languages collection so linguistic references stay scoped to the current story bible."
+      description="Language records are loaded from the active project's scoped languages rows so linguistic references stay scoped to the current story bible."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

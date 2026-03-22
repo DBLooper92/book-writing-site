@@ -51,7 +51,7 @@ Implemented now as the dedicated chronology slice that powers the timeline works
 
 ## Current Role In The Architecture
 
-Timeline Events turns chronology into a real project-scoped slice and now powers `/timeline` as the sole top-level chronology surface. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/timeline-events.ts`. It gives Books, Chapters, Scenes, Characters, Locations, and several worldbuilding slices a real chronology target to reference instead of relying on seed-only event documents, while keeping all timeline authoring grounded in one normalized document shape that now supports year/month/day placement, same-date ordering, optional time labels, in-place workspace viewing/editing, nested linked-record detail inspection, and nested linked-record creation from the event editor itself.
+Timeline Events turns chronology into a real project-scoped slice and now powers `/timeline` as the sole top-level chronology surface. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/timeline-events.ts`. It gives Books, Chapters, Scenes, Characters, Locations, and several worldbuilding slices a real chronology target to reference instead of relying on seed-only event documents, while keeping all timeline authoring grounded in one normalized record shape that now supports year/month/day placement, same-date ordering, optional time labels, in-place workspace viewing/editing, nested linked-record detail inspection, and nested linked-record creation from the event editor itself.
 
 ## What Remains Later
 

@@ -11,9 +11,9 @@ Before making changes, read:
 - `AGENTS.md`
 - `docs/README.md`
 - `docs/architecture/current-status.md`
-- `docs/architecture/firestore-structure.md`
+- `docs/architecture/project-scope-model.md`
 - `docs/patterns/entity-slice-pattern.md`
-- `docs/patterns/firestore-patterns.md`
+- `docs/patterns/scoping-and-data-patterns.md`
 - `docs/patterns/typing-and-normalization.md`
 - `docs/patterns/ui-patterns.md`
 - the most relevant existing feature docs

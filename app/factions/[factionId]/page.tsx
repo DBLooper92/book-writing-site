@@ -18,7 +18,7 @@ export default function FactionDetailPage() {
     <PageShell
       eyebrow="Factions"
       title={faction?.name ?? "Faction detail"}
-      description="Faction records are loaded from the active project's nested factions collection so every detail view stays scoped to the current story bible."
+      description="Faction records are loaded from the active project's scoped factions rows so every detail view stays scoped to the current story bible."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

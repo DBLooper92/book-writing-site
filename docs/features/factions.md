@@ -20,7 +20,7 @@ Implemented now.
 
 ## Important Rules
 
-- faction documents must stay project-scoped and map cleanly to `factions` rows keyed by `user_id`, `project_id`, and `id` during the Supabase migration
+- faction records must stay project-scoped and map cleanly to `factions` rows keyed by `user_id`, `project_id`, and `id`
 - the current UI depends on the active project
 - the form is intentionally smaller than the full canonical faction type
 - normalized records are used consistently in the UI

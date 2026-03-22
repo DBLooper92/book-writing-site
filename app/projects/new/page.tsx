@@ -130,7 +130,7 @@ export default function NewProjectPage() {
           </h2>
           <ul className="mt-4 space-y-3 text-sm leading-6 text-zinc-600">
             <li>The new project is written under your user scope.</li>
-            <li>Your profile `activeProjectId` is updated to the new project.</li>
+            <li>The profile row field `active_project_id` is updated to the new project.</li>
             <li>Existing slice pages immediately start reading from that new scope.</li>
           </ul>
 

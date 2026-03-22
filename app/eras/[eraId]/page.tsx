@@ -17,7 +17,7 @@ export default function EraDetailPage() {
     <PageShell
       eyebrow="Eras"
       title={era?.name ?? "Era detail"}
-      description="Era records are loaded from the active project's nested eras collection so chronology anchors stay scoped to the current story bible."
+      description="Era records are loaded from the active project's scoped eras rows so chronology anchors stay scoped to the current story bible."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

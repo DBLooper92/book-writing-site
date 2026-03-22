@@ -20,7 +20,7 @@ Implemented now as the sixth full entity slice and the third manuscript-structur
 
 ## Important Rules
 
-- scene documents must stay project-scoped and map cleanly to `scenes` rows keyed by `user_id`, `project_id`, and `id` during the Supabase migration
+- scene records must stay project-scoped and map cleanly to `scenes` rows keyed by `user_id`, `project_id`, and `id`
 - the slice follows the same list/create/detail/edit pattern as Books, Chapters, Characters, Locations, and Notes
 - the first-pass form stays intentionally focused on title, manuscript links, scene beats, and draft text
 - normalized records are used consistently in the UI

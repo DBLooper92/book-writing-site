@@ -27,7 +27,7 @@ export default function NewRetconPage() {
     <PageShell
       eyebrow="Retcons"
       title="Create retcon"
-      description="Start a new canon-change record inside the currently active project. This first-pass form focuses on the old canon, the new canon, and the raw downstream impact IDs while still writing into the broader retcon document shape."
+      description="Start a new canon-change record inside the currently active project. This first-pass form focuses on the old canon, the new canon, and the raw downstream impact IDs while still writing into the broader retcon record shape."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

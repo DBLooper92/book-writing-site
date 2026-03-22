@@ -93,7 +93,7 @@ Delete can come later. Do not block new slices on delete UI if the rest of the p
 
 1. Implement the full read/write path for one entity collection.
 2. Keep the initial form intentionally smaller than the full canonical document if needed.
-3. Still write into a canonical document shape with defaults.
+3. Still write into a canonical record shape with defaults.
 4. Normalize seeded rows and created rows into the same UI-ready type.
 5. Keep all reads scoped to the active project.
 
@@ -108,7 +108,7 @@ Delete can come later. Do not block new slices on delete UI if the rest of the p
 
 ## Related Docs
 
-- `firestore-patterns.md`
+- `scoping-and-data-patterns.md`
 - `typing-and-normalization.md`
 - `ui-patterns.md`
 - `../features/characters.md`

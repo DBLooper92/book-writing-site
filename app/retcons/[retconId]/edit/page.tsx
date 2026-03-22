@@ -30,7 +30,7 @@ export default function EditRetconPage() {
     <PageShell
       eyebrow="Retcons"
       title={retcon ? `Edit ${retcon.title}` : "Edit retcon"}
-      description="Update the first set of structured retcon fields and write the changes back to the currently active project's nested retcon document."
+      description="Update the first set of structured retcon fields and write the changes back to the currently active project's scoped retcon row."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

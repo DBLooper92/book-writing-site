@@ -20,7 +20,7 @@ Implemented now.
 
 ## Important Rules
 
-- culture documents must stay project-scoped and map cleanly to `cultures` rows keyed by `user_id`, `project_id`, and `id` during the Supabase migration
+- culture records must stay project-scoped and map cleanly to `cultures` rows keyed by `user_id`, `project_id`, and `id`
 - the slice follows the same list/create/detail/edit pattern used by Characters, Factions, and Locations
 - the initial form is intentionally smaller than the canonical culture shape
 - seeded culture documents and user-created culture documents normalize into the same UI-ready type

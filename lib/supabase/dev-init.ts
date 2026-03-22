@@ -60,12 +60,12 @@ const seedDocKeys = [
 
 type SeedCollectionName = (typeof seedDocKeys)[number][0];
 
-export const STORY_BIBLE_STRUCTURE_PATHS = [
-  "users/{uid}",
-  `users/{uid}/projects/${DEFAULT_PROJECT_ID}`,
+export const STORY_BIBLE_SEED_ROW_PREVIEW = [
+  "profiles[id={uid}]",
+  `projects[user_id={uid}, id=${DEFAULT_PROJECT_ID}]`,
   ...seedDocKeys.map(
     ([collectionName, documentId]) =>
-      `users/{uid}/projects/${DEFAULT_PROJECT_ID}/${collectionName}/${documentId}`
+      `${collectionName}[user_id={uid}, project_id=${DEFAULT_PROJECT_ID}, id=${documentId}]`
   ),
 ] as const;
 
@@ -82,12 +82,12 @@ type SeedDocument = {
 };
 
 export type StoryBibleInitSummary = {
-  userPath: string;
-  projectPath: string;
+  profileRow: string;
+  projectRow: string;
   projectId: string;
-  createdPaths: string[];
-  updatedPaths: string[];
-  skippedPaths: string[];
+  createdRows: string[];
+  updatedRows: string[];
+  skippedRows: string[];
   createdCount: number;
   updatedCount: number;
   skippedCount: number;
@@ -102,11 +102,11 @@ export async function initializeStoryBibleDevData(
 
   const supabase = getSupabaseBrowserClient();
   const now = new Date().toISOString();
-  const userPath = `users/${user.uid}`;
-  const projectPath = `${userPath}/projects/${DEFAULT_PROJECT_ID}`;
-  const createdPaths: string[] = [];
-  const updatedPaths: string[] = [];
-  const skippedPaths: string[] = [];
+  const profileRow = `profiles[id=${user.uid}]`;
+  const projectRow = `projects[user_id=${user.uid}, id=${DEFAULT_PROJECT_ID}]`;
+  const createdRows: string[] = [];
+  const updatedRows: string[] = [];
+  const skippedRows: string[] = [];
 
   const { data: existingProfile, error: profileReadError } = await supabase
     .from("profiles")
@@ -136,9 +136,9 @@ export async function initializeStoryBibleDevData(
   }
 
   if (existingProfile) {
-    updatedPaths.push(userPath);
+    updatedRows.push(profileRow);
   } else {
-    createdPaths.push(userPath);
+    createdRows.push(profileRow);
   }
 
   const { data: existingProject, error: projectReadError } = await supabase
@@ -189,9 +189,9 @@ export async function initializeStoryBibleDevData(
   }
 
   if (existingProject) {
-    updatedPaths.push(projectPath);
+    updatedRows.push(projectRow);
   } else {
-    createdPaths.push(projectPath);
+    createdRows.push(projectRow);
   }
 
   const starterDocs = buildStarterDocs(user.uid, DEFAULT_PROJECT_ID, now);
@@ -209,10 +209,10 @@ export async function initializeStoryBibleDevData(
       throw seedReadError;
     }
 
-    const seedPath = `${projectPath}/${seed.collectionName}/${seed.documentId}`;
+    const seedRow = `${seed.collectionName}[user_id=${user.uid}, project_id=${DEFAULT_PROJECT_ID}, id=${seed.documentId}]`;
 
     if (existingSeed) {
-      skippedPaths.push(seedPath);
+      skippedRows.push(seedRow);
       continue;
     }
 
@@ -224,19 +224,19 @@ export async function initializeStoryBibleDevData(
       throw insertError;
     }
 
-    createdPaths.push(seedPath);
+    createdRows.push(seedRow);
   }
 
   return {
-    userPath,
-    projectPath,
+    profileRow,
+    projectRow,
     projectId: DEFAULT_PROJECT_ID,
-    createdPaths,
-    updatedPaths,
-    skippedPaths,
-    createdCount: createdPaths.length,
-    updatedCount: updatedPaths.length,
-    skippedCount: skippedPaths.length,
+    createdRows,
+    updatedRows,
+    skippedRows,
+    createdCount: createdRows.length,
+    updatedCount: updatedRows.length,
+    skippedCount: skippedRows.length,
   };
 }
 

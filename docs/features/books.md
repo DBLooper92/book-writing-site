@@ -30,7 +30,7 @@ Implemented now as the fourth full entity slice and the first manuscript-structu
 
 Books is the first real manuscript-structure slice. It gives the repo a concrete parent entity for real chapter and scene work plus later chronology work without introducing a different architecture from the canon-oriented slices.
 
-The active Books runtime now uses a Supabase-backed fetch/refetch data path as the migration pilot slice.
+The active Books runtime now uses the same Supabase-backed fetch/refetch path as the rest of the implemented slices.
 
 ## What Remains Later
 

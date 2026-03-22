@@ -27,7 +27,7 @@ export default function NewNotePage() {
     <PageShell
       eyebrow="Notes"
       title="Create note"
-      description="Start a new note inside the currently active project. This first-pass form focuses on the note body and one optional direct link target while still writing into the broader project-scoped note document shape."
+      description="Start a new note inside the currently active project. This first-pass form focuses on the note body and one optional direct link target while still writing into the broader project-scoped note record shape."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

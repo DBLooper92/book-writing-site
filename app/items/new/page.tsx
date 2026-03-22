@@ -27,7 +27,7 @@ export default function NewItemPage() {
     <PageShell
       eyebrow="Items"
       title="Create item"
-      description="Start a new item inside the currently active project. This first-pass form stays small, but it writes into the full project-scoped item document shape."
+      description="Start a new item inside the currently active project. This first-pass form stays small, but it writes into the full project-scoped item record shape."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

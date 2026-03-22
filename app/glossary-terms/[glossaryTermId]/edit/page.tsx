@@ -34,7 +34,7 @@ export default function EditGlossaryTermPage() {
     <PageShell
       eyebrow="Glossary Terms"
       title={glossaryTerm ? `Edit ${glossaryTerm.term}` : "Edit glossary term"}
-      description="Update the first set of structured glossary fields and write the changes back to the currently active project's nested glossary document."
+      description="Update the first set of structured glossary fields and write the changes back to the currently active project's scoped glossary row."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

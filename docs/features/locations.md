@@ -20,7 +20,7 @@ Implemented now as the second full entity slice.
 
 ## Important Rules
 
-- location documents must stay project-scoped and map cleanly to `locations` rows keyed by `user_id`, `project_id`, and `id` during the Supabase migration
+- location records must stay project-scoped and map cleanly to `locations` rows keyed by `user_id`, `project_id`, and `id`
 - the slice follows the same list/create/detail/edit pattern as Characters
 - the form is intentionally focused even though the canonical type is broader
 - parent and related IDs are stored as strings or arrays for future linking

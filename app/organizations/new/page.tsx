@@ -27,7 +27,7 @@ export default function NewOrganizationPage() {
     <PageShell
       eyebrow="Organizations"
       title="Create organization"
-      description="Start a new organization inside the currently active project. This initial form is intentionally small but it writes into the full project-scoped organization document shape."
+      description="Start a new organization inside the currently active project. This initial form is intentionally small but it writes into the full project-scoped organization record shape."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

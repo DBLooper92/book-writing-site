@@ -20,7 +20,7 @@ Implemented now as the fifth full entity slice and the second manuscript-structu
 
 ## Important Rules
 
-- chapter documents must stay project-scoped and map cleanly to `chapters` rows keyed by `user_id`, `project_id`, and `id` during the Supabase migration
+- chapter records must stay project-scoped and map cleanly to `chapters` rows keyed by `user_id`, `project_id`, and `id`
 - the slice follows the same list/create/detail/edit pattern as Books, Characters, Locations, and Notes
 - the first-pass form stays intentionally focused on title, book link, chapter number, purpose, and POV metadata
 - normalized records are used consistently in the UI

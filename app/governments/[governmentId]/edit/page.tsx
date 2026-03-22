@@ -34,7 +34,7 @@ export default function EditGovernmentPage() {
     <PageShell
       eyebrow="Governments"
       title={government ? `Edit ${government.name}` : "Edit government"}
-      description="Update the first set of structured government fields and write the changes back to the currently active project's nested government document."
+      description="Update the first set of structured government fields and write the changes back to the currently active project's scoped government row."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
