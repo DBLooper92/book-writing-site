@@ -14,6 +14,7 @@ export default function TimelinePage() {
     uid,
     activeProjectId,
     activeProject,
+    refreshTimelineEvents,
     filters,
     updateFilters,
     resetFilters,
@@ -56,6 +57,7 @@ export default function TimelinePage() {
           stats={workspace.stats}
           timelineEvents={workspace.filteredEvents}
           uid={uid}
+          onRefreshTimelineEvents={refreshTimelineEvents}
         />
       )}
     </main>

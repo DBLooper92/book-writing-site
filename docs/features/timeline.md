@@ -42,6 +42,7 @@ Implemented now as the first derived workspace built on top of an existing slice
 - linked warnings should derive from already loaded project-scoped slice records instead of introducing a separate validation collection
 - linked navigation should prefer routes that already exist for the referenced project-scoped slices
 - workspace warnings should stay derived from loaded timeline data rather than introducing extra validation-only persistence
+- workspace create/edit sheets should explicitly refetch `timeline_events` after a successful save so newly created or updated blocks appear without a manual page refresh
 
 ## Current Role In The Architecture
 

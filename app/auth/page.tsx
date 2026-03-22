@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { AuthApiError } from "@supabase/supabase-js";
 
@@ -24,6 +25,7 @@ const defaultNotice: Notice = {
 };
 
 export default function AuthPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,12 +69,16 @@ export default function AuthPage() {
         });
       } else {
         const result = await signUpWithEmail(normalizedEmail, password);
-        setNotice({
-          tone: "success",
-          text: result.data.session
-            ? "Account created and signed in successfully."
-            : "Account created. Check your email to confirm sign-in if confirmation is enabled.",
-        });
+
+        if (result.data.session) {
+          setNotice({
+            tone: "success",
+            text: "Account created and signed in successfully.",
+          });
+        } else {
+          router.push(`/auth/verify-email?email=${encodeURIComponent(normalizedEmail)}`);
+          return;
+        }
       }
 
       setEmail(normalizedEmail);

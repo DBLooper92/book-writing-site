@@ -9,6 +9,7 @@ The runtime now uses Supabase Auth, Supabase-backed projects, and Supabase-backe
 The current repo already has:
 
 - Supabase Auth with email/password flows
+- dedicated email-verification and post-verification screens for signup confirmation
 - Supabase-backed user-owned projects plus active project switching
 - Supabase-backed Books pages
 - Supabase-backed Chapters pages

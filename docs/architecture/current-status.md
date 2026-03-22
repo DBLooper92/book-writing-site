@@ -10,7 +10,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - Tailwind-based UI styling
 - compact fixed header with Timeline, +Create, and Project controls aligned top-right
 - header hide-on-scroll-down and reveal-on-scroll-up behavior
-- home, auth, backend test, and developer setup routes
+- home, auth, auth verification, backend test, and developer setup routes
 - Supabase browser/server clients, Next proxy session refresh, SQL migrations for `profiles`, `projects`, and the current story-bible entity tables, plus a simple non-realtime data layer for the active runtime
 
 ### Auth
@@ -18,6 +18,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - Supabase Auth client integration
 - email/password sign-up
 - email/password sign-in
+- signup redirect to a dedicated "verify your email" screen plus a dedicated post-verification confirmation screen
 - sign-out flow
 - auth state hook
 - normalized app-auth user mapping wired into the active routes

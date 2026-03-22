@@ -34,6 +34,7 @@ type TimelineWorkspaceVisualProps = {
   hasActiveFilters: boolean;
   onChange: (updates: Partial<TimelineWorkspaceFilters>) => void;
   onReset: () => void;
+  onRefreshTimelineEvents: () => Promise<void>;
   stats: TimelineWorkspaceStats;
   timelineEvents: TimelineEvent[];
   uid: string;
@@ -46,6 +47,7 @@ export function TimelineWorkspaceVisual({
   hasActiveFilters,
   onChange,
   onReset,
+  onRefreshTimelineEvents,
   stats,
   timelineEvents,
   uid,
@@ -131,8 +133,9 @@ export function TimelineWorkspaceVisual({
     });
   }
 
-  function handleSaved(timelineEventId: string) {
+  async function handleSaved(timelineEventId: string) {
     setRequestedSelectedEventId(timelineEventId);
+    await onRefreshTimelineEvents();
     closeComposer();
   }
 

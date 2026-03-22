@@ -11,6 +11,9 @@ export async function signUpWithEmail(email: string, password: string) {
   const result = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: buildEmailVerificationRedirectUrl(),
+    },
   });
 
   if (result.error) {
@@ -134,4 +137,12 @@ function readDisplayName(user: SupabaseUser) {
   return typeof displayName === "string" && displayName.trim()
     ? displayName.trim()
     : null;
+}
+
+function buildEmailVerificationRedirectUrl() {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  return new URL("/auth/verified", window.location.origin).toString();
 }

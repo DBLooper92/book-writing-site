@@ -14,7 +14,7 @@ type TimelineEventComposerSheetProps = {
   initialValuesOverride?: TimelineEventFormValues | null;
   mode: "create" | "edit";
   onClose: () => void;
-  onSaved: (timelineEventId: string) => void;
+  onSaved: (timelineEventId: string) => Promise<void>;
   timelineEvent?: TimelineEvent | null;
   uid: string;
 };
@@ -47,7 +47,7 @@ export function TimelineEventComposerSheet({
   async function handleSubmit(values: NormalizedTimelineEventFormValues) {
     if (isEditMode && timelineEvent) {
       await updateTimelineEventForProject(uid, activeProjectId, timelineEvent.id, values);
-      onSaved(timelineEvent.id);
+      await onSaved(timelineEvent.id);
       return;
     }
 
@@ -62,7 +62,7 @@ export function TimelineEventComposerSheet({
       activeProjectId,
       resolvedValues
     );
-    onSaved(newTimelineEventId);
+    await onSaved(newTimelineEventId);
   }
 
   return (

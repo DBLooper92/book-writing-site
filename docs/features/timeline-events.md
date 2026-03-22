@@ -48,6 +48,7 @@ Implemented now as the dedicated chronology slice that powers the timeline works
 - normalized records are used consistently in the UI
 - readable IDs are generated from the title with collision handling
 - create and update writes should reject impossible date ranges and invalid month/day precision, while still preserving legacy hidden continuity IDs when older records already have them
+- workspace create/edit saves should trigger an immediate follow-up refetch of the active project's `timeline_events` query so the visible chronology updates in place without requiring a browser reload
 
 ## Current Role In The Architecture
 
