@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const PLOT_THREAD_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const PLOT_THREAD_CANON_LEVEL_VALUES = [
@@ -29,7 +29,7 @@ export type PlotThreadStatus = (typeof PLOT_THREAD_STATUS_VALUES)[number];
 export type PlotThreadCanonLevel = (typeof PLOT_THREAD_CANON_LEVEL_VALUES)[number];
 export type PlotThreadConfidence = (typeof PLOT_THREAD_CONFIDENCE_VALUES)[number];
 export type PlotThreadType = (typeof PLOT_THREAD_TYPE_VALUES)[number];
-export type PlotThreadTimestamp = Timestamp | null;
+export type PlotThreadTimestamp = AppTimestamp;
 
 export type PlotThread = {
   id: string;

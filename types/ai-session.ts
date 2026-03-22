@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const AI_SESSION_STATUS_VALUES = [
   "planned",
@@ -31,7 +31,7 @@ export type AiSessionStatus = (typeof AI_SESSION_STATUS_VALUES)[number];
 export type AiSessionType = (typeof AI_SESSION_TYPE_VALUES)[number];
 export type AiSessionCanonLevel = (typeof AI_SESSION_CANON_LEVEL_VALUES)[number];
 export type AiSessionConfidence = (typeof AI_SESSION_CONFIDENCE_VALUES)[number];
-export type AiSessionTimestamp = Timestamp | null;
+export type AiSessionTimestamp = AppTimestamp;
 
 export type AiSession = {
   id: string;

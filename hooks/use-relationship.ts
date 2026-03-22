@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeRelationshipById } from "@/lib/firebase/relationships";
-import type { UserProject } from "@/lib/firebase/projects";
+import type { UserProject } from "@/lib/data/projects";
+import { getRelationshipById } from "@/lib/data/relationships";
 import type { Relationship } from "@/types/relationship";
 
 type UseRelationshipResult = {
   relationship: Relationship | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -38,29 +38,39 @@ export function useRelationship(relationshipId: string | null): UseRelationshipR
       : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !relationshipId) {
       return;
     }
 
-    return observeRelationshipById(
-      uid,
-      activeProjectId,
-      relationshipId,
-      (nextRelationship) => {
+    void getRelationshipById(uid, activeProjectId, relationshipId)
+      .then((nextRelationship) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           relationship: nextRelationship,
           error: nextRelationship ? null : "Relationship not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           relationship: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, relationshipId, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -84,3 +94,5 @@ function getErrorMessage(error: unknown) {
       : "Unable to load this relationship from the active project."
   );
 }
+
+

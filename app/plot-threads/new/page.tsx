@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { PlotThreadForm } from "@/components/plot-threads/plot-thread-form";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createPlotThreadForProject } from "@/lib/firebase/plot-threads";
+import { createPlotThreadForProject } from "@/lib/data/plot-threads";
 import type { NormalizedPlotThreadFormValues } from "@/types/plot-thread";
 
 export default function NewPlotThreadPage() {

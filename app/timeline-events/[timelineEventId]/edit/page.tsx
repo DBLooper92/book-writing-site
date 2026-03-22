@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { TimelineEventForm } from "@/components/timeline-events/timeline-event-form";
 import { useTimelineEvent } from "@/hooks/use-timeline-event";
-import { updateTimelineEventForProject } from "@/lib/firebase/timeline-events";
+import { updateTimelineEventForProject } from "@/lib/data/timeline-events";
 import {
   timelineEventToFormValues,
   type NormalizedTimelineEventFormValues,
@@ -34,7 +34,7 @@ export default function EditTimelineEventPage() {
     <PageShell
       eyebrow="Timeline"
       title={timelineEvent ? `Edit ${timelineEvent.title}` : "Edit timeline event"}
-      description="Update the first set of structured chronology fields and write the changes back to the active project's nested timeline event document."
+      description="Update the first set of structured chronology fields and write the changes back to the active project's timeline event record."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

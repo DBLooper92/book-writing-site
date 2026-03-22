@@ -8,6 +8,7 @@ Implemented now.
 
 - `types/relationship.ts`
 - `lib/firebase/relationships.ts`
+- `lib/data/relationships.ts`
 - `hooks/use-relationships.ts`
 - `hooks/use-relationship.ts`
 - `components/relationships/relationship-form.tsx`
@@ -21,15 +22,16 @@ Implemented now.
 ## Important Rules
 
 - relationship documents must live under `users/{uid}/projects/{projectId}/relationships/{relationshipId}`
+- Supabase rows keep the same scoped shape through `user_id`, `project_id`, and the readable `id`
 - the current UI depends on the active project
 - the form is intentionally smaller than the full canonical relationship type
-- Firestore docs are normalized before use in the UI
+- normalized records are used consistently in the UI
 - readable IDs are generated from the relationship title with collision handling
 - relationship records can link different entity collections, not just two character docs
 
 ## Why It Matters
 
-Relationships turns existing cross-entity references into a real slice instead of leaving them as seed-only structure. It provides a project-scoped place to track:
+Relationships turns existing cross-entity references into a real slice instead of leaving them as seed-only structure. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/relationships.ts`. The old `lib/firebase/*` import path remains only as a compatibility shim. It provides a project-scoped place to track:
 
 - who or what is connected
 - what kind of connection it is
@@ -43,3 +45,4 @@ Relationships turns existing cross-entity references into a real slice instead o
 - linked navigation from entity IDs to destination detail pages
 - validation that linked IDs exist in the active project
 - broader relationship graphs and filtering
+

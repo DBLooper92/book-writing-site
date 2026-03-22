@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { PlotThreadForm } from "@/components/plot-threads/plot-thread-form";
 import { usePlotThread } from "@/hooks/use-plot-thread";
-import { updatePlotThreadForProject } from "@/lib/firebase/plot-threads";
+import { updatePlotThreadForProject } from "@/lib/data/plot-threads";
 import {
   plotThreadToFormValues,
   type NormalizedPlotThreadFormValues,

@@ -10,35 +10,38 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - Tailwind-based UI styling
 - compact fixed header with Timeline, +Create, and Project controls aligned top-right
 - header hide-on-scroll-down and reveal-on-scroll-up behavior
-- home, auth, Firebase test, and developer setup routes
+- home, auth, backend test, and developer setup routes
+- Supabase browser/server clients, Next proxy session refresh, SQL migrations for `profiles`, `projects`, and the current story-bible entity tables, plus a simple non-realtime data layer for the active runtime
 
 ### Auth
 
-- Firebase Auth client integration
+- Supabase Auth client integration
 - email/password sign-up
 - email/password sign-in
 - sign-out flow
 - auth state hook
+- normalized app-auth user mapping wired into the active routes
 
 ### Project Management
 
-- user project listing under `users/{uid}/projects`
+- user project listing through Supabase `projects`
 - project creation from a dedicated `/projects/new` page
 - project rename
 - active project switching from the Projects page and header dropdown without route changes
-- `activeProjectId` stored on `users/{uid}`
+- `activeProjectId` stored on the current Supabase-backed profile row
+- simple fetch/refetch-oriented project data layer with client-side refresh triggers instead of realtime listeners
 
 ### Dev Setup
 
 - deterministic initializer at `app/dev/setup`
-- default project seeding under `users/{uid}/projects/default-story-bible`
+- default project seeding for the authenticated profile and `default-story-bible`
 - starter documents for many planned collections
 - rerunnable merge/skip behavior for seed data
 
 ### Books
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -49,7 +52,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Chapters
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -60,7 +63,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Scenes
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -71,7 +74,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Timeline Events
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - detail page
 - edit page
@@ -108,7 +111,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Characters
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -119,7 +122,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Relationships
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -130,7 +133,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Factions
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -141,7 +144,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Cultures
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -152,7 +155,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Religions
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -163,7 +166,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Governments
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -174,7 +177,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Organizations
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -185,7 +188,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Plot Threads
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -196,7 +199,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Outlines
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -207,7 +210,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Glossary Terms
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -218,7 +221,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Eras
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -229,7 +232,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Themes
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -240,7 +243,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Languages
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -251,7 +254,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Species
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -262,7 +265,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Items
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -273,7 +276,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Technologies
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -284,7 +287,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Locations
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -295,7 +298,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Notes
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -306,7 +309,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Retcons
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -317,7 +320,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### Attachments
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -328,7 +331,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 ### AI Sessions
 
 - canonical type definitions
-- Firestore read and write utilities
+- Supabase fetch/refetch read and write utilities for the active runtime path
 - list and detail hooks
 - list page
 - create page
@@ -337,6 +340,10 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - reusable form, card, and detail-section components
 
 ## Partially Implemented
+
+### Runtime Verification
+
+The active app runtime now uses Supabase Auth, Supabase-backed profiles/projects, and Supabase-backed data modules across the full story-bible surface. The repo contains Supabase client setup, proxy-based session refresh, SQL schema for `profiles`, `projects`, and the current entity collections, plus simple fetch/refetch data helpers. Any remaining `lib/firebase/*` files are compatibility shims rather than active backend integrations. Live smoke testing against the configured Supabase project is still the main follow-up task.
 
 ### CRUD Coverage
 
@@ -362,3 +369,4 @@ The `/timeline` workspace now exists as the sole route-level visual chronology s
 ## Documentation Rule
 
 When updating docs or code, mark a feature as implemented only when it has real route-level and data-layer behavior in the repo. Seeded collections and placeholder pages do not count as implemented slices.
+

@@ -139,13 +139,13 @@ const quickLinks = [
     href: "/dev/setup",
     title: "Developer setup",
     description:
-      "Initialize the Firestore user and project scaffold under users/{uid}/projects/default-story-bible.",
+      "Initialize the default project and starter story-bible seed records for your account.",
   },
   {
     href: "/firebase-test",
-    title: "Firebase test",
+    title: "Backend test",
     description:
-      "Confirm the client app can reach Firebase Auth and Firestore before building deeper tools.",
+      "Confirm the client app can reach Supabase before building deeper tools.",
   },
   {
     href: "/projects",
@@ -157,7 +157,7 @@ const quickLinks = [
     href: "/auth",
     title: "Auth",
     description:
-      "Sign in with email and password so the dev initializer can write data under your UID.",
+      "Sign in with email and password so the dev initializer can seed your account and active project scope.",
   },
 ] as const;
 
@@ -166,7 +166,7 @@ export default function HomePage() {
     <PageShell
       eyebrow="Development Workspace"
       title="BookWritingSite"
-      description="This app is the private development shell for a future multi-project writing system. Use the development routes to test Firebase, initialize a deterministic story-bible schema, and stage the next set of CRUD tools."
+      description="This app is the private development shell for a future multi-project writing system. Use the development routes to test Supabase, initialize deterministic starter data, and stage the next set of CRUD tools."
     >
       <section className="grid gap-4 md:grid-cols-2">
         {quickLinks.map((link) => (
@@ -190,9 +190,9 @@ export default function HomePage() {
           Current direction
         </h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
-          Firestore data is structured under <code>users/{`{uid}`}</code> so the
-          project can stay single-user for now without blocking future expansion to
-          multiple authenticated users and multiple projects per user.
+          The data model stays scoped by user and active project so the app can stay
+          single-author for now without blocking future expansion to multiple
+          authenticated users and multiple projects per user.
         </p>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">
           Books, Chapters, Scenes, Timeline Events, Relationships, Factions,

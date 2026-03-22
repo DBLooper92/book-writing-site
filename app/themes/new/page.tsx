@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { ThemeForm } from "@/components/themes/theme-form";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createThemeForProject } from "@/lib/firebase/themes";
+import { createThemeForProject } from "@/lib/data/themes";
 import type { NormalizedThemeFormValues } from "@/types/theme";
 
 export default function NewThemePage() {

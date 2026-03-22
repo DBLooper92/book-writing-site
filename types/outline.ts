@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const OUTLINE_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const OUTLINE_CANON_LEVEL_VALUES = [
@@ -17,7 +17,7 @@ export const OUTLINE_CONFIDENCE_VALUES = [
 export type OutlineStatus = (typeof OUTLINE_STATUS_VALUES)[number];
 export type OutlineCanonLevel = (typeof OUTLINE_CANON_LEVEL_VALUES)[number];
 export type OutlineConfidence = (typeof OUTLINE_CONFIDENCE_VALUES)[number];
-export type OutlineTimestamp = Timestamp | null;
+export type OutlineTimestamp = AppTimestamp;
 
 export type Outline = {
   id: string;

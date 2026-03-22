@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const CHARACTER_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const CHARACTER_TYPE_VALUES = [
@@ -33,7 +33,7 @@ export type CharacterImportanceLevel =
   (typeof CHARACTER_IMPORTANCE_LEVEL_VALUES)[number];
 export type CharacterCanonLevel = (typeof CHARACTER_CANON_LEVEL_VALUES)[number];
 export type CharacterConfidence = (typeof CHARACTER_CONFIDENCE_VALUES)[number];
-export type CharacterTimestamp = Timestamp | null;
+export type CharacterTimestamp = AppTimestamp;
 
 export type Character = {
   id: string;

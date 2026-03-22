@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const CULTURE_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const CULTURE_CANON_LEVEL_VALUES = [
@@ -17,7 +17,7 @@ export const CULTURE_CONFIDENCE_VALUES = [
 export type CultureStatus = (typeof CULTURE_STATUS_VALUES)[number];
 export type CultureCanonLevel = (typeof CULTURE_CANON_LEVEL_VALUES)[number];
 export type CultureConfidence = (typeof CULTURE_CONFIDENCE_VALUES)[number];
-export type CultureTimestamp = Timestamp | null;
+export type CultureTimestamp = AppTimestamp;
 
 export type Culture = {
   id: string;

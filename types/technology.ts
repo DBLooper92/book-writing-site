@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const TECHNOLOGY_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const TECHNOLOGY_CANON_LEVEL_VALUES = [
@@ -17,7 +17,7 @@ export const TECHNOLOGY_CONFIDENCE_VALUES = [
 export type TechnologyStatus = (typeof TECHNOLOGY_STATUS_VALUES)[number];
 export type TechnologyCanonLevel = (typeof TECHNOLOGY_CANON_LEVEL_VALUES)[number];
 export type TechnologyConfidence = (typeof TECHNOLOGY_CONFIDENCE_VALUES)[number];
-export type TechnologyTimestamp = Timestamp | null;
+export type TechnologyTimestamp = AppTimestamp;
 
 export type Technology = {
   id: string;

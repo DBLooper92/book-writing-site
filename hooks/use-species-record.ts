@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import type { UserProject } from "@/lib/firebase/projects";
-import { observeSpeciesById } from "@/lib/firebase/species";
+import type { UserProject } from "@/lib/data/projects";
+import { getSpeciesById } from "@/lib/data/species";
 import type { Species } from "@/types/species";
 
 type UseSpeciesRecordResult = {
   species: Species | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -36,29 +36,39 @@ export function useSpeciesRecord(speciesId: string | null): UseSpeciesRecordResu
     uid && activeProjectId && speciesId ? `${uid}:${activeProjectId}:${speciesId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !speciesId) {
       return;
     }
 
-    return observeSpeciesById(
-      uid,
-      activeProjectId,
-      speciesId,
-      (nextSpecies) => {
+    void getSpeciesById(uid, activeProjectId, speciesId)
+      .then((nextSpecies) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           species: nextSpecies,
           error: nextSpecies ? null : "Species not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           species: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, speciesId, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -80,3 +90,5 @@ function getErrorMessage(error: unknown) {
     error instanceof Error ? error.message : "Unable to load this species from the active project."
   );
 }
+
+

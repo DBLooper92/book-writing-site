@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeOrganizationsForProject } from "@/lib/firebase/organizations";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getOrganizationsForProject } from "@/lib/data/organizations";
+import type { UserProject } from "@/lib/data/projects";
 import type { Organization } from "@/types/organization";
 
 type UseOrganizationsResult = {
   organizations: Organization[];
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,28 +35,39 @@ export function useOrganizations(): UseOrganizationsResult {
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId) {
       return;
     }
 
-    return observeOrganizationsForProject(
-      uid,
-      activeProjectId,
-      (nextOrganizations) => {
+    void getOrganizationsForProject(uid, activeProjectId)
+      .then((nextOrganizations) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           organizations: nextOrganizations,
           error: null,
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           organizations: [],
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -80,3 +91,5 @@ function getErrorMessage(error: unknown) {
       : "Unable to load organizations for the active project."
   );
 }
+
+

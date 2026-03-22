@@ -27,7 +27,7 @@ export default function TimelineEventDetailPage() {
     <PageShell
       eyebrow="Timeline"
       title={timelineEvent?.title ?? "Timeline event detail"}
-      description="Timeline event records are loaded from the active project's nested timeline_events collection so chronology remains scoped to the current story bible."
+      description="Timeline event records are loaded from the active project so chronology remains scoped to the current story bible."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -41,8 +41,7 @@ export default function TimelineEventDetailPage() {
                 : "No active project selected"}
             </p>
             <p className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Scope: users/{`{uid}`}/projects/{activeProjectId ?? "{projectId}"}/timeline_events/
-              {timelineEventId ?? "{eventId}"}
+              Scope: active project timeline event {timelineEventId ?? "{eventId}"}
             </p>
           </div>
 

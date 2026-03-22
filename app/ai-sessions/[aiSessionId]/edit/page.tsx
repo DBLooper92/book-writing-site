@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { AiSessionForm } from "@/components/ai-sessions/ai-session-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useAiSession } from "@/hooks/use-ai-session";
-import { updateAiSessionForProject } from "@/lib/firebase/ai-sessions";
+import { updateAiSessionForProject } from "@/lib/data/ai-sessions";
 import {
   aiSessionToFormValues,
   type NormalizedAiSessionFormValues,

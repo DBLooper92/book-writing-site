@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { EraForm } from "@/components/eras/era-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createEraForProject } from "@/lib/firebase/eras";
+import { createEraForProject } from "@/lib/data/eras";
 import type { NormalizedEraFormValues } from "@/types/era";
 
 export default function NewEraPage() {

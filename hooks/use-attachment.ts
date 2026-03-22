@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeAttachmentById } from "@/lib/firebase/attachments";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getAttachmentById } from "@/lib/data/attachments";
+import type { UserProject } from "@/lib/data/projects";
 import type { Attachment } from "@/types/attachment";
 
 type UseAttachmentResult = {
   attachment: Attachment | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -38,29 +38,39 @@ export function useAttachment(attachmentId: string | null): UseAttachmentResult 
       : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !attachmentId) {
       return;
     }
 
-    return observeAttachmentById(
-      uid,
-      activeProjectId,
-      attachmentId,
-      (nextAttachment) => {
+    void getAttachmentById(uid, activeProjectId, attachmentId)
+      .then((nextAttachment) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           attachment: nextAttachment,
           error: nextAttachment ? null : "Attachment not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           attachment: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, attachmentId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -82,3 +92,5 @@ function getErrorMessage(error: unknown) {
     ? error.message
     : "Unable to load this attachment from the active project.";
 }
+
+

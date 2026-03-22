@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeAiSessionById } from "@/lib/firebase/ai-sessions";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getAiSessionById } from "@/lib/data/ai-sessions";
+import type { UserProject } from "@/lib/data/projects";
 import type { AiSession } from "@/types/ai-session";
 
 type UseAiSessionResult = {
   aiSession: AiSession | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -38,29 +38,39 @@ export function useAiSession(aiSessionId: string | null): UseAiSessionResult {
       : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !aiSessionId) {
       return;
     }
 
-    return observeAiSessionById(
-      uid,
-      activeProjectId,
-      aiSessionId,
-      (nextAiSession) => {
+    void getAiSessionById(uid, activeProjectId, aiSessionId)
+      .then((nextAiSession) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           aiSession: nextAiSession,
           error: nextAiSession ? null : "AI session not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           aiSession: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, aiSessionId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -82,3 +92,5 @@ function getErrorMessage(error: unknown) {
     ? error.message
     : "Unable to load this AI session from the active project.";
 }
+
+

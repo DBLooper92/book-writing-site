@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const SPECIES_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const SPECIES_CANON_LEVEL_VALUES = [
@@ -17,7 +17,7 @@ export const SPECIES_CONFIDENCE_VALUES = [
 export type SpeciesStatus = (typeof SPECIES_STATUS_VALUES)[number];
 export type SpeciesCanonLevel = (typeof SPECIES_CANON_LEVEL_VALUES)[number];
 export type SpeciesConfidence = (typeof SPECIES_CONFIDENCE_VALUES)[number];
-export type SpeciesTimestamp = Timestamp | null;
+export type SpeciesTimestamp = AppTimestamp;
 
 export type Species = {
   id: string;

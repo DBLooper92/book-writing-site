@@ -3,10 +3,20 @@
 import { useEffect, useState } from "react";
 
 import {
-  observeActiveProjectId,
-  observeUserProjects,
+  getActiveProjectId,
+  listUserProjects,
   type UserProject,
-} from "@/lib/firebase/projects";
+} from "@/lib/data/projects";
+
+const PROJECTS_CHANGED_EVENT = "app:projects-changed";
+
+export function emitProjectsChanged() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new Event(PROJECTS_CHANGED_EVENT));
+}
 
 type UseUserProjectsResult = {
   projects: UserProject[];
@@ -18,8 +28,7 @@ type UserProjectsState = {
   uid: string | null;
   projects: UserProject[];
   activeProjectId: string | null;
-  projectsReady: boolean;
-  activeReady: boolean;
+  loading: boolean;
 };
 
 export function useUserProjects(uid: string | null): UseUserProjectsResult {
@@ -27,8 +36,7 @@ export function useUserProjects(uid: string | null): UseUserProjectsResult {
     uid: null,
     projects: [],
     activeProjectId: null,
-    projectsReady: false,
-    activeReady: false,
+    loading: false,
   });
 
   useEffect(() => {
@@ -36,30 +44,58 @@ export function useUserProjects(uid: string | null): UseUserProjectsResult {
       return;
     }
 
-    const unsubscribeProjects = observeUserProjects(uid, (nextProjects) => {
-      setState((current) => ({
-        uid,
-        projects: nextProjects,
-        activeProjectId:
-          current.uid === uid ? current.activeProjectId : null,
-        projectsReady: true,
-        activeReady: current.uid === uid ? current.activeReady : false,
-      }));
-    });
+    const currentUid = uid;
+    let cancelled = false;
 
-    const unsubscribeActive = observeActiveProjectId(uid, (nextProjectId) => {
+    async function loadProjects() {
       setState((current) => ({
-        uid,
-        projects: current.uid === uid ? current.projects : [],
-        activeProjectId: nextProjectId,
-        projectsReady: current.uid === uid ? current.projectsReady : false,
-        activeReady: true,
+        uid: currentUid,
+        projects: current.uid === currentUid ? current.projects : [],
+        activeProjectId: current.uid === currentUid ? current.activeProjectId : null,
+        loading: true,
       }));
-    });
+
+      try {
+        const [projects, activeProjectId] = await Promise.all([
+          listUserProjects(currentUid),
+          getActiveProjectId(currentUid),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setState({
+          uid: currentUid,
+          projects,
+          activeProjectId,
+          loading: false,
+        });
+      } catch {
+        if (cancelled) {
+          return;
+        }
+
+        setState({
+          uid: currentUid,
+          projects: [],
+          activeProjectId: null,
+          loading: false,
+        });
+      }
+    }
+
+    void loadProjects();
+
+    function handleProjectsChanged() {
+      void loadProjects();
+    }
+
+    window.addEventListener(PROJECTS_CHANGED_EVENT, handleProjectsChanged);
 
     return () => {
-      unsubscribeProjects();
-      unsubscribeActive();
+      cancelled = true;
+      window.removeEventListener(PROJECTS_CHANGED_EVENT, handleProjectsChanged);
     };
   }, [uid]);
 
@@ -68,6 +104,7 @@ export function useUserProjects(uid: string | null): UseUserProjectsResult {
   return {
     projects: uid && matchesCurrentUser ? state.projects : [],
     activeProjectId: uid && matchesCurrentUser ? state.activeProjectId : null,
-    loading: uid ? !matchesCurrentUser || !state.projectsReady || !state.activeReady : false,
+    loading: uid ? !matchesCurrentUser || state.loading : false,
   };
 }
+

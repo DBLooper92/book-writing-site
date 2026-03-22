@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { RelationshipForm } from "@/components/relationships/relationship-form";
 import { useRelationship } from "@/hooks/use-relationship";
-import { updateRelationshipForProject } from "@/lib/firebase/relationships";
+import { updateRelationshipForProject } from "@/lib/data/relationships";
 import {
   relationshipToFormValues,
   type NormalizedRelationshipFormValues,

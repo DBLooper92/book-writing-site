@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeItemsForProject } from "@/lib/firebase/items";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getItemsForProject } from "@/lib/data/items";
+import type { UserProject } from "@/lib/data/projects";
 import type { Item } from "@/types/item";
 
 type UseItemsResult = {
   items: Item[];
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,28 +35,39 @@ export function useItems(): UseItemsResult {
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId) {
       return;
     }
 
-    return observeItemsForProject(
-      uid,
-      activeProjectId,
-      (nextItems) => {
+    void getItemsForProject(uid, activeProjectId)
+      .then((nextItems) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           items: nextItems,
           error: null,
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           items: [],
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -76,3 +87,5 @@ export function useItems(): UseItemsResult {
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unable to load items for the active project.";
 }
+
+

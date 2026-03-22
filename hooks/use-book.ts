@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeBookById } from "@/lib/firebase/books";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getBookById } from "@/lib/data/books";
+import type { UserProject } from "@/lib/data/projects";
 import type { Book } from "@/types/book";
 
 type UseBookResult = {
   book: Book | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,29 +35,39 @@ export function useBook(bookId: string | null): UseBookResult {
   const queryKey = uid && activeProjectId && bookId ? `${uid}:${activeProjectId}:${bookId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !bookId) {
       return;
     }
 
-    return observeBookById(
-      uid,
-      activeProjectId,
-      bookId,
-      (nextBook) => {
+    void getBookById(uid, activeProjectId, bookId)
+      .then((nextBook) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           book: nextBook,
           error: nextBook ? null : "Book not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           book: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, bookId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -77,3 +87,5 @@ export function useBook(bookId: string | null): UseBookResult {
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unable to load this book from the active project.";
 }
+
+

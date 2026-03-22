@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { ReligionForm } from "@/components/religions/religion-form";
 import { useReligion } from "@/hooks/use-religion";
-import { updateReligionForProject } from "@/lib/firebase/religions";
+import { updateReligionForProject } from "@/lib/data/religions";
 import {
   religionToFormValues,
   type NormalizedReligionFormValues,

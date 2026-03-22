@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const LANGUAGE_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const LANGUAGE_CANON_LEVEL_VALUES = [
@@ -17,7 +17,7 @@ export const LANGUAGE_CONFIDENCE_VALUES = [
 export type LanguageStatus = (typeof LANGUAGE_STATUS_VALUES)[number];
 export type LanguageCanonLevel = (typeof LANGUAGE_CANON_LEVEL_VALUES)[number];
 export type LanguageConfidence = (typeof LANGUAGE_CONFIDENCE_VALUES)[number];
-export type LanguageTimestamp = Timestamp | null;
+export type LanguageTimestamp = AppTimestamp;
 
 export type Language = {
   id: string;

@@ -9,7 +9,7 @@ import {
   initializeStoryBibleDevData,
   STORY_BIBLE_STRUCTURE_PATHS,
   type StoryBibleInitSummary,
-} from "@/lib/firebase/dev-init";
+} from "@/lib/supabase/dev-init";
 
 type InitState =
   | { tone: "neutral"; text: string; summary: null }
@@ -31,7 +31,7 @@ export default function DevSetupPage() {
     if (!user) {
       setInitState({
         tone: "error",
-        text: "Sign in first. The initializer writes data under users/{uid}.",
+        text: "Sign in first. The initializer writes project-scoped seed data for your account.",
         summary: null,
       });
       return;
@@ -40,7 +40,7 @@ export default function DevSetupPage() {
     setSubmitting(true);
     setInitState({
       tone: "neutral",
-      text: "Initializing Firestore story-bible data...",
+      text: "Initializing story-bible seed data...",
       summary: null,
     });
 
@@ -62,7 +62,7 @@ export default function DevSetupPage() {
         text:
           error instanceof Error
             ? error.message
-            : "Unknown error while initializing Firestore data.",
+            : "Unknown error while initializing story-bible seed data.",
         summary: null,
       });
     } finally {
@@ -73,8 +73,8 @@ export default function DevSetupPage() {
   return (
     <PageShell
       eyebrow="Developer Setup"
-      title="Initialize story-bible Firestore data"
-      description="This page seeds a deterministic user document, a default project, and one starter document in each planned story-bible subcollection for the currently authenticated user. It is safe to rerun: existing seed docs are skipped, while the user and project documents are merged and refreshed."
+      title="Initialize story-bible seed data"
+      description="This page seeds a deterministic profile, a default project, and one starter record in each story-bible collection for the currently authenticated user. It is safe to rerun: existing starter records are skipped, while the profile and project records are refreshed."
     >
       <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -109,14 +109,14 @@ export default function DevSetupPage() {
           <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
             Initializer action
           </h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-600">
-            Running this action creates or updates:
-            <br />
-            <code>users/{`{uid}`}</code>
-            <br />
-            <code>users/{`{uid}`}/projects/default-story-bible</code>
-            <br />
-            and one starter document in each planned story-bible subcollection.
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              Running this action creates or updates:
+              <br />
+            <code>profile + default project</code>
+              <br />
+            <code>default-story-bible</code>
+              <br />
+            and one starter record in each story-bible collection.
           </p>
 
           <button
@@ -156,8 +156,8 @@ export default function DevSetupPage() {
             Structure preview
           </h2>
           <p className="mt-2 text-sm leading-6 text-zinc-600">
-            The initializer creates visible documents so every planned collection can
-            be inspected in Firebase immediately.
+            The initializer creates visible starter records so every collection can
+            be inspected in the active Supabase-backed runtime immediately.
           </p>
           <pre className="mt-4 overflow-x-auto rounded-2xl bg-zinc-950 p-4 text-xs leading-6 text-zinc-100">
             {STORY_BIBLE_STRUCTURE_PATHS.join("\n")}
@@ -176,7 +176,7 @@ export default function DevSetupPage() {
             </div>
           ) : (
             <p className="mt-4 text-sm leading-6 text-zinc-600">
-              Run the initializer to see the exact Firestore paths that were
+              Run the initializer to see the exact scoped seed paths that were
               created, updated, or skipped.
             </p>
           )}

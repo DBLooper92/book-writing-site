@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import type { UserProject } from "@/lib/firebase/projects";
-import { observeThemesForProject } from "@/lib/firebase/themes";
+import type { UserProject } from "@/lib/data/projects";
+import { getThemesForProject } from "@/lib/data/themes";
 import type { Theme } from "@/types/theme";
 
 type UseThemesResult = {
   themes: Theme[];
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,28 +35,39 @@ export function useThemes(): UseThemesResult {
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId) {
       return;
     }
 
-    return observeThemesForProject(
-      uid,
-      activeProjectId,
-      (nextThemes) => {
+    void getThemesForProject(uid, activeProjectId)
+      .then((nextThemes) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           themes: nextThemes,
           error: null,
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           themes: [],
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;

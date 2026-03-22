@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeBooksForProject } from "@/lib/firebase/books";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getBooksForProject } from "@/lib/data/books";
+import type { UserProject } from "@/lib/data/projects";
 import type { Book } from "@/types/book";
 
 type UseBooksResult = {
   books: Book[];
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,28 +35,39 @@ export function useBooks(): UseBooksResult {
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId) {
       return;
     }
 
-    return observeBooksForProject(
-      uid,
-      activeProjectId,
-      (nextBooks) => {
+    void getBooksForProject(uid, activeProjectId)
+      .then((nextBooks) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           books: nextBooks,
           error: null,
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           books: [],
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -76,3 +87,5 @@ export function useBooks(): UseBooksResult {
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unable to load books for the active project.";
 }
+
+

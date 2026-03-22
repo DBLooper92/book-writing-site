@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeLanguagesForProject } from "@/lib/firebase/languages";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getLanguagesForProject } from "@/lib/data/languages";
+import type { UserProject } from "@/lib/data/projects";
 import type { Language } from "@/types/language";
 
 type UseLanguagesResult = {
   languages: Language[];
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,28 +35,39 @@ export function useLanguages(): UseLanguagesResult {
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId) {
       return;
     }
 
-    return observeLanguagesForProject(
-      uid,
-      activeProjectId,
-      (nextLanguages) => {
+    void getLanguagesForProject(uid, activeProjectId)
+      .then((nextLanguages) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           languages: nextLanguages,
           error: null,
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           languages: [],
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -78,3 +89,5 @@ function getErrorMessage(error: unknown) {
     error instanceof Error ? error.message : "Unable to load languages for the active project."
   );
 }
+
+

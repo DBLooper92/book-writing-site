@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeTechnologyById } from "@/lib/firebase/technologies";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getTechnologyById } from "@/lib/data/technologies";
+import type { UserProject } from "@/lib/data/projects";
 import type { Technology } from "@/types/technology";
 
 type UseTechnologyResult = {
   technology: Technology | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -36,29 +36,39 @@ export function useTechnology(technologyId: string | null): UseTechnologyResult 
     uid && activeProjectId && technologyId ? `${uid}:${activeProjectId}:${technologyId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !technologyId) {
       return;
     }
 
-    return observeTechnologyById(
-      uid,
-      activeProjectId,
-      technologyId,
-      (nextTechnology) => {
+    void getTechnologyById(uid, activeProjectId, technologyId)
+      .then((nextTechnology) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           technology: nextTechnology,
           error: nextTechnology ? null : "Technology not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           technology: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, technologyId, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;

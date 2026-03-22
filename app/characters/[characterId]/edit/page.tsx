@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { CharacterForm } from "@/components/characters/character-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useCharacter } from "@/hooks/use-character";
-import { updateCharacterForProject } from "@/lib/firebase/characters";
+import { updateCharacterForProject } from "@/lib/data/characters";
 import {
   characterToFormValues,
   type NormalizedCharacterFormValues,

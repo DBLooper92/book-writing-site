@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import type { UserProject } from "@/lib/firebase/projects";
-import { observeSpeciesForProject } from "@/lib/firebase/species";
+import type { UserProject } from "@/lib/data/projects";
+import { getSpeciesForProject } from "@/lib/data/species";
 import type { Species } from "@/types/species";
 
 type UseSpeciesResult = {
   speciesEntries: Species[];
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,28 +35,39 @@ export function useSpecies(): UseSpeciesResult {
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId) {
       return;
     }
 
-    return observeSpeciesForProject(
-      uid,
-      activeProjectId,
-      (nextSpeciesEntries) => {
+    void getSpeciesForProject(uid, activeProjectId)
+      .then((nextSpeciesEntries) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           speciesEntries: nextSpeciesEntries,
           error: null,
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           speciesEntries: [],
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -78,3 +89,5 @@ function getErrorMessage(error: unknown) {
     error instanceof Error ? error.message : "Unable to load species for the active project."
   );
 }
+
+

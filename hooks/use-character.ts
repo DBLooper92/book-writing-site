@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeCharacterById } from "@/lib/firebase/characters";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getCharacterById } from "@/lib/data/characters";
+import type { UserProject } from "@/lib/data/projects";
 import type { Character } from "@/types/character";
 
 type UseCharacterResult = {
   character: Character | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -38,29 +38,39 @@ export function useCharacter(characterId: string | null): UseCharacterResult {
       : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !characterId) {
       return;
     }
 
-    return observeCharacterById(
-      uid,
-      activeProjectId,
-      characterId,
-      (nextCharacter) => {
+    void getCharacterById(uid, activeProjectId, characterId)
+      .then((nextCharacter) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           character: nextCharacter,
           error: nextCharacter ? null : "Character not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           character: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, characterId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -78,9 +88,7 @@ export function useCharacter(characterId: string | null): UseCharacterResult {
 }
 
 function getErrorMessage(error: unknown) {
-  return (
-    error instanceof Error
-      ? error.message
-      : "Unable to load this character from the active project."
-  );
+  return error instanceof Error
+    ? error.message
+    : "Unable to load this character from the active project.";
 }

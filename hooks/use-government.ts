@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeGovernmentById } from "@/lib/firebase/governments";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getGovernmentById } from "@/lib/data/governments";
+import type { UserProject } from "@/lib/data/projects";
 import type { Government } from "@/types/government";
 
 type UseGovernmentResult = {
   government: Government | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -38,29 +38,39 @@ export function useGovernment(governmentId: string | null): UseGovernmentResult 
       : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !governmentId) {
       return;
     }
 
-    return observeGovernmentById(
-      uid,
-      activeProjectId,
-      governmentId,
-      (nextGovernment) => {
+    void getGovernmentById(uid, activeProjectId, governmentId)
+      .then((nextGovernment) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           government: nextGovernment,
           error: nextGovernment ? null : "Government not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           government: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, governmentId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -84,3 +94,5 @@ function getErrorMessage(error: unknown) {
       : "Unable to load this government from the active project."
   );
 }
+
+

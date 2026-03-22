@@ -8,6 +8,7 @@ Implemented now.
 
 - `types/culture.ts`
 - `lib/firebase/cultures.ts`
+- `lib/data/cultures.ts`
 - `hooks/use-cultures.ts`
 - `hooks/use-culture.ts`
 - `components/cultures/culture-form.tsx`
@@ -20,7 +21,7 @@ Implemented now.
 
 ## Important Rules
 
-- culture documents must live under `users/{uid}/projects/{projectId}/cultures/{cultureId}`
+- culture documents must stay project-scoped and map cleanly to `cultures` rows keyed by `user_id`, `project_id`, and `id` during the Supabase migration
 - the slice follows the same list/create/detail/edit pattern used by Characters, Factions, and Locations
 - the initial form is intentionally smaller than the canonical culture shape
 - seeded culture documents and user-created culture documents normalize into the same UI-ready type
@@ -30,9 +31,12 @@ Implemented now.
 
 Cultures makes existing `cultureIds` references in Characters, Factions, Locations, and Timeline Events point toward a real implemented slice instead of seed-only documents.
 
+The active Cultures runtime now uses the same Supabase-backed fetch/refetch pattern as the earlier migrated slices. The old `lib/firebase/*` import path remains only as a compatibility shim.
+
 ## What Remains Later
 
 - delete flow
 - linked navigation from related records into culture detail pages
 - relationship pickers for languages, religions, factions, and eras
 - stronger validation across referenced entity IDs
+

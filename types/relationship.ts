@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const RELATIONSHIP_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const RELATIONSHIP_CANON_LEVEL_VALUES = [
@@ -44,7 +44,7 @@ export type RelationshipCanonLevel = (typeof RELATIONSHIP_CANON_LEVEL_VALUES)[nu
 export type RelationshipConfidence = (typeof RELATIONSHIP_CONFIDENCE_VALUES)[number];
 export type RelationshipType = (typeof RELATIONSHIP_TYPE_VALUES)[number];
 export type RelationshipEntityType = (typeof RELATIONSHIP_ENTITY_TYPE_VALUES)[number];
-export type RelationshipTimestamp = Timestamp | null;
+export type RelationshipTimestamp = AppTimestamp;
 
 export type Relationship = {
   id: string;

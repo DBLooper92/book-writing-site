@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { GovernmentForm } from "@/components/governments/government-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useGovernment } from "@/hooks/use-government";
-import { updateGovernmentForProject } from "@/lib/firebase/governments";
+import { updateGovernmentForProject } from "@/lib/data/governments";
 import {
   governmentToFormValues,
   type NormalizedGovernmentFormValues,

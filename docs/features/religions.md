@@ -8,6 +8,7 @@ Implemented now.
 
 - `types/religion.ts`
 - `lib/firebase/religions.ts`
+- `lib/data/religions.ts`
 - `hooks/use-religions.ts`
 - `hooks/use-religion.ts`
 - `components/religions/religion-form.tsx`
@@ -20,7 +21,7 @@ Implemented now.
 
 ## Important Rules
 
-- religion documents must live under `users/{uid}/projects/{projectId}/religions/{religionId}`
+- religion documents must stay project-scoped and map cleanly to `religions` rows keyed by `user_id`, `project_id`, and `id` during the Supabase migration
 - the slice follows the same list/create/detail/edit pattern used by the existing canon slices
 - the initial form stays intentionally smaller than the canonical religion shape
 - seeded religion documents and user-created religion documents normalize into the same UI-ready type
@@ -30,9 +31,12 @@ Implemented now.
 
 Religions turns existing `religionIds` references in Characters, Cultures, Factions, Timeline Events, and the starter dataset into a real implemented slice instead of a seed-only placeholder.
 
+The active Religions runtime now uses the same Supabase-backed fetch/refetch pattern as the earlier migrated slices. The old `lib/firebase/*` import path remains only as a compatibility shim.
+
 ## What Remains Later
 
 - delete flow
 - linked navigation from characters, cultures, factions, and timeline events into religion detail pages
 - real entity pickers instead of raw ID entry
 - stronger validation across cross-entity religion references
+

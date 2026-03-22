@@ -6,7 +6,8 @@ import { type FormEvent, useState } from "react";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { useAuthUser } from "@/hooks/use-auth-user";
-import { createProjectForUser } from "@/lib/firebase/projects";
+import { emitProjectsChanged } from "@/hooks/use-user-projects";
+import { createProjectForUser } from "@/lib/data/projects";
 
 type Notice =
   | { tone: "neutral"; text: string }
@@ -15,7 +16,7 @@ type Notice =
 
 const defaultNotice: Notice = {
   tone: "neutral",
-  text: "Create a project here. New projects are still stored under users/{uid}/projects/{projectId} and become active immediately after creation.",
+  text: "Create a project here. New projects stay user-scoped and become active immediately after creation.",
 };
 
 export default function NewProjectPage() {
@@ -51,6 +52,7 @@ export default function NewProjectPage() {
         },
         title
       );
+      emitProjectsChanged();
 
       setNotice({
         tone: "success",
@@ -72,7 +74,7 @@ export default function NewProjectPage() {
     <PageShell
       eyebrow="Projects"
       title="Create project"
-      description="Use this dedicated create screen when you want to add a new project from the header. The new project is activated as soon as the Firestore write succeeds."
+      description="Use this dedicated create screen when you want to add a new project from the header. The new project is activated as soon as the save succeeds."
     >
       <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -127,8 +129,8 @@ export default function NewProjectPage() {
             What happens next
           </h2>
           <ul className="mt-4 space-y-3 text-sm leading-6 text-zinc-600">
-            <li>The new project is written under your user document.</li>
-            <li>`users/{`{uid}`}.activeProjectId` is updated to the new project.</li>
+            <li>The new project is written under your user scope.</li>
+            <li>Your profile `activeProjectId` is updated to the new project.</li>
             <li>Existing slice pages immediately start reading from that new scope.</li>
           </ul>
 

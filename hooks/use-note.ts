@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeNoteById } from "@/lib/firebase/notes";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getNoteById } from "@/lib/data/notes";
+import type { UserProject } from "@/lib/data/projects";
 import type { Note } from "@/types/note";
 
 type UseNoteResult = {
   note: Note | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,29 +35,39 @@ export function useNote(noteId: string | null): UseNoteResult {
   const queryKey = uid && activeProjectId && noteId ? `${uid}:${activeProjectId}:${noteId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !noteId) {
       return;
     }
 
-    return observeNoteById(
-      uid,
-      activeProjectId,
-      noteId,
-      (nextNote) => {
+    void getNoteById(uid, activeProjectId, noteId)
+      .then((nextNote) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           note: nextNote,
           error: nextNote ? null : "Note not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           note: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, noteId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -77,3 +87,5 @@ export function useNote(noteId: string | null): UseNoteResult {
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unable to load this note from the active project.";
 }
+
+

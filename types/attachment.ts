@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const ATTACHMENT_STATUS_VALUES = [
   "draft",
@@ -39,7 +39,7 @@ export type AttachmentType = (typeof ATTACHMENT_TYPE_VALUES)[number];
 export type AttachmentStorageStatus = (typeof ATTACHMENT_STORAGE_STATUS_VALUES)[number];
 export type AttachmentCanonLevel = (typeof ATTACHMENT_CANON_LEVEL_VALUES)[number];
 export type AttachmentConfidence = (typeof ATTACHMENT_CONFIDENCE_VALUES)[number];
-export type AttachmentTimestamp = Timestamp | null;
+export type AttachmentTimestamp = AppTimestamp;
 
 export type Attachment = {
   id: string;

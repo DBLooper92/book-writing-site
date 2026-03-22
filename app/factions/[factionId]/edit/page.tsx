@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { FactionForm } from "@/components/factions/faction-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useFaction } from "@/hooks/use-faction";
-import { updateFactionForProject } from "@/lib/firebase/factions";
+import { updateFactionForProject } from "@/lib/data/factions";
 import {
   factionToFormValues,
   type NormalizedFactionFormValues,

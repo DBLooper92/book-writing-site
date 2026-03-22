@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const BOOK_STATUS_VALUES = [
   "planning",
@@ -31,7 +31,7 @@ export type BookStatus = (typeof BOOK_STATUS_VALUES)[number];
 export type BookDraftStage = (typeof BOOK_DRAFT_STAGE_VALUES)[number];
 export type BookCanonLevel = (typeof BOOK_CANON_LEVEL_VALUES)[number];
 export type BookConfidence = (typeof BOOK_CONFIDENCE_VALUES)[number];
-export type BookTimestamp = Timestamp | null;
+export type BookTimestamp = AppTimestamp;
 
 export type Book = {
   id: string;

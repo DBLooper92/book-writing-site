@@ -4,7 +4,7 @@ import { TimelineEventForm } from "@/components/timeline-events/timeline-event-f
 import {
   createTimelineEventForProject,
   updateTimelineEventForProject,
-} from "@/lib/firebase/timeline-events";
+} from "@/lib/data/timeline-events";
 import type { TimelineLayoutInsertionItem } from "@/lib/timeline/layout";
 import { createEmptyTimelineEventFormValues, timelineEventToFormValues, type NormalizedTimelineEventFormValues, type TimelineEvent, type TimelineEventFormValues } from "@/types/timeline-event";
 

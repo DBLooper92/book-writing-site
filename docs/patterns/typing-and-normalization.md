@@ -22,6 +22,8 @@ Raw Firestore documents may be:
 
 Normalize documents before they reach components.
 
+Canonical UI types should not depend on provider-specific runtime classes such as Firestore `Timestamp`. Normalize timestamp values into app-local types before they reach hooks and components.
+
 ## Recommended Value Layers
 
 Use three layers when helpful:

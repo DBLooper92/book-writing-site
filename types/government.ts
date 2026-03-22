@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const GOVERNMENT_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const GOVERNMENT_CANON_LEVEL_VALUES = [
@@ -29,7 +29,7 @@ export type GovernmentStatus = (typeof GOVERNMENT_STATUS_VALUES)[number];
 export type GovernmentCanonLevel = (typeof GOVERNMENT_CANON_LEVEL_VALUES)[number];
 export type GovernmentConfidence = (typeof GOVERNMENT_CONFIDENCE_VALUES)[number];
 export type GovernmentType = (typeof GOVERNMENT_TYPE_VALUES)[number];
-export type GovernmentTimestamp = Timestamp | null;
+export type GovernmentTimestamp = AppTimestamp;
 
 export type Government = {
   id: string;

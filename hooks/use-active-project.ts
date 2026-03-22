@@ -16,3 +16,4 @@ export function useActiveProject() {
     loading: authLoading || (!!uid && projectsLoading),
   };
 }
+

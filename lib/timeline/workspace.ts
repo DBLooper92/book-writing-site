@@ -437,8 +437,8 @@ function compareUndatedTimelineEvents(left: TimelineEvent, right: TimelineEvent)
 }
 
 function compareTimelineEventCreatedAt(left: TimelineEvent, right: TimelineEvent) {
-  const leftCreatedAt = left.createdAt?.toMillis() ?? null;
-  const rightCreatedAt = right.createdAt?.toMillis() ?? null;
+  const leftCreatedAt = left.createdAt?.getTime() ?? null;
+  const rightCreatedAt = right.createdAt?.getTime() ?? null;
 
   if (typeof leftCreatedAt === "number" && typeof rightCreatedAt === "number") {
     return leftCreatedAt - rightCreatedAt;

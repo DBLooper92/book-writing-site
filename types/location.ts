@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const LOCATION_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const LOCATION_CANON_LEVEL_VALUES = [
@@ -17,7 +17,7 @@ export const LOCATION_CONFIDENCE_VALUES = [
 export type LocationStatus = (typeof LOCATION_STATUS_VALUES)[number];
 export type LocationCanonLevel = (typeof LOCATION_CANON_LEVEL_VALUES)[number];
 export type LocationConfidence = (typeof LOCATION_CONFIDENCE_VALUES)[number];
-export type LocationTimestamp = Timestamp | null;
+export type LocationTimestamp = AppTimestamp;
 
 export type Location = {
   id: string;

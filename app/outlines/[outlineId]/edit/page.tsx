@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { OutlineForm } from "@/components/outlines/outline-form";
 import { useOutline } from "@/hooks/use-outline";
-import { updateOutlineForProject } from "@/lib/firebase/outlines";
+import { updateOutlineForProject } from "@/lib/data/outlines";
 import { outlineToFormValues, type NormalizedOutlineFormValues } from "@/types/outline";
 
 export default function EditOutlinePage() {

@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { ItemForm } from "@/components/items/item-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createItemForProject } from "@/lib/firebase/items";
+import { createItemForProject } from "@/lib/data/items";
 import type { NormalizedItemFormValues } from "@/types/item";
 
 export default function NewItemPage() {

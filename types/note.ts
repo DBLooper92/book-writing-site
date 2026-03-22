@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const NOTE_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const NOTE_CANON_LEVEL_VALUES = [
@@ -17,7 +17,7 @@ export const NOTE_CONFIDENCE_VALUES = [
 export type NoteStatus = (typeof NOTE_STATUS_VALUES)[number];
 export type NoteCanonLevel = (typeof NOTE_CANON_LEVEL_VALUES)[number];
 export type NoteConfidence = (typeof NOTE_CONFIDENCE_VALUES)[number];
-export type NoteTimestamp = Timestamp | null;
+export type NoteTimestamp = AppTimestamp;
 
 export type Note = {
   id: string;

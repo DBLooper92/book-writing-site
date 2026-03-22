@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { FactionForm } from "@/components/factions/faction-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createFactionForProject } from "@/lib/firebase/factions";
+import { createFactionForProject } from "@/lib/data/factions";
 import type { NormalizedFactionFormValues } from "@/types/faction";
 
 export default function NewFactionPage() {

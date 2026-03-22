@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import type { UserProject } from "@/lib/firebase/projects";
-import { observeCharactersForProject } from "@/lib/firebase/characters";
+import { getCharactersForProject } from "@/lib/data/characters";
+import type { UserProject } from "@/lib/data/projects";
 import type { Character } from "@/types/character";
 
 type UseCharactersResult = {
   characters: Character[];
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,28 +35,39 @@ export function useCharacters(): UseCharactersResult {
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId) {
       return;
     }
 
-    return observeCharactersForProject(
-      uid,
-      activeProjectId,
-      (nextCharacters) => {
+    void getCharactersForProject(uid, activeProjectId)
+      .then((nextCharacters) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           characters: nextCharacters,
           error: null,
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           characters: [],
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -74,9 +85,7 @@ export function useCharacters(): UseCharactersResult {
 }
 
 function getErrorMessage(error: unknown) {
-  return (
-    error instanceof Error
-      ? error.message
-      : "Unable to load characters for the active project."
-  );
+  return error instanceof Error
+    ? error.message
+    : "Unable to load characters for the active project.";
 }

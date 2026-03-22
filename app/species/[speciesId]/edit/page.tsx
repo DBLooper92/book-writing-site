@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { SpeciesForm } from "@/components/species/species-form";
 import { useSpeciesRecord } from "@/hooks/use-species-record";
-import { updateSpeciesForProject } from "@/lib/firebase/species";
+import { updateSpeciesForProject } from "@/lib/data/species";
 import {
   speciesToFormValues,
   type NormalizedSpeciesFormValues,

@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { AttachmentForm } from "@/components/attachments/attachment-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useAttachment } from "@/hooks/use-attachment";
-import { updateAttachmentForProject } from "@/lib/firebase/attachments";
+import { updateAttachmentForProject } from "@/lib/data/attachments";
 import {
   attachmentToFormValues,
   type NormalizedAttachmentFormValues,

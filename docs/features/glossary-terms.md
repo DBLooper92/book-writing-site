@@ -7,6 +7,7 @@ Implemented now.
 ## What Exists
 
 - `types/glossary-term.ts`
+- `lib/data/glossary-terms.ts`
 - `lib/firebase/glossary-terms.ts`
 - `hooks/use-glossary-terms.ts`
 - `hooks/use-glossary-term.ts`
@@ -23,13 +24,14 @@ Implemented now.
 - glossary documents must live under `users/{uid}/projects/{projectId}/glossary_terms/{glossaryTermId}`
 - the current UI depends on the active project
 - the first-pass form is intentionally smaller than the full canonical glossary type
-- Firestore docs are normalized before use in the UI
+- Supabase rows now map closely to the existing Firestore shape using `user_id`, `project_id`, and `id`
+- normalized records are used consistently in the UI
 - readable IDs are generated from the title with collision handling
 - seeded glossary docs and user-created docs normalize into the same UI shape
 
 ## Why It Matters
 
-The starter dataset already exposes reusable lore terms linked to items, themes, and timeline events. This slice turns those vocabulary records into real navigable canon data without introducing a separate reference system.
+The starter dataset already exposes reusable lore terms linked to items, themes, and timeline events. This slice turns those vocabulary records into real navigable canon data without introducing a separate reference system. The active runtime now uses a simple Supabase fetch/refetch path for list, detail, create, and edit behavior. The old `lib/firebase/*` import path remains only as a compatibility shim.
 
 ## What Remains Later
 
@@ -38,3 +40,4 @@ The starter dataset already exposes reusable lore terms linked to items, themes,
 - entity pickers instead of manual ID entry
 - filtering, sorting, and search
 - broader validation across glossary-linked references
+

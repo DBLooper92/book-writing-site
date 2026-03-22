@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const THEME_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const THEME_CANON_LEVEL_VALUES = [
@@ -17,7 +17,7 @@ export const THEME_CONFIDENCE_VALUES = [
 export type ThemeStatus = (typeof THEME_STATUS_VALUES)[number];
 export type ThemeCanonLevel = (typeof THEME_CANON_LEVEL_VALUES)[number];
 export type ThemeConfidence = (typeof THEME_CONFIDENCE_VALUES)[number];
-export type ThemeTimestamp = Timestamp | null;
+export type ThemeTimestamp = AppTimestamp;
 
 export type Theme = {
   id: string;

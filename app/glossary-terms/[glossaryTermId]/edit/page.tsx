@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { GlossaryTermForm } from "@/components/glossary-terms/glossary-term-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useGlossaryTerm } from "@/hooks/use-glossary-term";
-import { updateGlossaryTermForProject } from "@/lib/firebase/glossary-terms";
+import { updateGlossaryTermForProject } from "@/lib/data/glossary-terms";
 import {
   glossaryTermToFormValues,
   type NormalizedGlossaryTermFormValues,

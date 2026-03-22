@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { FirebaseError } from "firebase/app";
+import { AuthApiError } from "@supabase/supabase-js";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { useAuthUser } from "@/hooks/use-auth-user";
@@ -10,7 +10,7 @@ import {
   signInWithEmail,
   signOutCurrentUser,
   signUpWithEmail,
-} from "@/lib/firebase/auth";
+} from "@/lib/auth";
 
 type Mode = "sign-in" | "sign-up";
 type Notice =
@@ -58,7 +58,7 @@ export default function AuthPage() {
       text: mode === "sign-in" ? "Signing in..." : "Creating account...",
     });
 
-    try {
+      try {
       if (mode === "sign-in") {
         await signInWithEmail(normalizedEmail, password);
         setNotice({
@@ -66,10 +66,12 @@ export default function AuthPage() {
           text: "Signed in successfully.",
         });
       } else {
-        await signUpWithEmail(normalizedEmail, password);
+        const result = await signUpWithEmail(normalizedEmail, password);
         setNotice({
           tone: "success",
-          text: "Account created and signed in successfully.",
+          text: result.data.session
+            ? "Account created and signed in successfully."
+            : "Account created. Check your email to confirm sign-in if confirmation is enabled.",
         });
       }
 
@@ -113,7 +115,7 @@ export default function AuthPage() {
     <PageShell
       eyebrow="BookWritingSite Auth"
       title="Email and password sign in"
-      description="Firestore writes on the development setup page are scoped to the currently authenticated user, so sign in here before initializing your personal story-bible data."
+      description="Sign in here before creating a project or using the developer setup flow. The first migration pass now uses Supabase Auth for the active session."
     >
       <section className="rounded-4xl border border-zinc-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -128,7 +130,7 @@ export default function AuthPage() {
               href="/firebase-test"
               className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 font-medium text-zinc-700 transition hover:bg-zinc-50"
             >
-              Firebase test
+              Backend test
             </Link>
           </div>
         </div>
@@ -239,12 +241,12 @@ export default function AuthPage() {
 
             <div className="mt-6 rounded-2xl bg-zinc-50 p-4 text-sm leading-6 text-zinc-600">
               <p>
-                Your Firestore rules currently allow reads and writes only when{" "}
-                <code>request.auth != null</code>.
+                This route now reflects your current Supabase Auth session.
               </p>
               <p className="mt-3">
-                After signing in, use the Firebase test page to confirm Firestore
-                access under those rules.
+                The active runtime is now on Supabase. The remaining cleanup work is
+                removing legacy Firebase code and documentation that are no longer in
+                the request path.
               </p>
             </div>
 
@@ -335,24 +337,22 @@ function StatusRow({ label, value }: { label: string; value: string }) {
 }
 
 function getAuthErrorMessage(error: unknown) {
-  if (!(error instanceof FirebaseError)) {
+  if (!(error instanceof AuthApiError)) {
     return error instanceof Error ? error.message : "Unknown authentication error.";
   }
 
   switch (error.code) {
-    case "auth/email-already-in-use":
+    case "user_already_exists":
       return "That email address is already in use.";
-    case "auth/invalid-email":
+    case "email_address_invalid":
+    case "invalid_credentials":
       return "Enter a valid email address.";
-    case "auth/invalid-credential":
-    case "auth/user-not-found":
-    case "auth/wrong-password":
+    case "invalid_login_credentials":
       return "The email or password is incorrect.";
-    case "auth/missing-password":
-      return "Enter your password.";
-    case "auth/weak-password":
+    case "weak_password":
       return "Password must be at least 6 characters.";
-    case "auth/too-many-requests":
+    case "over_request_rate_limit":
+    case "over_email_send_rate_limit":
       return "Too many attempts. Try again in a moment.";
     default:
       return error.message;

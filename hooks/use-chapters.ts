@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeChaptersForProject } from "@/lib/firebase/chapters";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getChaptersForProject } from "@/lib/data/chapters";
+import type { UserProject } from "@/lib/data/projects";
 import type { Chapter } from "@/types/chapter";
 
 type UseChaptersResult = {
   chapters: Chapter[];
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,28 +35,39 @@ export function useChapters(): UseChaptersResult {
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId) {
       return;
     }
 
-    return observeChaptersForProject(
-      uid,
-      activeProjectId,
-      (nextChapters) => {
+    void getChaptersForProject(uid, activeProjectId)
+      .then((nextChapters) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           chapters: nextChapters,
           error: null,
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           chapters: [],
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;

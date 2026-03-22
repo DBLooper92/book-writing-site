@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { BookForm } from "@/components/books/book-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useBook } from "@/hooks/use-book";
-import { updateBookForProject } from "@/lib/firebase/books";
+import { updateBookForProject } from "@/lib/data/books";
 import { bookToFormValues, type NormalizedBookFormValues } from "@/types/book";
 
 export default function EditBookPage() {
@@ -29,7 +29,7 @@ export default function EditBookPage() {
     <PageShell
       eyebrow="Books"
       title={book ? `Edit ${book.title}` : "Edit book"}
-      description="Update the first set of structured book fields and write the changes back to the currently active project's nested book document."
+      description="Update the first set of structured book fields and write the changes back to the currently active project's book record."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

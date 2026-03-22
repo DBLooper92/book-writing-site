@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { SceneForm } from "@/components/scenes/scene-form";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createSceneForProject } from "@/lib/firebase/scenes";
+import { createSceneForProject } from "@/lib/data/scenes";
 import type { NormalizedSceneFormValues } from "@/types/scene";
 
 export default function NewScenePage() {

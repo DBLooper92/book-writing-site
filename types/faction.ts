@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const FACTION_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const FACTION_CANON_LEVEL_VALUES = [
@@ -31,7 +31,7 @@ export type FactionStatus = (typeof FACTION_STATUS_VALUES)[number];
 export type FactionCanonLevel = (typeof FACTION_CANON_LEVEL_VALUES)[number];
 export type FactionConfidence = (typeof FACTION_CONFIDENCE_VALUES)[number];
 export type FactionType = (typeof FACTION_TYPE_VALUES)[number];
-export type FactionTimestamp = Timestamp | null;
+export type FactionTimestamp = AppTimestamp;
 
 export type Faction = {
   id: string;

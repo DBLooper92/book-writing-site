@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { NoteForm } from "@/components/notes/note-form";
 import { useNote } from "@/hooks/use-note";
-import { updateNoteForProject } from "@/lib/firebase/notes";
+import { updateNoteForProject } from "@/lib/data/notes";
 import { noteToFormValues, type NormalizedNoteFormValues } from "@/types/note";
 
 export default function EditNotePage() {

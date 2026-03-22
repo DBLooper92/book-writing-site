@@ -2,15 +2,15 @@
 
 ## Purpose
 
-Seed data in this repo exists to make the intended Firestore structure visible during development and to provide realistic inspection data for early UI work.
+Seed data in this repo exists to make the intended project-scoped schema visible during development and to provide realistic inspection data for early UI work.
 
 ## Current Source Of Truth
 
-`lib/firebase/dev-init.ts` is the current source of truth for development seeding behavior.
+`lib/supabase/dev-init.ts` is the current source of truth for development seeding behavior.
 
 ## Rules
 
-1. Seed data must stay scoped under `users/{uid}/projects/{projectId}/...`.
+1. Seed data must stay scoped to the authenticated user and a project row.
 2. Seeded collections do not imply implemented UI support.
 3. Seed docs should use field names that match the intended canonical schema.
 4. Seed docs should be deterministic and readable.
@@ -20,11 +20,11 @@ Seed data in this repo exists to make the intended Firestore structure visible d
 
 The initializer currently:
 
-- ensures the user doc exists
+- ensures the profile row exists
 - creates or updates `default-story-bible`
-- seeds one starter document in each planned collection
-- skips existing starter docs on rerun
-- refreshes user and project metadata with merge writes
+- seeds one starter row in each implemented collection
+- skips existing starter rows on rerun
+- refreshes profile and project metadata
 
 ## Practical Guidance
 

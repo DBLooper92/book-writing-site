@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const CHAPTER_STATUS_VALUES = [
   "outline",
@@ -23,7 +23,7 @@ export const CHAPTER_CONFIDENCE_VALUES = [
 export type ChapterStatus = (typeof CHAPTER_STATUS_VALUES)[number];
 export type ChapterCanonLevel = (typeof CHAPTER_CANON_LEVEL_VALUES)[number];
 export type ChapterConfidence = (typeof CHAPTER_CONFIDENCE_VALUES)[number];
-export type ChapterTimestamp = Timestamp | null;
+export type ChapterTimestamp = AppTimestamp;
 
 export type Chapter = {
   id: string;

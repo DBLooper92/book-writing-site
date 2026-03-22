@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { OutlineForm } from "@/components/outlines/outline-form";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createOutlineForProject } from "@/lib/firebase/outlines";
+import { createOutlineForProject } from "@/lib/data/outlines";
 import type { NormalizedOutlineFormValues } from "@/types/outline";
 
 export default function NewOutlinePage() {

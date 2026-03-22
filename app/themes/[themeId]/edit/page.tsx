@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { ThemeForm } from "@/components/themes/theme-form";
 import { useTheme } from "@/hooks/use-theme";
-import { updateThemeForProject } from "@/lib/firebase/themes";
+import { updateThemeForProject } from "@/lib/data/themes";
 import { themeToFormValues, type NormalizedThemeFormValues } from "@/types/theme";
 
 export default function EditThemePage() {

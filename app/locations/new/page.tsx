@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { LocationForm } from "@/components/locations/location-form";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createLocationForProject } from "@/lib/firebase/locations";
+import { createLocationForProject } from "@/lib/data/locations";
 import type { NormalizedLocationFormValues } from "@/types/location";
 
 export default function NewLocationPage() {

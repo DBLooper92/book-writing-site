@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeOrganizationById } from "@/lib/firebase/organizations";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getOrganizationById } from "@/lib/data/organizations";
+import type { UserProject } from "@/lib/data/projects";
 import type { Organization } from "@/types/organization";
 
 type UseOrganizationResult = {
   organization: Organization | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -38,29 +38,39 @@ export function useOrganization(organizationId: string | null): UseOrganizationR
       : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !organizationId) {
       return;
     }
 
-    return observeOrganizationById(
-      uid,
-      activeProjectId,
-      organizationId,
-      (nextOrganization) => {
+    void getOrganizationById(uid, activeProjectId, organizationId)
+      .then((nextOrganization) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           organization: nextOrganization,
           error: nextOrganization ? null : "Organization not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           organization: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, organizationId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -84,3 +94,5 @@ function getErrorMessage(error: unknown) {
       : "Unable to load this organization from the active project."
   );
 }
+
+

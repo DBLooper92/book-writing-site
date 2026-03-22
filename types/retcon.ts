@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const RETCON_STATUS_VALUES = [
   "open",
@@ -29,7 +29,7 @@ export type RetconStatus = (typeof RETCON_STATUS_VALUES)[number];
 export type RetconImpactLevel = (typeof RETCON_IMPACT_LEVEL_VALUES)[number];
 export type RetconCanonLevel = (typeof RETCON_CANON_LEVEL_VALUES)[number];
 export type RetconConfidence = (typeof RETCON_CONFIDENCE_VALUES)[number];
-export type RetconTimestamp = Timestamp | null;
+export type RetconTimestamp = AppTimestamp;
 
 export type Retcon = {
   id: string;

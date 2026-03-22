@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { OrganizationForm } from "@/components/organizations/organization-form";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createOrganizationForProject } from "@/lib/firebase/organizations";
+import { createOrganizationForProject } from "@/lib/data/organizations";
 import type { NormalizedOrganizationFormValues } from "@/types/organization";
 
 export default function NewOrganizationPage() {

@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { CultureForm } from "@/components/cultures/culture-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createCultureForProject } from "@/lib/firebase/cultures";
+import { createCultureForProject } from "@/lib/data/cultures";
 import type { NormalizedCultureFormValues } from "@/types/culture";
 
 export default function NewCulturePage() {

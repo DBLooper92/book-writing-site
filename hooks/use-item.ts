@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeItemById } from "@/lib/firebase/items";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getItemById } from "@/lib/data/items";
+import type { UserProject } from "@/lib/data/projects";
 import type { Item } from "@/types/item";
 
 type UseItemResult = {
   item: Item | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -36,29 +36,39 @@ export function useItem(itemId: string | null): UseItemResult {
     uid && activeProjectId && itemId ? `${uid}:${activeProjectId}:${itemId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !itemId) {
       return;
     }
 
-    return observeItemById(
-      uid,
-      activeProjectId,
-      itemId,
-      (nextItem) => {
+    void getItemById(uid, activeProjectId, itemId)
+      .then((nextItem) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           item: nextItem,
           error: nextItem ? null : "Item not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           item: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, itemId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -78,3 +88,5 @@ export function useItem(itemId: string | null): UseItemResult {
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unable to load this item from the active project.";
 }
+
+

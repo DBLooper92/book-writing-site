@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeLanguageById } from "@/lib/firebase/languages";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getLanguageById } from "@/lib/data/languages";
+import type { UserProject } from "@/lib/data/projects";
 import type { Language } from "@/types/language";
 
 type UseLanguageResult = {
   language: Language | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -36,29 +36,39 @@ export function useLanguage(languageId: string | null): UseLanguageResult {
     uid && activeProjectId && languageId ? `${uid}:${activeProjectId}:${languageId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !languageId) {
       return;
     }
 
-    return observeLanguageById(
-      uid,
-      activeProjectId,
-      languageId,
-      (nextLanguage) => {
+    void getLanguageById(uid, activeProjectId, languageId)
+      .then((nextLanguage) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           language: nextLanguage,
           error: nextLanguage ? null : "Language not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           language: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, languageId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -80,3 +90,5 @@ function getErrorMessage(error: unknown) {
     error instanceof Error ? error.message : "Unable to load this language from the active project."
   );
 }
+
+

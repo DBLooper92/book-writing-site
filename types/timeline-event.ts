@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const TIMELINE_EVENT_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const TIMELINE_EVENT_CANON_LEVEL_VALUES = [
@@ -31,7 +31,7 @@ export type TimelineEventStatus = (typeof TIMELINE_EVENT_STATUS_VALUES)[number];
 export type TimelineEventCanonLevel = (typeof TIMELINE_EVENT_CANON_LEVEL_VALUES)[number];
 export type TimelineEventConfidence = (typeof TIMELINE_EVENT_CONFIDENCE_VALUES)[number];
 export type TimelineEventType = (typeof TIMELINE_EVENT_TYPE_VALUES)[number];
-export type TimelineEventTimestamp = Timestamp | null;
+export type TimelineEventTimestamp = AppTimestamp;
 
 export type TimelineEvent = {
   id: string;

@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { AttachmentForm } from "@/components/attachments/attachment-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createAttachmentForProject } from "@/lib/firebase/attachments";
+import { createAttachmentForProject } from "@/lib/data/attachments";
 import type { NormalizedAttachmentFormValues } from "@/types/attachment";
 
 export default function NewAttachmentPage() {

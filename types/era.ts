@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const ERA_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const ERA_CANON_LEVEL_VALUES = [
@@ -17,7 +17,7 @@ export const ERA_CONFIDENCE_VALUES = [
 export type EraStatus = (typeof ERA_STATUS_VALUES)[number];
 export type EraCanonLevel = (typeof ERA_CANON_LEVEL_VALUES)[number];
 export type EraConfidence = (typeof ERA_CONFIDENCE_VALUES)[number];
-export type EraTimestamp = Timestamp | null;
+export type EraTimestamp = AppTimestamp;
 
 export type Era = {
   id: string;

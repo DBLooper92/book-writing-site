@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { AiSessionForm } from "@/components/ai-sessions/ai-session-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createAiSessionForProject } from "@/lib/firebase/ai-sessions";
+import { createAiSessionForProject } from "@/lib/data/ai-sessions";
 import type { NormalizedAiSessionFormValues } from "@/types/ai-session";
 
 export default function NewAiSessionPage() {

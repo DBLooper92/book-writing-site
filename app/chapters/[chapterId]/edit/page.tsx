@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { ChapterForm } from "@/components/chapters/chapter-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useChapter } from "@/hooks/use-chapter";
-import { updateChapterForProject } from "@/lib/firebase/chapters";
+import { updateChapterForProject } from "@/lib/data/chapters";
 import { chapterToFormValues, type NormalizedChapterFormValues } from "@/types/chapter";
 
 export default function EditChapterPage() {

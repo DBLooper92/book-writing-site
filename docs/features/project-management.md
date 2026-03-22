@@ -27,3 +27,4 @@ Implemented now.
 - project deletion or archiving flow
 - richer project settings UI
 - project duplication or export workflows
+

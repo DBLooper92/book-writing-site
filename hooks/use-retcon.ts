@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeRetconById } from "@/lib/firebase/retcons";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getRetconById } from "@/lib/data/retcons";
+import type { UserProject } from "@/lib/data/projects";
 import type { Retcon } from "@/types/retcon";
 
 type UseRetconResult = {
   retcon: Retcon | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -36,29 +36,39 @@ export function useRetcon(retconId: string | null): UseRetconResult {
     uid && activeProjectId && retconId ? `${uid}:${activeProjectId}:${retconId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !retconId) {
       return;
     }
 
-    return observeRetconById(
-      uid,
-      activeProjectId,
-      retconId,
-      (nextRetcon) => {
+    void getRetconById(uid, activeProjectId, retconId)
+      .then((nextRetcon) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           retcon: nextRetcon,
           error: nextRetcon ? null : "Retcon not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           retcon: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, retconId, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -80,3 +90,5 @@ function getErrorMessage(error: unknown) {
     ? error.message
     : "Unable to load this retcon from the active project.";
 }
+
+

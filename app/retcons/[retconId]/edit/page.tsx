@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { RetconForm } from "@/components/retcons/retcon-form";
 import { useRetcon } from "@/hooks/use-retcon";
-import { updateRetconForProject } from "@/lib/firebase/retcons";
+import { updateRetconForProject } from "@/lib/data/retcons";
 import { retconToFormValues, type NormalizedRetconFormValues } from "@/types/retcon";
 
 export default function EditRetconPage() {

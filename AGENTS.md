@@ -16,19 +16,19 @@ Structured project data is the source of truth. AI supports language work; it do
 
 - Next.js App Router
 - TypeScript
-- Firebase Auth
-- Firestore
+- Supabase Auth
+- Supabase Postgres
 - Tailwind CSS
 
 ## Hard Data Rule
 
-Story-bible entity data must stay project-scoped under:
+Story-bible entity data must stay project-scoped by:
 
-- `users/{uid}`
-- `users/{uid}/projects/{projectId}`
-- `users/{uid}/projects/{projectId}/{entityCollection}/{entityId}`
+- `user_id`
+- `project_id`
+- the entity table plus readable `id`
 
-Do not introduce global entity collections such as `characters/{characterId}` or `locations/{locationId}`.
+Do not introduce global entity rows that are not scoped by both user and project.
 
 ## Current Reality
 
@@ -36,7 +36,7 @@ Implemented now:
 
 - auth with email/password
 - user-owned projects
-- active project switching via `users/{uid}.activeProjectId`
+- active project switching via `profiles.active_project_id`
 - dev initializer that seeds a default project and starter docs
 - books slice with list, create, detail, and edit flows
 - chapters slice with list, create, detail, and edit flows
@@ -72,13 +72,13 @@ Partial or placeholder:
 
 ## Architectural Rules
 
-1. Keep canon data in Firestore, not in AI chat state.
+1. Keep canon data in structured project storage, not in AI chat state.
 2. Use canonical TypeScript types in `types/` to define intended entity shape.
-3. Normalize raw Firestore documents before they reach UI components.
+3. Normalize backend rows before they reach UI components.
 4. Reuse the existing entity-slice pattern instead of inventing a new architecture per feature.
-5. Prefer small, maintainable forms and predictable Firestore writes over heavy abstractions.
+5. Prefer small, maintainable forms and predictable writes over heavy abstractions.
 6. Be explicit about what is implemented now versus planned later in code and docs.
-7. Keep Firestore usage cost-aware: prefer the cheapest read/write pattern that still delivers a smooth, clean user experience.
+7. Keep data access cost-aware: prefer the cheapest read/write pattern that still delivers a smooth, clean user experience.
 
 ## How To Approach Future Work
 
@@ -86,7 +86,7 @@ Partial or placeholder:
 - Treat the Characters slice as the reference implementation pattern.
 - Keep list, create, detail, and edit pages consistent across slices.
 - Preserve seed compatibility so seeded docs and user-created docs normalize into the same UI shape.
-- Be deliberate about Firestore reads, listeners, and writes so the app stays inexpensive to run.
+- Be deliberate about Supabase reads and writes so the app stays inexpensive to run.
 - Do not document aspirational behavior as if it already exists.
 
 ## Documentation Maintenance

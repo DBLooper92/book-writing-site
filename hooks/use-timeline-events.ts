@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import type { UserProject } from "@/lib/firebase/projects";
-import { observeTimelineEventsForProject } from "@/lib/firebase/timeline-events";
+import type { UserProject } from "@/lib/data/projects";
+import { getTimelineEventsForProject } from "@/lib/data/timeline-events";
 import type { TimelineEvent } from "@/types/timeline-event";
 
 type UseTimelineEventsResult = {
   timelineEvents: TimelineEvent[];
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,28 +35,39 @@ export function useTimelineEvents(): UseTimelineEventsResult {
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId) {
       return;
     }
 
-    return observeTimelineEventsForProject(
-      uid,
-      activeProjectId,
-      (nextTimelineEvents) => {
+    void getTimelineEventsForProject(uid, activeProjectId)
+      .then((nextTimelineEvents) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           timelineEvents: nextTimelineEvents,
           error: null,
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           timelineEvents: [],
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -78,3 +89,5 @@ function getErrorMessage(error: unknown) {
     ? error.message
     : "Unable to load timeline events for the active project.";
 }
+
+

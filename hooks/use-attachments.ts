@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeAttachmentsForProject } from "@/lib/firebase/attachments";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getAttachmentsForProject } from "@/lib/data/attachments";
+import type { UserProject } from "@/lib/data/projects";
 import type { Attachment } from "@/types/attachment";
 
 type UseAttachmentsResult = {
   attachments: Attachment[];
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,28 +35,39 @@ export function useAttachments(): UseAttachmentsResult {
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId) {
       return;
     }
 
-    return observeAttachmentsForProject(
-      uid,
-      activeProjectId,
-      (nextAttachments) => {
+    void getAttachmentsForProject(uid, activeProjectId)
+      .then((nextAttachments) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           attachments: nextAttachments,
           error: null,
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           attachments: [],
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -78,3 +89,5 @@ function getErrorMessage(error: unknown) {
     ? error.message
     : "Unable to load attachments for the active project.";
 }
+
+

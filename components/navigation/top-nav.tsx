@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuthUser } from "@/hooks/use-auth-user";
-import { useUserProjects } from "@/hooks/use-user-projects";
-import { setActiveProjectForUser } from "@/lib/firebase/projects";
+import { emitProjectsChanged, useUserProjects } from "@/hooks/use-user-projects";
+import { setActiveProjectForUser } from "@/lib/data/projects";
 import { buildTimelineCreateHref } from "@/lib/timeline/create-route";
 
 const createLinks = [
@@ -126,6 +126,7 @@ export function TopNav() {
 
     try {
       await setActiveProjectForUser(uid, projectId);
+      emitProjectsChanged();
       setOpenMenu(null);
     } catch (error) {
       setProjectMenuError(

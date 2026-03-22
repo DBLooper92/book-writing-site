@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeGlossaryTermById } from "@/lib/firebase/glossary-terms";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getGlossaryTermById } from "@/lib/data/glossary-terms";
+import type { UserProject } from "@/lib/data/projects";
 import type { GlossaryTerm } from "@/types/glossary-term";
 
 type UseGlossaryTermResult = {
   glossaryTerm: GlossaryTerm | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -38,29 +38,39 @@ export function useGlossaryTerm(glossaryTermId: string | null): UseGlossaryTermR
       : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !glossaryTermId) {
       return;
     }
 
-    return observeGlossaryTermById(
-      uid,
-      activeProjectId,
-      glossaryTermId,
-      (nextGlossaryTerm) => {
+    void getGlossaryTermById(uid, activeProjectId, glossaryTermId)
+      .then((nextGlossaryTerm) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           glossaryTerm: nextGlossaryTerm,
           error: nextGlossaryTerm ? null : "Glossary term not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           glossaryTerm: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, glossaryTermId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -82,3 +92,5 @@ function getErrorMessage(error: unknown) {
     ? error.message
     : "Unable to load this glossary term from the active project.";
 }
+
+

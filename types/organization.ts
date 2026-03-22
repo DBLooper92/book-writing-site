@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const ORGANIZATION_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const ORGANIZATION_CANON_LEVEL_VALUES = [
@@ -29,7 +29,7 @@ export type OrganizationStatus = (typeof ORGANIZATION_STATUS_VALUES)[number];
 export type OrganizationCanonLevel = (typeof ORGANIZATION_CANON_LEVEL_VALUES)[number];
 export type OrganizationConfidence = (typeof ORGANIZATION_CONFIDENCE_VALUES)[number];
 export type OrganizationType = (typeof ORGANIZATION_TYPE_VALUES)[number];
-export type OrganizationTimestamp = Timestamp | null;
+export type OrganizationTimestamp = AppTimestamp;
 
 export type Organization = {
   id: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import type { UserProject } from "@/lib/firebase/projects";
+import type { UserProject } from "@/lib/data/projects";
 
 type ProjectSelectProps = {
   projects: UserProject[];

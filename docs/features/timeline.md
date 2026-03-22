@@ -27,7 +27,7 @@ Implemented now as the first derived workspace built on top of an existing slice
 - chronology precision currently uses start/end year with optional month/day fields, plus an optional same-date sequence number and optional time label
 - dated events sort strictly from chronology fields, while undated blocks can still preserve notch insertion order through hidden internal predecessor/successor hints
 - the workspace UI now uses a split-pane layout with a left quick-map rail, a top filter bar, and a direct chronology pane instead of stacked summary cards above the timeline
-- insertion notches are derived UI affordances, not stored Firestore documents
+- insertion notches are derived UI affordances, not stored backend records
 - saving a notch-created event without a start or end year should confirm the choice, then inherit the most recent earlier dated block's year when one exists so the new block stays anchored near the clicked insertion point
 - numbered timeline markers are derived from the current sorted chronology and should always renumber from top to bottom as the visible order changes
 - large chronology gaps should compress into labeled jumps instead of proportional empty space
@@ -45,7 +45,7 @@ Implemented now as the first derived workspace built on top of an existing slice
 
 ## Current Role In The Architecture
 
-The Timeline workspace turns `/timeline` into the sole top-level project-scoped chronology surface without changing the Firestore model. It now gives the existing `timeline_events` slice a split-pane chronology workspace with a floating quick-map rail, a pinnable filter header, a center-line visual timeline, derived insertion points, query-driven create entry points, in-place event lightboxes, nested linked-record detail lightboxes, inline create/edit entry points, nested linked-record creation lightboxes inside the event editor, timeline-specific filters, year/month/day-aware chronology ordering, and first-pass integrity warnings while keeping timeline data grounded in the same normalized event records used elsewhere in the app.
+The Timeline workspace turns `/timeline` into the sole top-level project-scoped chronology surface without changing the project-scoped data model. It now gives the existing `timeline_events` slice a split-pane chronology workspace with a floating quick-map rail, a pinnable filter header, a center-line visual timeline, derived insertion points, query-driven create entry points, in-place event lightboxes, nested linked-record detail lightboxes, inline create/edit entry points, nested linked-record creation lightboxes inside the event editor, timeline-specific filters, year/month/day-aware chronology ordering, and first-pass integrity warnings while keeping timeline data grounded in the same normalized event records used elsewhere in the app.
 
 ## What Remains Later
 
@@ -55,3 +55,4 @@ The Timeline workspace turns `/timeline` into the sole top-level project-scoped 
 - linked-ID validation against more entity slices than the current first-pass connected set
 - richer chronology models beyond the current year/month/day plus sequence fields, such as calendar-system support or finer-grained timestamps
 - denser or zoomed chronology views for era-scale navigation
+

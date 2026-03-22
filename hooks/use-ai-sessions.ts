@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeAiSessionsForProject } from "@/lib/firebase/ai-sessions";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getAiSessionsForProject } from "@/lib/data/ai-sessions";
+import type { UserProject } from "@/lib/data/projects";
 import type { AiSession } from "@/types/ai-session";
 
 type UseAiSessionsResult = {
   aiSessions: AiSession[];
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,28 +35,39 @@ export function useAiSessions(): UseAiSessionsResult {
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId) {
       return;
     }
 
-    return observeAiSessionsForProject(
-      uid,
-      activeProjectId,
-      (nextAiSessions) => {
+    void getAiSessionsForProject(uid, activeProjectId)
+      .then((nextAiSessions) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           aiSessions: nextAiSessions,
           error: null,
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           aiSessions: [],
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -78,3 +89,5 @@ function getErrorMessage(error: unknown) {
     ? error.message
     : "Unable to load AI sessions for the active project.";
 }
+
+

@@ -120,3 +120,21 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: Timeline chronology simplification pass
 - Decision: Dated timeline events must sort strictly from their chronology fields, while insertion hints from timeline notches may remain only as hidden ordering help for undated events instead of a user-authored continuity model.
 - Why it stays in force: This matches the product expectation that editing date fields should move blocks directly, avoids letting hidden relationship data override explicit chronology, keeps the workspace derived from `timeline_events`, and still preserves a lightweight way to keep undated blocks stable without introducing a second persisted ordering model.
+
+### D-019
+
+- Origin: Supabase migration start
+- Decision: The first Supabase migration pass must keep the schema close to the current Firestore document shapes, avoid aggressive normalization, keep timeline sorting/filtering in the client, and prefer fetch/refetch patterns over realtime subscriptions.
+- Why it stays in force: The migration goal is to replace backend services safely without redesigning product behavior, so the initial cutover should minimize data-shape drift and reduce moving parts until parity is stable.
+
+### D-020
+
+- Origin: Auth and project cutover
+- Decision: Supabase Auth, profile-backed active-project state, and project CRUD now become the shared runtime baseline before the remaining entity slices are migrated.
+- Why it stays in force: Firebase UID-based project scoping would block the rest of the Supabase slice migration, while cutting over the shared auth/project path first lets the remaining slices follow one consistent fetch/refetch pattern without redesigning the UI.
+
+### D-021
+
+- Origin: Supabase cleanup completion
+- Decision: The active app runtime is now Supabase-only, while any remaining `lib/firebase/*` files are compatibility shims rather than the source of truth for auth or data access.
+- Why it stays in force: This keeps the backend migration finished from a product-behavior perspective, removes the real Firebase dependency and environment requirements, and still leaves room to trim compatibility import paths later without reintroducing backend drift.

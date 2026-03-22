@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { LanguageForm } from "@/components/languages/language-form";
 import { useLanguage } from "@/hooks/use-language";
-import { updateLanguageForProject } from "@/lib/firebase/languages";
+import { updateLanguageForProject } from "@/lib/data/languages";
 import {
   languageToFormValues,
   type NormalizedLanguageFormValues,

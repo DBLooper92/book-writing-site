@@ -39,7 +39,7 @@ AI should not become the source of truth for:
 
 - canon facts
 - timeline ordering logic
-- Firestore schema
+- the database schema
 - collection scoping rules
 - cross-entity integrity
 
@@ -47,8 +47,8 @@ AI should not become the source of truth for:
 
 When making code changes, AI should:
 
-- preserve project-scoped Firestore paths
-- keep Firestore reads, listeners, and writes cost-aware
+- preserve project-scoped user and project ownership
+- keep data access cost-aware
 - reuse the existing entity-slice pattern
 - keep docs honest about implemented versus planned status
 - favor normalization and typed boundaries over raw document usage
@@ -65,4 +65,4 @@ When assisting with story work, AI should:
 
 ## Non-Negotiable Constraint
 
-Do not document or implement story-bible entities as global top-level collections. Entity data belongs under `users/{uid}/projects/{projectId}/...`.
+Do not document or implement story-bible entities as global top-level data without user and project scope. Entity data belongs to the authenticated user and active project.

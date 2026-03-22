@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { OrganizationForm } from "@/components/organizations/organization-form";
 import { useOrganization } from "@/hooks/use-organization";
-import { updateOrganizationForProject } from "@/lib/firebase/organizations";
+import { updateOrganizationForProject } from "@/lib/data/organizations";
 import {
   organizationToFormValues,
   type NormalizedOrganizationFormValues,

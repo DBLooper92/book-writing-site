@@ -8,6 +8,7 @@ Implemented now as the third full entity slice.
 
 - `types/note.ts`
 - `lib/firebase/notes.ts`
+- `lib/data/notes.ts`
 - `hooks/use-notes.ts`
 - `hooks/use-note.ts`
 - `components/notes/note-form.tsx`
@@ -21,14 +22,15 @@ Implemented now as the third full entity slice.
 ## Important Rules
 
 - note documents must live under `users/{uid}/projects/{projectId}/notes/{noteId}`
+- Supabase rows keep the same scoped shape through `user_id`, `project_id`, and the readable `id`
 - the slice follows the same list/create/detail/edit pattern as Characters and Locations
 - the first-pass form stays intentionally focused on title, note body, and one optional direct link target
-- Firestore docs are normalized before use in the UI
+- normalized records are used consistently in the UI
 - readable IDs are generated from the title with collision handling
 
 ## Current Role In The Architecture
 
-Notes adds a text-heavy working slice without introducing a different architecture. It confirms that the same entity-slice pattern can support project-writing support records as well as canon entities like Characters and Locations.
+Notes adds a text-heavy working slice without introducing a different architecture. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/notes.ts`. The old `lib/firebase/*` import path remains only as a compatibility shim.
 
 ## What Remains Later
 
@@ -36,3 +38,4 @@ Notes adds a text-heavy working slice without introducing a different architectu
 - richer note linking and entity pickers
 - any deeper hierarchy or tree behavior beyond the current flat project-scoped notes collection
 - linked navigation to referenced records
+

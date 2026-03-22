@@ -41,6 +41,7 @@ Current repo pattern:
 - create writes set both `createdAt` and `updatedAt`
 - update writes refresh `updatedAt`
 - normalizers accept missing or non-Timestamp values and fall back to `null`
+- canonical UI records should expose app-local timestamp values rather than raw Firestore `Timestamp` instances
 
 ## Normalization Requirement
 

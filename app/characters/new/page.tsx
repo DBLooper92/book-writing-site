@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { CharacterForm } from "@/components/characters/character-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createCharacterForProject } from "@/lib/firebase/characters";
+import { createCharacterForProject } from "@/lib/data/characters";
 import type { NormalizedCharacterFormValues } from "@/types/character";
 
 export default function NewCharacterPage() {

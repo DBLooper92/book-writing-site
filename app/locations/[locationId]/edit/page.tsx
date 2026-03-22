@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { LocationForm } from "@/components/locations/location-form";
 import { useLocation } from "@/hooks/use-location";
-import { updateLocationForProject } from "@/lib/firebase/locations";
+import { updateLocationForProject } from "@/lib/data/locations";
 import {
   locationToFormValues,
   type NormalizedLocationFormValues,

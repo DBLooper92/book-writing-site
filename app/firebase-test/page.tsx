@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { FirebaseError } from "firebase/app";
+import { PostgrestError } from "@supabase/supabase-js";
 
 import { PageShell } from "@/components/layout/page-shell";
-import { app, auth, db } from "@/lib/firebase/client";
-import { runFirestoreHealthcheck } from "@/lib/firebase/firestore";
+import { runSupabaseHealthcheck } from "@/lib/supabase/healthcheck";
 
 type ReadState =
   | { status: "idle"; message: string }
@@ -14,34 +13,33 @@ type ReadState =
 
 const initialState: ReadState = {
   status: "idle",
-  message: "No Firestore read attempted yet.",
+  message: "No backend read attempted yet.",
 };
 
-export default function FirebaseTestPage() {
+export default function BackendTestPage() {
   const [readState, setReadState] = useState<ReadState>(initialState);
-  const projectId = app.options.projectId ?? "Unknown";
 
-  async function handleFirestoreCheck() {
+  async function handleBackendCheck() {
     setReadState({
       status: "idle",
-      message: "Checking Firestore...",
+      message: "Checking Supabase...",
     });
 
     try {
-      const result = await runFirestoreHealthcheck();
+      const result = await runSupabaseHealthcheck();
 
       setReadState({
         status: "success",
         message: result.empty
-          ? "Firestore read succeeded. The __healthcheck collection is currently empty."
-          : `Firestore read succeeded. Retrieved ${result.size} document result(s).`,
+          ? "Supabase read succeeded. The projects table is currently empty for this client context."
+          : `Supabase read succeeded. Retrieved ${result.size} project result(s).`,
       });
     } catch (error) {
-      if (error instanceof FirebaseError) {
+      if (error instanceof PostgrestError) {
         const permissionMessage =
-          error.code === "permission-denied"
-            ? "Firestore read was blocked by security rules."
-            : "Firestore read failed.";
+          error.code === "42501"
+            ? "Supabase read was blocked by database permissions."
+            : "Supabase read failed.";
 
         setReadState({
           status: "error",
@@ -53,39 +51,36 @@ export default function FirebaseTestPage() {
 
       setReadState({
         status: "error",
-        message:
-          error instanceof Error ? error.message : "Unknown Firestore read error.",
+        message: error instanceof Error ? error.message : "Unknown Supabase read error.",
       });
     }
   }
 
   return (
     <PageShell
-      eyebrow="Temporary Firebase Test"
-      title="Firebase connection status"
-      description="Use this page to confirm the client app can reach the initialized Firebase app, Auth, and Firestore. Firestore rules may still block reads until your project rules allow them."
+      eyebrow="Temporary Backend Test"
+      title="Supabase connection status"
+      description="Use this page to confirm the client app can reach the configured Supabase project and read a lightweight project query."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
         <div className="grid gap-4 sm:grid-cols-2">
-          <StatusCard label="Firebase App" value="Initialized" />
-          <StatusCard label="Project ID" value={projectId} />
-          <StatusCard label="Firestore" value={db ? "Available" : "Missing"} />
-          <StatusCard label="Auth" value={auth ? "Available" : "Missing"} />
+          <StatusCard label="Backend" value="Supabase" />
+          <StatusCard label="Read target" value="projects" />
         </div>
 
         <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-          <p className="text-sm font-medium text-zinc-900">Firestore read test</p>
+          <p className="text-sm font-medium text-zinc-900">Supabase read test</p>
           <p className="mt-1 text-sm text-zinc-600">
-            Reads up to one document from the <code>__healthcheck</code> collection
-            without writing data.
+            Reads up to one row from the <code>projects</code> table without writing
+            data.
           </p>
 
           <button
             type="button"
-            onClick={handleFirestoreCheck}
+            onClick={handleBackendCheck}
             className="mt-4 inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-medium text-white transition hover:bg-zinc-800"
           >
-            Run Firestore read
+            Run Supabase read
           </button>
 
           <p

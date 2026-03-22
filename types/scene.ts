@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const SCENE_STATUS_VALUES = [
   "outline",
@@ -35,7 +35,7 @@ export type SceneStatus = (typeof SCENE_STATUS_VALUES)[number];
 export type SceneCanonLevel = (typeof SCENE_CANON_LEVEL_VALUES)[number];
 export type SceneConfidence = (typeof SCENE_CONFIDENCE_VALUES)[number];
 export type SceneType = (typeof SCENE_TYPE_VALUES)[number];
-export type SceneTimestamp = Timestamp | null;
+export type SceneTimestamp = AppTimestamp;
 
 export type Scene = {
   id: string;

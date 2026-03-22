@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { BookForm } from "@/components/books/book-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createBookForProject } from "@/lib/firebase/books";
+import { createBookForProject } from "@/lib/data/books";
 import type { NormalizedBookFormValues } from "@/types/book";
 
 export default function NewBookPage() {
@@ -27,7 +27,7 @@ export default function NewBookPage() {
     <PageShell
       eyebrow="Books"
       title="Create book"
-      description="Start a new book inside the currently active project. This initial form is intentionally small but it writes into the full project-scoped book document shape."
+      description="Start a new book inside the currently active project. This initial form is intentionally small but it writes into the full project-scoped book record shape."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

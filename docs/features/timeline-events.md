@@ -8,6 +8,7 @@ Implemented now as the dedicated chronology slice that powers the timeline works
 
 - `types/timeline-event.ts`
 - `lib/firebase/timeline-events.ts`
+- `lib/data/timeline-events.ts`
 - `lib/timeline/create-route.ts`
 - `lib/timeline/references.ts`
 - `lib/timeline/workspace.ts`
@@ -33,7 +34,8 @@ Implemented now as the dedicated chronology slice that powers the timeline works
 
 - timeline event documents must live under `users/{uid}/projects/{projectId}/timeline_events/{eventId}`
 - `/timeline` is the only top-level browse/create surface for timeline events; legacy `/timeline-events` index and new routes only redirect into the workspace
-- the slice still owns the canonical timeline-event type, normalization, Firestore utilities, detail route, and edit route even though top-level authoring moved into `/timeline`
+- the slice still owns the canonical timeline-event type, normalization, Supabase fetch/refetch utilities, detail route, and edit route even though top-level authoring moved into `/timeline`
+- Supabase rows keep the same scoped shape through `user_id`, `project_id`, and the readable `id`
 - chronology data currently uses start/end year fields with optional month/day precision, an optional same-date sequence number, and an optional freeform time label
 - dated events sort from chronology fields, while hidden predecessor/successor IDs now serve only as internal insertion hints for undated notch-created events and legacy records
 - workspace cards should stay lightweight and open event inspection/editing in-place instead of routing authors away from `/timeline`
@@ -43,13 +45,13 @@ Implemented now as the dedicated chronology slice that powers the timeline works
 - linked labels and warnings should resolve from already loaded project-scoped slice data instead of storing duplicate display metadata on timeline events
 - query-driven workspace prefills should stay optional conveniences, not a second authoring model or a second persistence shape
 - create flows opened from timeline insertion notches should confirm blank-year saves and, when confirmed, inherit the most recent earlier dated block's year if one exists; otherwise they remain undated
-- Firestore docs are normalized before use in the UI
+- normalized records are used consistently in the UI
 - readable IDs are generated from the title with collision handling
 - create and update writes should reject impossible date ranges and invalid month/day precision, while still preserving legacy hidden continuity IDs when older records already have them
 
 ## Current Role In The Architecture
 
-Timeline Events turns chronology into a real project-scoped slice and now powers `/timeline` as the sole top-level chronology surface. It gives Books, Chapters, Scenes, Characters, Locations, and several worldbuilding slices a real chronology target to reference instead of relying on seed-only event documents, while keeping all timeline authoring grounded in one normalized document shape that now supports year/month/day placement, same-date ordering, optional time labels, in-place workspace viewing/editing, nested linked-record detail inspection, and nested linked-record creation from the event editor itself.
+Timeline Events turns chronology into a real project-scoped slice and now powers `/timeline` as the sole top-level chronology surface. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/timeline-events.ts`. The old `lib/firebase/*` import path remains only as a compatibility shim. It gives Books, Chapters, Scenes, Characters, Locations, and several worldbuilding slices a real chronology target to reference instead of relying on seed-only event documents, while keeping all timeline authoring grounded in one normalized document shape that now supports year/month/day placement, same-date ordering, optional time labels, in-place workspace viewing/editing, nested linked-record detail inspection, and nested linked-record creation from the event editor itself.
 
 ## What Remains Later
 
@@ -60,3 +62,4 @@ Timeline Events turns chronology into a real project-scoped slice and now powers
 - a decision on whether `timeOfDayLabel` should stay display-only or gain a real sortable time value
 - lighter-weight reference loading for picker and detail data so timeline authoring stays cost-aware
 - chronology models beyond the current year/month/day plus sequence approach
+

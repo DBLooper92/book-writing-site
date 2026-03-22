@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { SpeciesForm } from "@/components/species/species-form";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createSpeciesForProject } from "@/lib/firebase/species";
+import { createSpeciesForProject } from "@/lib/data/species";
 import type { NormalizedSpeciesFormValues } from "@/types/species";
 
 export default function NewSpeciesPage() {

@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeOutlineById } from "@/lib/firebase/outlines";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getOutlineById } from "@/lib/data/outlines";
+import type { UserProject } from "@/lib/data/projects";
 import type { Outline } from "@/types/outline";
 
 type UseOutlineResult = {
   outline: Outline | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -36,29 +36,39 @@ export function useOutline(outlineId: string | null): UseOutlineResult {
     uid && activeProjectId && outlineId ? `${uid}:${activeProjectId}:${outlineId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !outlineId) {
       return;
     }
 
-    return observeOutlineById(
-      uid,
-      activeProjectId,
-      outlineId,
-      (nextOutline) => {
+    void getOutlineById(uid, activeProjectId, outlineId)
+      .then((nextOutline) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           outline: nextOutline,
           error: nextOutline ? null : "Outline not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           outline: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, outlineId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -80,3 +90,5 @@ function getErrorMessage(error: unknown) {
     ? error.message
     : "Unable to load this outline from the active project.";
 }
+
+

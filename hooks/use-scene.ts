@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import type { UserProject } from "@/lib/firebase/projects";
-import { observeSceneById } from "@/lib/firebase/scenes";
+import type { UserProject } from "@/lib/data/projects";
+import { getSceneById } from "@/lib/data/scenes";
 import type { Scene } from "@/types/scene";
 
 type UseSceneResult = {
   scene: Scene | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -36,29 +36,39 @@ export function useScene(sceneId: string | null): UseSceneResult {
     uid && activeProjectId && sceneId ? `${uid}:${activeProjectId}:${sceneId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !sceneId) {
       return;
     }
 
-    return observeSceneById(
-      uid,
-      activeProjectId,
-      sceneId,
-      (nextScene) => {
+    void getSceneById(uid, activeProjectId, sceneId)
+      .then((nextScene) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           scene: nextScene,
           error: nextScene ? null : "Scene not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           scene: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, sceneId, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;

@@ -14,7 +14,7 @@ Each page should provide:
 - `title`
 - `description`
 
-The description should usually restate the current scope or Firestore path context.
+The description should usually restate the current scope or project data context.
 
 ## Standard Slice Pages
 
@@ -54,7 +54,7 @@ Books, Chapters, Characters, Locations, and Notes already use this pattern. Char
 Detail pages should:
 
 - show active project context
-- show the scoped Firestore path pattern
+- show the scoped project context
 - group information into readable sections
 - tolerate sparse early data gracefully
 

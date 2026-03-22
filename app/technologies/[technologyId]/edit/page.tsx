@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { TechnologyForm } from "@/components/technologies/technology-form";
 import { useTechnology } from "@/hooks/use-technology";
-import { updateTechnologyForProject } from "@/lib/firebase/technologies";
+import { updateTechnologyForProject } from "@/lib/data/technologies";
 import {
   technologyToFormValues,
   type NormalizedTechnologyFormValues,

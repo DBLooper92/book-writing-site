@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { LanguageForm } from "@/components/languages/language-form";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createLanguageForProject } from "@/lib/firebase/languages";
+import { createLanguageForProject } from "@/lib/data/languages";
 import type { NormalizedLanguageFormValues } from "@/types/language";
 
 export default function NewLanguagePage() {

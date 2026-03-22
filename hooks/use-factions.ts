@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeFactionsForProject } from "@/lib/firebase/factions";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getFactionsForProject } from "@/lib/data/factions";
+import type { UserProject } from "@/lib/data/projects";
 import type { Faction } from "@/types/faction";
 
 type UseFactionsResult = {
   factions: Faction[];
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,28 +35,39 @@ export function useFactions(): UseFactionsResult {
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId) {
       return;
     }
 
-    return observeFactionsForProject(
-      uid,
-      activeProjectId,
-      (nextFactions) => {
+    void getFactionsForProject(uid, activeProjectId)
+      .then((nextFactions) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           factions: nextFactions,
           error: null,
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           factions: [],
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -74,7 +85,5 @@ export function useFactions(): UseFactionsResult {
 }
 
 function getErrorMessage(error: unknown) {
-  return (
-    error instanceof Error ? error.message : "Unable to load factions for the active project."
-  );
+  return error instanceof Error ? error.message : "Unable to load factions for the active project.";
 }

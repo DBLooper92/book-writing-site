@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeRelationshipsForProject } from "@/lib/firebase/relationships";
-import type { UserProject } from "@/lib/firebase/projects";
+import type { UserProject } from "@/lib/data/projects";
+import { getRelationshipsForProject } from "@/lib/data/relationships";
 import type { Relationship } from "@/types/relationship";
 
 type UseRelationshipsResult = {
   relationships: Relationship[];
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -35,28 +35,39 @@ export function useRelationships(): UseRelationshipsResult {
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId) {
       return;
     }
 
-    return observeRelationshipsForProject(
-      uid,
-      activeProjectId,
-      (nextRelationships) => {
+    void getRelationshipsForProject(uid, activeProjectId)
+      .then((nextRelationships) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           relationships: nextRelationships,
           error: null,
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           relationships: [],
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -80,3 +91,5 @@ function getErrorMessage(error: unknown) {
       : "Unable to load relationships for the active project."
   );
 }
+
+

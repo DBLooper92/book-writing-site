@@ -11,7 +11,7 @@ Characters is the reference slice. Locations is the second implemented example a
 For an entity such as `characters`, the expected files are:
 
 - `types/character.ts`
-- `lib/firebase/characters.ts`
+- `lib/data/characters.ts`
 - `hooks/use-characters.ts`
 - `hooks/use-character.ts`
 - `components/characters/character-form.tsx`
@@ -23,7 +23,7 @@ For an entity such as `characters`, the expected files are:
 - `app/characters/[characterId]/edit/page.tsx`
 
 Future slices should mirror that structure unless there is a strong reason not to.
-The current exception is Timeline Events, where `/timeline` now owns the top-level browse/create surface while the slice still keeps its canonical type, Firestore module, hooks, form, detail route, and edit route.
+The current exception is Timeline Events, where `/timeline` now owns the top-level browse/create surface while the slice still keeps its canonical type, data module, hooks, form, detail route, and edit route.
 
 ## Responsibilities By Layer
 
@@ -37,16 +37,16 @@ Owns:
 - normalization helpers for form input
 - builders for new document payloads
 
-### Firestore Utility Module
+### Data Module
 
 Owns:
 
-- collection and document paths
-- list observers
-- detail observers
+- table access and scoped filters
+- list fetches
+- detail fetches
 - create operations
 - update operations
-- document normalization from Firestore into canonical UI shape
+- row normalization into canonical UI shape
 - readable ID generation with suffix collision handling
 
 ### Hooks
@@ -94,13 +94,13 @@ Delete can come later. Do not block new slices on delete UI if the rest of the p
 1. Implement the full read/write path for one entity collection.
 2. Keep the initial form intentionally smaller than the full canonical document if needed.
 3. Still write into a canonical document shape with defaults.
-4. Normalize seeded docs and created docs into the same UI-ready type.
+4. Normalize seeded rows and created rows into the same UI-ready type.
 5. Keep all reads scoped to the active project.
 
 ## Recommended Workflow For A New Slice
 
 1. Define the canonical type in `types/`.
-2. Add Firestore normalization and CRUD helpers in `lib/firebase/`.
+2. Add normalization and CRUD helpers in `lib/data/`.
 3. Add `use-entities` and `use-entity` hooks.
 4. Build the reusable form.
 5. Build list, create, detail, and edit pages unless a stronger derived workspace justifies consolidating the top-level browse/create surface.

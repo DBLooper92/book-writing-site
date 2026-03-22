@@ -10,7 +10,8 @@ import { useUserProjects } from "@/hooks/use-user-projects";
 import {
   renameProjectForUser,
   setActiveProjectForUser,
-} from "@/lib/firebase/projects";
+} from "@/lib/data/projects";
+import { emitProjectsChanged } from "@/hooks/use-user-projects";
 
 type Notice =
   | { tone: "neutral"; text: string }
@@ -70,6 +71,7 @@ export default function ProjectsPage() {
 
     try {
       await renameProjectForUser(uid, projectId, draftNames[projectId] ?? "");
+      emitProjectsChanged();
       setNotice({
         tone: "success",
         text: `Updated the name for ${projectId}.`,
@@ -97,6 +99,7 @@ export default function ProjectsPage() {
 
     try {
       await setActiveProjectForUser(uid, projectId);
+      emitProjectsChanged();
       setNotice({
         tone: "success",
         text: `Active project is now ${projectId}.`,
@@ -116,7 +119,7 @@ export default function ProjectsPage() {
     <PageShell
       eyebrow="Projects"
       title="Project management"
-      description="Projects live under users/{uid}/projects/{projectId}. Use this screen to switch the active project, rename the current one, and review which project scope the rest of the app is reading from."
+      description="Use this screen to switch the active project, rename the current one, and review which project scope the rest of the app is reading from."
     >
       <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -124,8 +127,8 @@ export default function ProjectsPage() {
             Project selection
           </h2>
           <p className="mt-2 text-sm leading-6 text-zinc-600">
-            The header now uses the same active project value stored on your user
-            document, so selecting a project here updates the dropdown there too.
+            The header now uses the same active project value stored on your profile,
+            so selecting a project here updates the dropdown there too.
           </p>
 
           <div className="mt-4">
@@ -147,8 +150,8 @@ export default function ProjectsPage() {
           </p>
           <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-4">
             <p className="text-sm leading-6 text-zinc-600">
-              Creating a project still writes the new document under your user
-              scope and makes it active immediately.
+              Creating a project still writes the new record under your user scope
+              and makes it active immediately.
             </p>
             <Link
               href="/projects/new"

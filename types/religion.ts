@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const RELIGION_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const RELIGION_CANON_LEVEL_VALUES = [
@@ -17,7 +17,7 @@ export const RELIGION_CONFIDENCE_VALUES = [
 export type ReligionStatus = (typeof RELIGION_STATUS_VALUES)[number];
 export type ReligionCanonLevel = (typeof RELIGION_CANON_LEVEL_VALUES)[number];
 export type ReligionConfidence = (typeof RELIGION_CONFIDENCE_VALUES)[number];
-export type ReligionTimestamp = Timestamp | null;
+export type ReligionTimestamp = AppTimestamp;
 
 export type Religion = {
   id: string;

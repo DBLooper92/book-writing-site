@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 import { useActiveProject } from "@/hooks/use-active-project";
-import { observeReligionById } from "@/lib/firebase/religions";
-import type { UserProject } from "@/lib/firebase/projects";
+import { getReligionById } from "@/lib/data/religions";
+import type { UserProject } from "@/lib/data/projects";
 import type { Religion } from "@/types/religion";
 
 type UseReligionResult = {
   religion: Religion | null;
   loading: boolean;
   error: string | null;
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
   activeProject: UserProject | null;
@@ -36,29 +36,39 @@ export function useReligion(religionId: string | null): UseReligionResult {
     uid && activeProjectId && religionId ? `${uid}:${activeProjectId}:${religionId}` : null;
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!queryKey || !uid || !activeProjectId || !religionId) {
       return;
     }
 
-    return observeReligionById(
-      uid,
-      activeProjectId,
-      religionId,
-      (nextReligion) => {
+    void getReligionById(uid, activeProjectId, religionId)
+      .then((nextReligion) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           religion: nextReligion,
           error: nextReligion ? null : "Religion not found in the active project.",
         });
-      },
-      (nextError) => {
+      })
+      .catch((nextError) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({
           key: queryKey,
           religion: null,
           error: getErrorMessage(nextError),
         });
-      }
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, queryKey, religionId, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
@@ -76,7 +86,5 @@ export function useReligion(religionId: string | null): UseReligionResult {
 }
 
 function getErrorMessage(error: unknown) {
-  return (
-    error instanceof Error ? error.message : "Unable to load this religion from the active project."
-  );
+  return error instanceof Error ? error.message : "Unable to load this religion from the active project.";
 }

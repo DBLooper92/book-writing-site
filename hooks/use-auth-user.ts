@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
 
-import { observeAuthState } from "@/lib/firebase/auth";
+import { observeAuthState } from "@/lib/auth";
+import type { AppAuthUser } from "@/types/auth";
 
 type UseAuthUserResult = {
-  user: User | null;
+  user: AppAuthUser | null;
   uid: string | null;
   loading: boolean;
 };
 
 export function useAuthUser(): UseAuthUserResult {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppAuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { AppTimestamp } from "@/types/timestamp";
 
 export const GLOSSARY_TERM_STATUS_VALUES = ["draft", "active", "archived"] as const;
 export const GLOSSARY_TERM_CANON_LEVEL_VALUES = [
@@ -17,7 +17,7 @@ export const GLOSSARY_TERM_CONFIDENCE_VALUES = [
 export type GlossaryTermStatus = (typeof GLOSSARY_TERM_STATUS_VALUES)[number];
 export type GlossaryTermCanonLevel = (typeof GLOSSARY_TERM_CANON_LEVEL_VALUES)[number];
 export type GlossaryTermConfidence = (typeof GLOSSARY_TERM_CONFIDENCE_VALUES)[number];
-export type GlossaryTermTimestamp = Timestamp | null;
+export type GlossaryTermTimestamp = AppTimestamp;
 
 export type GlossaryTerm = {
   id: string;

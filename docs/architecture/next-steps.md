@@ -4,10 +4,11 @@ This file tracks the short-term development direction implied by the current rep
 
 ## Current Focus
 
+- Keep the active Supabase runtime stable now that the backend migration cutover is complete.
 - Keep future entity work inside the existing slice pattern proven by Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions.
 - Books, Chapters, Scenes, and Timeline Events now extend that same slice pattern into manuscript structure and chronology without introducing a separate architecture.
 - The Timeline workspace now turns `/timeline` into the sole top-level visual chronology surface derived directly from `timeline_events` instead of introducing a second collection or a separate timeline persistence model.
-- Factions now extends that same slice pattern into cross-linked worldbuilding data without changing the project-scoped Firestore model.
+- Factions now extends that same slice pattern into cross-linked worldbuilding data without changing the project-scoped model.
 - Cultures now makes existing `cultureIds` references point at a real slice rather than seed-only records.
 - Religions now makes existing `religionIds` references point at a real slice rather than seed-only records.
 - Governments now makes existing `governmentId` references point at a real slice rather than seed-only records.
@@ -30,23 +31,23 @@ This file tracks the short-term development direction implied by the current rep
 
 ## Next Recommended Focus
 
-- chronology integrity and cost-aware timeline loading
+- verify the Supabase-only runtime end to end against a real project, including dev seeding and the backend test route
 
 Reason:
-The current long-term entity set now has first-pass slices, `/timeline` is a real visual workspace, and timeline authoring already includes insertion notches, an inline composer sheet, picker-style linking, nested inline linked-record creation, nested linked-record inspection, shared linked-ID validation, and year/month/day chronology precision with same-date ordering. The next biggest value is making chronology rules harder to contradict and making the timeline route cheaper to keep open.
+The repo now uses Supabase Auth, Supabase-backed projects, and Supabase-backed Books, Chapters, Scenes, Characters, Relationships, Locations, Factions, Cultures, Religions, Themes, Eras, Technologies, Timeline Events, Plot Threads, Governments, Organizations, Languages, Species, Items, Outlines, Glossary Terms, Notes, Retcons, Attachments, and AI Sessions slices in the active runtime. The migration priority has shifted from backend replacement to runtime validation, cleanup follow-through, and future hardening.
 
 Recommended scope for that pass:
 
-- keep `/timeline` derived from `timeline_events` rather than introducing a second chronology collection
-- tighten chronology integrity checks around partial dates, same-date sequence ordering, and multi-day ranges now that dated placement is date-first
-- decide whether the current freeform `timeOfDayLabel` should stay display-only or grow into a real sortable time field for same-day events
-- reduce duplicate and always-on listeners in the timeline workspace by sharing or lazily loading picker/detail reference data where possible
-- extend timeline linking only where there is clear workflow payoff, starting with already-implemented slices that authors are likely to need inside chronology work
-- refresh docs as the continuity rules and timeline loading strategy become more explicit
+- smoke-test auth, project switching, seeding, and the backend test route against the real Supabase project
+- confirm each slice still preserves readable IDs, normalization, and edit behavior
+- decide whether `lib/firebase/*` compatibility shims should be removed or retained briefly to limit path churn
+- keep fetch/refetch semantics in the first pass instead of reproducing realtime subscriptions immediately
+- plan the later security hardening pass for stronger RLS and any stricter environment handling
+- refresh docs as verification finds real behavior differences
 
 ## Follow-Up Cleanup Items
 
-- After the next slice lands, refresh `docs/architecture/current-status.md`, the relevant `docs/features/*.md`, and `docs/reference/entity-roadmap.md` in the same change.
+- After the next meaningful runtime change lands, refresh `docs/architecture/current-status.md`, the relevant `docs/features/*.md`, and `docs/reference/entity-roadmap.md` in the same change.
 - Keep `docs/architecture/decision-log.md` limited to durable decisions, not routine implementation notes.
 - Preserve the rule that placeholder routes and seeded collections stay documented as partial or planned until real slice behavior exists.
 
