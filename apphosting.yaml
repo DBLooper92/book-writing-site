@@ -1,0 +1,11 @@
+env:
+  - variable: NEXT_PUBLIC_SUPABASE_URL
+    value: https://qjehoesorfubrgjdlsnl.supabase.co
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+    value: sb_publishable_nBkPuob4o07BTBjWGavYKw_p8ra6gdL
+    availability:
+      - BUILD
+      - RUNTIME
