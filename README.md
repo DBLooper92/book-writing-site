@@ -11,6 +11,7 @@ The current repo already has:
 - Supabase Auth with email/password flows
 - dedicated email-verification and post-verification screens for signup confirmation
 - Supabase-backed user-owned projects plus active project switching
+- post-sign-in routing that sends users without projects to `/projects/new` and otherwise resumes the last remembered in-app route for the active project
 - Supabase-backed Books pages
 - Supabase-backed Chapters pages
 - Supabase-backed Scenes pages

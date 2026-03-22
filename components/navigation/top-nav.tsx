@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { emitProjectsChanged, useUserProjects } from "@/hooks/use-user-projects";
+import { rememberLastAppRoute } from "@/lib/navigation/last-app-route";
 import { setActiveProjectForUser } from "@/lib/data/projects";
 import { buildTimelineCreateHref } from "@/lib/timeline/create-route";
 
@@ -57,6 +58,14 @@ export function TopNav() {
   useEffect(() => {
     setOpenMenu(null);
   }, [pathname]);
+
+  useEffect(() => {
+    rememberLastAppRoute({
+      uid,
+      activeProjectId,
+      pathname,
+    });
+  }, [activeProjectId, pathname, uid]);
 
   useEffect(() => {
     if (!openMenu) {

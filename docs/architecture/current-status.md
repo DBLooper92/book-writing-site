@@ -19,6 +19,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - email/password sign-up
 - email/password sign-in
 - signup redirect to a dedicated "verify your email" screen plus a dedicated post-verification confirmation screen
+- post-sign-in redirect that sends users without projects to `/projects/new` and otherwise resumes the last remembered in-app route for the active project
 - sign-out flow
 - auth state hook
 - normalized app-auth user mapping wired into the active routes
@@ -30,6 +31,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - project rename
 - active project switching from the Projects page and header dropdown without route changes
 - `activeProjectId` stored on the current Supabase-backed profile row
+- last usable in-app route remembered client-side and only resumed when it still matches the same user and active project
 - simple fetch/refetch-oriented project data layer with client-side refresh triggers instead of realtime listeners
 
 ### Dev Setup

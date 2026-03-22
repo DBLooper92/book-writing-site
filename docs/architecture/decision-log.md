@@ -138,3 +138,9 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: Supabase cleanup completion
 - Decision: The active app runtime is now Supabase-only, and Firebase compatibility shims are no longer part of the maintained code path.
 - Why it stays in force: This keeps the backend migration finished from a product-behavior perspective, removes obsolete Firebase surface area, and prevents drift between documentation and the actual runtime.
+
+### D-022
+
+- Origin: Auth redirect refinement
+- Decision: Post-sign-in routing should keep the durable project pointer in `profiles.active_project_id`, while the last restorable in-app route is remembered client-side and only reused when it still matches the same user and active project.
+- Why it stays in force: This avoids adding database state just to restore navigation, preserves the existing project-scoping model, keeps sign-in redirects cheap, and prevents reopening a stale entity route against the wrong active project.

@@ -12,6 +12,7 @@ import {
   signOutCurrentUser,
   signUpWithEmail,
 } from "@/lib/auth";
+import { resolvePostSignInPath } from "@/lib/navigation/last-app-route";
 
 type Mode = "sign-in" | "sign-up";
 type Notice =
@@ -60,30 +61,33 @@ export default function AuthPage() {
       text: mode === "sign-in" ? "Signing in..." : "Creating account...",
     });
 
-      try {
+    try {
       if (mode === "sign-in") {
-        await signInWithEmail(normalizedEmail, password);
+        const result = await signInWithEmail(normalizedEmail, password);
+
         setNotice({
           tone: "success",
-          text: "Signed in successfully.",
+          text: "Signed in successfully. Redirecting...",
         });
+
+        router.replace(await resolveNextPath(result.data.user?.id ?? null));
+        return;
       } else {
         const result = await signUpWithEmail(normalizedEmail, password);
 
         if (result.data.session) {
           setNotice({
             tone: "success",
-            text: "Account created and signed in successfully.",
+            text: "Account created and signed in successfully. Redirecting...",
           });
+
+          router.replace(await resolveNextPath(result.data.user?.id ?? null));
+          return;
         } else {
           router.push(`/auth/verify-email?email=${encodeURIComponent(normalizedEmail)}`);
           return;
         }
       }
-
-      setEmail(normalizedEmail);
-      setPassword("");
-      setConfirmPassword("");
     } catch (error) {
       setNotice({
         tone: "error",
@@ -362,6 +366,18 @@ function getAuthErrorMessage(error: unknown) {
       return "Too many attempts. Try again in a moment.";
     default:
       return error.message;
+  }
+}
+
+async function resolveNextPath(uid: string | null) {
+  if (!uid) {
+    return "/projects";
+  }
+
+  try {
+    return await resolvePostSignInPath(uid);
+  } catch {
+    return "/projects";
   }
 }
 
