@@ -26,7 +26,7 @@ For any substantial task, read in this order:
 ### Architecture
 
 - `architecture/system-architecture.md`: high-level app structure and architectural rules
-- `architecture/firestore-structure.md`: original Firestore path model and the scoping constraints that still inform the Supabase schema
+- `architecture/firestore-structure.md`: historical Firestore path model and the current `user_id` / `project_id` / `id` Supabase mapping it informed
 - `architecture/current-status.md`: implemented now vs partial vs planned
 - `architecture/decision-log.md`: durable architectural and product-direction decisions
 - `architecture/next-steps.md`: short-term development direction grounded in the current repo
@@ -34,7 +34,7 @@ For any substantial task, read in this order:
 ### Patterns
 
 - `patterns/entity-slice-pattern.md`: reusable slice architecture modeled on Characters
-- `patterns/firestore-patterns.md`: data-access rules carried forward from the Firestore era, including IDs, timestamps, merge behavior, and seed compatibility
+- `patterns/firestore-patterns.md`: historical-name reference for the current storage and data-access rules carried forward into the Supabase runtime
 - `patterns/ui-patterns.md`: page and form consistency rules
 - `patterns/typing-and-normalization.md`: types, normalization layers, and form/value boundaries
 

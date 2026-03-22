@@ -7,7 +7,6 @@ Implemented now as the second full entity slice.
 ## What Exists
 
 - `types/location.ts`
-- `lib/firebase/locations.ts`
 - `lib/data/locations.ts`
 - `hooks/use-locations.ts`
 - `hooks/use-location.ts`
@@ -30,7 +29,7 @@ Implemented now as the second full entity slice.
 
 Locations confirms that the Characters pattern is reusable rather than one-off. New slices should align with both Characters and Locations instead of diverging.
 
-The active Locations runtime now uses the same Supabase-backed fetch/refetch pattern as Books and Characters. The old `lib/firebase/*` import path remains only as a compatibility shim.
+The active Locations runtime now uses the same Supabase-backed fetch/refetch pattern as Books and Characters.
 
 ## What Remains Later
 
@@ -38,4 +37,5 @@ The active Locations runtime now uses the same Supabase-backed fetch/refetch pat
 - real relationship pickers for parent and related entities
 - linked navigation to related records
 - stronger validation for hierarchical location data
+
 

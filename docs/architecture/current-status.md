@@ -344,7 +344,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 
 ### Runtime Verification
 
-The active app runtime now uses Supabase Auth, Supabase-backed profiles/projects, and Supabase-backed data modules across the full story-bible surface. The repo contains Supabase client setup, proxy-based session refresh, SQL schema for `profiles`, `projects`, and the current entity collections, plus simple fetch/refetch data helpers. Any remaining `lib/firebase/*` files are compatibility shims rather than active backend integrations. Live smoke testing against the configured Supabase project is still the main follow-up task.
+The active app runtime now uses Supabase Auth, Supabase-backed profiles/projects, and Supabase-backed data modules across the full story-bible surface. The repo contains Supabase client setup, proxy-based session refresh, SQL schema for `profiles`, `projects`, and the current entity collections, plus simple fetch/refetch data helpers. Live smoke testing against the configured Supabase project is still the main follow-up task.
 
 ### CRUD Coverage
 

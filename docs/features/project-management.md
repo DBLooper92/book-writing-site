@@ -28,3 +28,4 @@ Implemented now.
 - richer project settings UI
 - project duplication or export workflows
 
+

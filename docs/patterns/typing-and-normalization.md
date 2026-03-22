@@ -11,9 +11,9 @@ This type should be:
 - broad enough to support future growth
 - safe for direct UI consumption after normalization
 
-## Raw Firestore Data Is Not UI Data
+## Raw Backend Data Is Not UI Data
 
-Raw Firestore documents may be:
+Raw backend rows or seed payloads may be:
 
 - partial
 - legacy-shaped
@@ -22,7 +22,7 @@ Raw Firestore documents may be:
 
 Normalize documents before they reach components.
 
-Canonical UI types should not depend on provider-specific runtime classes such as Firestore `Timestamp`. Normalize timestamp values into app-local types before they reach hooks and components.
+Canonical UI types should not depend on provider-specific runtime classes. Normalize timestamp values into app-local types before they reach hooks and components.
 
 ## Recommended Value Layers
 
@@ -40,7 +40,7 @@ Examples:
 
 ### Normalized Form Values
 
-Produced at submit time and ready for Firestore writes.
+Produced at submit time and ready for Supabase writes.
 
 Examples:
 

@@ -8,7 +8,6 @@ Implemented now.
 
 - `types/technology.ts`
 - `lib/data/technologies.ts`
-- `lib/firebase/technologies.ts`
 - `hooks/use-technologies.ts`
 - `hooks/use-technology.ts`
 - `components/technologies/technology-form.tsx`
@@ -21,17 +20,17 @@ Implemented now.
 
 ## Important Rules
 
-- technology documents must live under `users/{uid}/projects/{projectId}/technologies/{technologyId}`
+- technology rows must stay scoped by `user_id`, `project_id`, and readable `id`
 - the current UI depends on the active project
 - the first-pass form is intentionally smaller than the full canonical technology type
-- Supabase rows now map closely to the existing Firestore shape using `user_id`, `project_id`, and `id`
+- Supabase rows preserve the same project-scoped record shape through `user_id`, `project_id`, and readable `id`
 - normalized records are used consistently in the UI
 - readable IDs are generated from the name with collision handling
 - seeded technology docs and user-created docs normalize into the same UI shape
 
 ## Why It Matters
 
-Timeline Events and the starter dataset already point at technology records. This slice turns those references into real navigable canon data without changing the existing project-scoped entity architecture. The active runtime now uses a simple Supabase fetch/refetch path for list, detail, create, and edit behavior. The old `lib/firebase/*` import path remains only as a compatibility shim.
+Timeline Events and the starter dataset already point at technology records. This slice turns those references into real navigable canon data without changing the existing project-scoped entity architecture. The active runtime now uses a simple Supabase fetch/refetch path for list, detail, create, and edit behavior.
 
 ## What Remains Later
 
@@ -40,4 +39,5 @@ Timeline Events and the starter dataset already point at technology records. Thi
 - entity pickers instead of manual ID entry
 - filtering, sorting, and search
 - broader validation across technology-linked references
+
 

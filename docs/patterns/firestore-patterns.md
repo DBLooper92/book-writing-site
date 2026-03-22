@@ -1,53 +1,57 @@
 # Firestore Patterns
 
+This file keeps its historical name because older repo guidance still links here, but the active runtime is Supabase-only.
+
 ## Non-Negotiable Path Rule
 
-Do not create global story-bible collections.
+Do not create global story-bible entity tables or rows.
 
 Use:
 
-- `users/{uid}/projects/{projectId}/{entityCollection}/{entityId}`
+- `profiles.id` for the signed-in user
+- `projects.id` for the active project
+- entity rows keyed by `user_id`, `project_id`, and readable `id`
 
 Do not use:
 
 - `characters/{characterId}`
 - `locations/{locationId}`
-- any other top-level shared entity collection
+- any other unscoped shared entity rows
 
 ## Path Scoping
 
-Firestore utilities should accept `uid` and `projectId` explicitly for entity operations. This keeps path ownership obvious and makes the project scope impossible to ignore.
+Data helpers should accept `uid` and `projectId` explicitly for entity operations. This keeps ownership obvious and makes project scope impossible to ignore.
 
 ## Cost Discipline
 
-Firestore access should stay as cheap as possible without making the UI feel clumsy.
+Supabase access should stay as cheap as possible without making the UI feel clumsy.
 
 Practical rule:
 
-- do not add real-time listeners where a one-time read is enough
-- keep listeners scoped to the active project and the smallest useful collection or document
-- avoid duplicate subscriptions to the same data in multiple places when one shared source will do
+- do not add realtime subscriptions where a one-time read or explicit refetch is enough
+- keep queries scoped to the active project and the smallest useful slice
+- avoid duplicate reads of the same data in multiple places when one shared source will do
 - keep writes predictable and minimal, especially for edit flows
-- prefer simple document shapes and early-form subsets over expensive derived data systems
+- prefer simple row shapes and early-form subsets over expensive derived data systems
 
 Smooth UX still matters, but cost discipline should win over convenience abstractions that multiply reads or writes.
 
 ## Timestamps
 
-Use `serverTimestamp()` for `createdAt` and `updatedAt` on writes.
+Use database defaults or explicit ISO timestamps for `created_at` and `updated_at` on writes.
 
 Current repo pattern:
 
-- create writes set both `createdAt` and `updatedAt`
-- update writes refresh `updatedAt`
-- normalizers accept missing or non-Timestamp values and fall back to `null`
-- canonical UI records should expose app-local timestamp values rather than raw Firestore `Timestamp` instances
+- create writes set both `created_at` and `updated_at` when the table helper is responsible for them
+- update writes refresh `updated_at`
+- normalizers accept missing or non-date values and fall back to `null`
+- canonical UI records should expose app-local timestamp values rather than provider-specific runtime classes
 
 ## Normalization Requirement
 
-Never pass raw Firestore document data directly into the UI.
+Never pass raw backend rows directly into the UI.
 
-Normalize document fields so UI code receives:
+Normalize row fields so UI code receives:
 
 - stable strings
 - arrays instead of mixed string-or-array shapes
@@ -87,10 +91,10 @@ IDs and slugs are related but not identical:
 
 Current repo pattern:
 
-- create: `setDoc(ref, fullPayloadWithTimestamps)`
-- update: `setDoc(ref, partialPayload, { merge: true })`
+- create helpers build explicit insert payloads
+- update helpers send scoped partial updates
 
-Use merge updates for edit flows so unedited fields survive early-form iterations.
+Use partial updates for edit flows so unedited fields survive early-form iterations.
 
 ## Seed Compatibility
 

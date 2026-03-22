@@ -7,7 +7,6 @@ Implemented now.
 ## What Exists
 
 - `types/faction.ts`
-- `lib/firebase/factions.ts`
 - `lib/data/factions.ts`
 - `hooks/use-factions.ts`
 - `hooks/use-faction.ts`
@@ -32,7 +31,7 @@ Implemented now.
 
 Factions is the first implemented worldbuilding-link slice built directly on IDs already present in Characters, Locations, and Timeline Events. It proves those existing `factionIds` fields can now point at real scoped records without introducing a second architecture.
 
-The active Factions runtime now uses the same Supabase-backed fetch/refetch pattern as the earlier migrated slices. The old `lib/firebase/*` import path remains only as a compatibility shim.
+The active Factions runtime now uses the same Supabase-backed fetch/refetch pattern as the earlier migrated slices.
 
 ## What Remains Later
 
@@ -41,4 +40,5 @@ The active Factions runtime now uses the same Supabase-backed fetch/refetch patt
 - linked navigation from faction references in other slices
 - filtering, sorting, and search
 - validation across cross-entity references
+
 

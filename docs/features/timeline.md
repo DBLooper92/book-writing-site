@@ -57,3 +57,4 @@ The Timeline workspace turns `/timeline` into the sole top-level project-scoped 
 - richer chronology models beyond the current year/month/day plus sequence fields, such as calendar-system support or finer-grained timestamps
 - denser or zoomed chronology views for era-scale navigation
 
+

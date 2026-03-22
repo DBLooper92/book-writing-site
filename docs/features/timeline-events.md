@@ -7,7 +7,6 @@ Implemented now as the dedicated chronology slice that powers the timeline works
 ## What Exists
 
 - `types/timeline-event.ts`
-- `lib/firebase/timeline-events.ts`
 - `lib/data/timeline-events.ts`
 - `lib/timeline/create-route.ts`
 - `lib/timeline/references.ts`
@@ -32,7 +31,7 @@ Implemented now as the dedicated chronology slice that powers the timeline works
 
 ## Important Rules
 
-- timeline event documents must live under `users/{uid}/projects/{projectId}/timeline_events/{eventId}`
+- timeline event rows must stay scoped by `user_id`, `project_id`, and readable `id`
 - `/timeline` is the only top-level browse/create surface for timeline events; legacy `/timeline-events` index and new routes only redirect into the workspace
 - the slice still owns the canonical timeline-event type, normalization, Supabase fetch/refetch utilities, detail route, and edit route even though top-level authoring moved into `/timeline`
 - Supabase rows keep the same scoped shape through `user_id`, `project_id`, and the readable `id`
@@ -52,7 +51,7 @@ Implemented now as the dedicated chronology slice that powers the timeline works
 
 ## Current Role In The Architecture
 
-Timeline Events turns chronology into a real project-scoped slice and now powers `/timeline` as the sole top-level chronology surface. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/timeline-events.ts`. The old `lib/firebase/*` import path remains only as a compatibility shim. It gives Books, Chapters, Scenes, Characters, Locations, and several worldbuilding slices a real chronology target to reference instead of relying on seed-only event documents, while keeping all timeline authoring grounded in one normalized document shape that now supports year/month/day placement, same-date ordering, optional time labels, in-place workspace viewing/editing, nested linked-record detail inspection, and nested linked-record creation from the event editor itself.
+Timeline Events turns chronology into a real project-scoped slice and now powers `/timeline` as the sole top-level chronology surface. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/timeline-events.ts`. It gives Books, Chapters, Scenes, Characters, Locations, and several worldbuilding slices a real chronology target to reference instead of relying on seed-only event documents, while keeping all timeline authoring grounded in one normalized document shape that now supports year/month/day placement, same-date ordering, optional time labels, in-place workspace viewing/editing, nested linked-record detail inspection, and nested linked-record creation from the event editor itself.
 
 ## What Remains Later
 
@@ -63,4 +62,5 @@ Timeline Events turns chronology into a real project-scoped slice and now powers
 - a decision on whether `timeOfDayLabel` should stay display-only or gain a real sortable time value
 - lighter-weight reference loading for picker and detail data so timeline authoring stays cost-aware
 - chronology models beyond the current year/month/day plus sequence approach
+
 

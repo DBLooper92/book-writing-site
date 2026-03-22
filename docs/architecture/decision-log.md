@@ -28,14 +28,14 @@ Backfilled entries below reflect decisions already visible in the current repo a
 ### D-003
 
 - Origin: Foundational
-- Decision: Story-bible data must remain scoped under `users/{uid}/projects/{projectId}/...`.
-- Why it stays in force: Project isolation is a hard architectural rule, and global entity collections would break ownership, active-project scoping, and slice consistency.
+- Decision: Story-bible data must remain scoped by both user and project.
+- Why it stays in force: Project isolation is a hard architectural rule, and global unscoped entity rows would break ownership, active-project scoping, and slice consistency.
 
 ### D-004
 
 - Origin: Early implemented slice
 - Decision: Characters is the first reference entity slice and the baseline pattern for future slice work.
-- Why it stays in force: Its type, normalization, Firestore utility, page flow, and form structure define the repo's current reusable slice architecture.
+- Why it stays in force: Its type, normalization, data helper, page flow, and form structure define the repo's current reusable slice architecture.
 
 ### D-005
 
@@ -52,8 +52,8 @@ Backfilled entries below reflect decisions already visible in the current repo a
 ### D-007
 
 - Origin: Product and architecture constraint
-- Decision: Firestore access patterns must stay cost-aware, using the cheapest read, listener, and write approach that still provides a smooth single-author experience.
-- Why it stays in force: The app is intentionally single-author first, low-complexity, and affordable to run, so data-access convenience should not quietly turn into unnecessary recurring Firestore cost.
+- Decision: Backend access patterns must stay cost-aware, using the cheapest read, query, and write approach that still provides a smooth single-author experience.
+- Why it stays in force: The app is intentionally single-author first, low-complexity, and affordable to run, so data-access convenience should not quietly turn into unnecessary recurring infrastructure cost.
 
 ### D-008
 
@@ -70,26 +70,26 @@ Backfilled entries below reflect decisions already visible in the current repo a
 ### D-010
 
 - Origin: First Chapters slice implementation
-- Decision: Chapters stays as a project-scoped top-level collection under `users/{uid}/projects/{projectId}/chapters/{chapterId}` and links back to books through `bookId` instead of nesting chapter documents under book documents.
-- Why it stays in force: This preserves the repo's flat per-project entity-slice architecture, keeps Firestore paths consistent across slices, and avoids introducing a second persistence pattern just for manuscript child records.
+- Decision: Chapters stays as a project-scoped top-level slice keyed by `user_id`, `project_id`, and `id`, and links back to books through `bookId` instead of nesting chapter records under books.
+- Why it stays in force: This preserves the repo's flat per-project entity-slice architecture, keeps scoping consistent across slices, and avoids introducing a second persistence pattern just for manuscript child records.
 
 ### D-011
 
 - Origin: First AI Sessions slice implementation
-- Decision: The first AI Sessions implementation stores summarized session metadata, linked entity IDs, and prompt/output excerpts under `users/{uid}/projects/{projectId}/ai_sessions/{sessionId}` instead of inventing provider-specific runtime workflow state or treating AI chat transcripts as canon.
-- Why it stays in force: Structured Firestore data remains the source of truth, the slice stays cheap to run and inspect, and later AI tooling can extend this record shape without requiring the app to depend on transient chat state.
+- Decision: The first AI Sessions implementation stores summarized session metadata, linked entity IDs, and prompt/output excerpts as project-scoped rows instead of inventing provider-specific runtime workflow state or treating AI chat transcripts as canon.
+- Why it stays in force: Structured project data remains the source of truth, the slice stays cheap to run and inspect, and later AI tooling can extend this record shape without requiring the app to depend on transient chat state.
 
 ### D-012
 
 - Origin: First Timeline workspace implementation
-- Decision: The `/timeline` workspace must stay a derived view over `users/{uid}/projects/{projectId}/timeline_events/{eventId}` records instead of introducing a second chronology collection or separate timeline persistence model.
-- Why it stays in force: This preserves the flat project-scoped architecture, avoids duplicate chronology data, keeps Firestore costs predictable, and ensures every timeline surface derives from the same normalized event records.
+- Decision: The `/timeline` workspace must stay a derived view over project-scoped `timeline_events` rows instead of introducing a second chronology collection or separate timeline persistence model.
+- Why it stays in force: This preserves the flat project-scoped architecture, avoids duplicate chronology data, keeps backend cost predictable, and ensures every timeline surface derives from the same normalized event records.
 
 ### D-013
 
 - Origin: Visual timeline workspace expansion
 - Decision: Timeline insertion notches and time-gap compression stay derived workspace behavior over sorted `timeline_events` data rather than persisted placeholder documents or stored spacing metadata.
-- Why it stays in force: This keeps chronology data honest, avoids fake records just to support layout, preserves cheap Firestore reads and writes, and ensures inserting a real event automatically creates new before-and-after insertion points on the next render.
+- Why it stays in force: This keeps chronology data honest, avoids fake records just to support layout, preserves cheap reads and writes, and ensures inserting a real event automatically creates new before-and-after insertion points on the next render.
 
 ### D-014
 
@@ -136,5 +136,5 @@ Backfilled entries below reflect decisions already visible in the current repo a
 ### D-021
 
 - Origin: Supabase cleanup completion
-- Decision: The active app runtime is now Supabase-only, while any remaining `lib/firebase/*` files are compatibility shims rather than the source of truth for auth or data access.
-- Why it stays in force: This keeps the backend migration finished from a product-behavior perspective, removes the real Firebase dependency and environment requirements, and still leaves room to trim compatibility import paths later without reintroducing backend drift.
+- Decision: The active app runtime is now Supabase-only, and Firebase compatibility shims are no longer part of the maintained code path.
+- Why it stays in force: This keeps the backend migration finished from a product-behavior perspective, removes obsolete Firebase surface area, and prevents drift between documentation and the actual runtime.

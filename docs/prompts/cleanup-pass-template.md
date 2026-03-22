@@ -19,7 +19,7 @@ Goals:
 
 - align the code and docs with the current architecture
 - remove drift between implemented behavior and documentation
-- preserve the project-scoped Firestore model
+- preserve the project-scoped Supabase data model
 - keep changes modular and maintainable
 - prefer improving existing patterns over inventing new ones
 

@@ -7,7 +7,6 @@ Implemented now. Characters is the reference entity slice for the repo.
 ## What Exists
 
 - `types/character.ts`
-- `lib/firebase/characters.ts`
 - `lib/data/characters.ts`
 - `hooks/use-characters.ts`
 - `hooks/use-character.ts`
@@ -37,7 +36,7 @@ Future entity slices should imitate this implementation pattern first, then exte
 - page-state handling
 - reusable form-driven CRUD structure
 
-The active Characters runtime now uses the same Supabase-backed fetch/refetch pattern as Books. The old `lib/firebase/*` import path remains only as a compatibility shim.
+The active Characters runtime now uses the same Supabase-backed fetch/refetch pattern as Books.
 
 ## What Remains Later
 
@@ -46,4 +45,5 @@ The active Characters runtime now uses the same Supabase-backed fetch/refetch pa
 - linked navigation to other entity detail pages
 - filtering, sorting, and search
 - validation across cross-entity references
+
 

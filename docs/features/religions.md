@@ -7,7 +7,6 @@ Implemented now.
 ## What Exists
 
 - `types/religion.ts`
-- `lib/firebase/religions.ts`
 - `lib/data/religions.ts`
 - `hooks/use-religions.ts`
 - `hooks/use-religion.ts`
@@ -31,7 +30,7 @@ Implemented now.
 
 Religions turns existing `religionIds` references in Characters, Cultures, Factions, Timeline Events, and the starter dataset into a real implemented slice instead of a seed-only placeholder.
 
-The active Religions runtime now uses the same Supabase-backed fetch/refetch pattern as the earlier migrated slices. The old `lib/firebase/*` import path remains only as a compatibility shim.
+The active Religions runtime now uses the same Supabase-backed fetch/refetch pattern as the earlier migrated slices.
 
 ## What Remains Later
 
@@ -39,4 +38,5 @@ The active Religions runtime now uses the same Supabase-backed fetch/refetch pat
 - linked navigation from characters, cultures, factions, and timeline events into religion detail pages
 - real entity pickers instead of raw ID entry
 - stronger validation across cross-entity religion references
+
 

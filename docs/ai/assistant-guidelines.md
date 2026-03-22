@@ -51,7 +51,7 @@ When making code changes, AI should:
 - keep data access cost-aware
 - reuse the existing entity-slice pattern
 - keep docs honest about implemented versus planned status
-- favor normalization and typed boundaries over raw document usage
+- favor normalization and typed boundaries over raw backend row usage
 - avoid unnecessary abstractions
 
 ## Writing Behavior

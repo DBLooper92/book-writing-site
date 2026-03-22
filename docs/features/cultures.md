@@ -7,7 +7,6 @@ Implemented now.
 ## What Exists
 
 - `types/culture.ts`
-- `lib/firebase/cultures.ts`
 - `lib/data/cultures.ts`
 - `hooks/use-cultures.ts`
 - `hooks/use-culture.ts`
@@ -31,7 +30,7 @@ Implemented now.
 
 Cultures makes existing `cultureIds` references in Characters, Factions, Locations, and Timeline Events point toward a real implemented slice instead of seed-only documents.
 
-The active Cultures runtime now uses the same Supabase-backed fetch/refetch pattern as the earlier migrated slices. The old `lib/firebase/*` import path remains only as a compatibility shim.
+The active Cultures runtime now uses the same Supabase-backed fetch/refetch pattern as the earlier migrated slices.
 
 ## What Remains Later
 
@@ -39,4 +38,5 @@ The active Cultures runtime now uses the same Supabase-backed fetch/refetch patt
 - linked navigation from related records into culture detail pages
 - relationship pickers for languages, religions, factions, and eras
 - stronger validation across referenced entity IDs
+
 

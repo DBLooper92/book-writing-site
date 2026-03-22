@@ -1,13 +1,24 @@
-"use client";
-
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
 import { PageShell } from "@/components/layout/page-shell";
 
-export default function VerifyEmailPage() {
-  const searchParams = useSearchParams();
-  const email = searchParams.get("email")?.trim() ?? "";
+type VerifyEmailPageProps = {
+  searchParams: Promise<{
+    email?: string | string[];
+  }>;
+};
+
+export default async function VerifyEmailPage({
+  searchParams,
+}: VerifyEmailPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const emailParam = resolvedSearchParams.email;
+  const email =
+    typeof emailParam === "string"
+      ? emailParam.trim()
+      : Array.isArray(emailParam)
+        ? emailParam[0]?.trim() ?? ""
+        : "";
 
   return (
     <PageShell
@@ -48,3 +59,4 @@ export default function VerifyEmailPage() {
     </PageShell>
   );
 }
+

@@ -7,7 +7,6 @@ Implemented now as the fifth full entity slice and the second manuscript-structu
 ## What Exists
 
 - `types/chapter.ts`
-- `lib/firebase/chapters.ts`
 - `lib/data/chapters.ts`
 - `hooks/use-chapters.ts`
 - `hooks/use-chapter.ts`
@@ -31,7 +30,7 @@ Implemented now as the fifth full entity slice and the second manuscript-structu
 
 Chapters is the first child manuscript slice. It keeps manuscript structure project-scoped and flat at the collection level while linking back to `bookId`, and Scenes now builds directly on that structure without changing the established slice architecture.
 
-The active Chapters runtime now uses the same Supabase-backed fetch/refetch pattern as Books, Characters, and Locations. The old `lib/firebase/*` import path remains only as a compatibility shim.
+The active Chapters runtime now uses the same Supabase-backed fetch/refetch pattern as Books, Characters, and Locations.
 
 ## What Remains Later
 
@@ -40,4 +39,5 @@ The active Chapters runtime now uses the same Supabase-backed fetch/refetch patt
 - linked navigation to referenced records
 - search, filtering, and sorting controls beyond the current default ordering
 - richer manuscript progress views across books and chapters
+
 

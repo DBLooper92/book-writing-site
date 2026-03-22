@@ -133,7 +133,7 @@ export default function AuthPage() {
               Home
             </Link>
             <Link
-              href="/firebase-test"
+              href="/backend-test"
               className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 font-medium text-zinc-700 transition hover:bg-zinc-50"
             >
               Backend test
@@ -250,9 +250,9 @@ export default function AuthPage() {
                 This route now reflects your current Supabase Auth session.
               </p>
               <p className="mt-3">
-                The active runtime is now on Supabase. The remaining cleanup work is
-                removing legacy Firebase code and documentation that are no longer in
-                the request path.
+                The active runtime is now fully on Supabase. Use the backend test,
+                project routes, and entity slices here to verify the current session
+                and active-project scope end to end.
               </p>
             </div>
 
@@ -364,3 +364,4 @@ function getAuthErrorMessage(error: unknown) {
       return error.message;
   }
 }
+

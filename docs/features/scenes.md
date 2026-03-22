@@ -7,7 +7,6 @@ Implemented now as the sixth full entity slice and the third manuscript-structur
 ## What Exists
 
 - `types/scene.ts`
-- `lib/firebase/scenes.ts`
 - `lib/data/scenes.ts`
 - `hooks/use-scenes.ts`
 - `hooks/use-scene.ts`
@@ -31,7 +30,7 @@ Implemented now as the sixth full entity slice and the third manuscript-structur
 
 Scenes turns the manuscript structure into actionable narrative units while staying inside the same flat per-project slice architecture as the rest of the repo. It gives later timeline-event work real scene records to reference instead of relying on seed data alone.
 
-The active Scenes runtime now uses the same Supabase-backed fetch/refetch pattern as Books, Chapters, Characters, and Locations. The old `lib/firebase/*` import path remains only as a compatibility shim.
+The active Scenes runtime now uses the same Supabase-backed fetch/refetch pattern as Books, Chapters, Characters, and Locations.
 
 ## What Remains Later
 
@@ -40,4 +39,5 @@ The active Scenes runtime now uses the same Supabase-backed fetch/refetch patter
 - linked navigation to referenced records
 - search, filtering, and sorting controls beyond the current default ordering
 - richer drafting and revision tooling built on top of the current scene document
+
 

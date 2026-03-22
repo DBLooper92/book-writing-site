@@ -8,7 +8,6 @@ Implemented now.
 
 - `types/theme.ts`
 - `lib/data/themes.ts`
-- `lib/firebase/themes.ts`
 - `hooks/use-themes.ts`
 - `hooks/use-theme.ts`
 - `components/themes/theme-form.tsx`
@@ -21,8 +20,8 @@ Implemented now.
 
 ## Important Rules
 
-- theme documents must live under `users/{uid}/projects/{projectId}/themes/{themeId}`
-- Supabase rows now map closely to the existing Firestore shape using `user_id`, `project_id`, and `id`
+- theme rows must stay scoped by `user_id`, `project_id`, and readable `id`
+- Supabase rows preserve the same project-scoped record shape through `user_id`, `project_id`, and readable `id`
 - the slice follows the same list/create/detail/edit pattern used by the existing canon slices
 - the initial form stays intentionally smaller than the canonical theme shape
 - database rows and seeded records normalize into the same UI-ready type
@@ -30,7 +29,7 @@ Implemented now.
 
 ## Current Role In The Architecture
 
-Themes turns existing `primaryThemes`, `themeIds`, and `dominantThemes` references in Books, Timeline Events, Eras, and the starter dataset into a real implemented slice instead of a seed-only placeholder. The active runtime now uses a simple Supabase fetch/refetch path for list, detail, create, and edit behavior. The old `lib/firebase/*` import path remains only as a compatibility shim.
+Themes turns existing `primaryThemes`, `themeIds`, and `dominantThemes` references in Books, Timeline Events, Eras, and the starter dataset into a real implemented slice instead of a seed-only placeholder. The active runtime now uses a simple Supabase fetch/refetch path for list, detail, create, and edit behavior.
 
 ## What Remains Later
 
@@ -38,4 +37,5 @@ Themes turns existing `primaryThemes`, `themeIds`, and `dominantThemes` referenc
 - linked navigation from books, eras, and timeline events into theme detail pages
 - real entity pickers instead of raw ID entry
 - stronger validation across cross-entity theme references
+
 

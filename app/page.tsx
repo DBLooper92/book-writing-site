@@ -142,7 +142,7 @@ const quickLinks = [
       "Initialize the default project and starter story-bible seed records for your account.",
   },
   {
-    href: "/firebase-test",
+    href: "/backend-test",
     title: "Backend test",
     description:
       "Confirm the client app can reach Supabase before building deeper tools.",
@@ -211,3 +211,4 @@ export default function HomePage() {
     </PageShell>
   );
 }
+

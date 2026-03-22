@@ -7,7 +7,6 @@ Implemented now as the latest full entity slice.
 ## What Exists
 
 - `types/attachment.ts`
-- `lib/firebase/attachments.ts`
 - `lib/data/attachments.ts`
 - `hooks/use-attachments.ts`
 - `hooks/use-attachment.ts`
@@ -21,7 +20,7 @@ Implemented now as the latest full entity slice.
 
 ## Important Rules
 
-- attachment documents must live under `users/{uid}/projects/{projectId}/attachments/{attachmentId}`
+- attachment rows must stay scoped by `user_id`, `project_id`, and readable `id`
 - Supabase rows keep the same scoped shape through `user_id`, `project_id`, and the readable `id`
 - the slice follows the same list/create/detail/edit pattern as the existing entity slices
 - the first-pass form stays intentionally focused on file metadata and raw linked record IDs, not actual upload workflow
@@ -30,7 +29,7 @@ Implemented now as the latest full entity slice.
 
 ## Current Role In The Architecture
 
-Attachments turns seeded reference-file metadata into a real project-scoped slice without pretending that upload storage already exists. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/attachments.ts`. The old `lib/firebase/*` import path remains only as a compatibility shim.
+Attachments turns seeded reference-file metadata into a real project-scoped slice without pretending that upload storage already exists. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/attachments.ts`.
 
 ## What Remains Later
 
@@ -38,4 +37,5 @@ Attachments turns seeded reference-file metadata into a real project-scoped slic
 - real file upload and storage integration
 - richer entity pickers and linked navigation to referenced records
 - validation that linked IDs point at real project records
+
 

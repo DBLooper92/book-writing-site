@@ -31,7 +31,7 @@ export default function BookDetailPage() {
                 : "No active project selected"}
             </p>
             <p className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Scope: users/{`{uid}`}/projects/{activeProjectId ?? "{projectId}"}/books/
+              Scope: Supabase rows filtered by user_id and project_id for books/
               {bookId ?? "{bookId}"}
             </p>
           </div>

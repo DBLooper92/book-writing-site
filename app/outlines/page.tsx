@@ -14,7 +14,7 @@ export default function OutlinesPage() {
     <PageShell
       eyebrow="Outlines"
       title="Outline index"
-      description="Browse, create, and manage outline records inside the currently active story-bible project. All outline documents are scoped to the active project under users/{uid}/projects/{projectId}/outlines/{outlineId}."
+      description="Browse, create, and manage outline records inside the currently active story-bible project. All records stay scoped through Supabase rows keyed by user_id, project_id, and readable id."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -28,7 +28,7 @@ export default function OutlinesPage() {
                 : "Choose an active project to scope outline data."}
             </p>
             <p className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Scope: users/{`{uid}`}/projects/{activeProjectId ?? "{projectId}"}/outlines
+              Scope: Supabase rows filtered by user_id and project_id for outlines
             </p>
           </div>
 
@@ -108,3 +108,4 @@ function StateCard({
     </section>
   );
 }
+

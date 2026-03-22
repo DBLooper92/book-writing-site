@@ -15,7 +15,7 @@ export default function TechnologiesPage() {
     <PageShell
       eyebrow="Technologies"
       title="Technology index"
-      description="Browse, create, and manage technology records inside the currently active story-bible project. All technology documents are scoped to the active project under users/{uid}/projects/{projectId}/technologies/{technologyId}."
+      description="Browse, create, and manage technology records inside the currently active story-bible project. All records stay scoped through Supabase rows keyed by user_id, project_id, and readable id."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -29,7 +29,7 @@ export default function TechnologiesPage() {
                 : "Choose an active project to scope technology data."}
             </p>
             <p className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Scope: users/{`{uid}`}/projects/{activeProjectId ?? "{projectId}"}/technologies
+              Scope: Supabase rows filtered by user_id and project_id for technologies
             </p>
           </div>
 
@@ -111,3 +111,4 @@ function StateCard({
     </section>
   );
 }
+

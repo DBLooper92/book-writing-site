@@ -31,7 +31,7 @@ export default function EraDetailPage() {
                 : "No active project selected"}
             </p>
             <p className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Scope: users/{`{uid}`}/projects/{activeProjectId ?? "{projectId}"}/eras/
+              Scope: Supabase rows filtered by user_id and project_id for eras/
               {eraId ?? "{eraId}"}
             </p>
           </div>

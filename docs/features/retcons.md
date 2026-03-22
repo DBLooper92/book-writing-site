@@ -7,7 +7,6 @@ Implemented now as the latest full entity slice.
 ## What Exists
 
 - `types/retcon.ts`
-- `lib/firebase/retcons.ts`
 - `lib/data/retcons.ts`
 - `hooks/use-retcons.ts`
 - `hooks/use-retcon.ts`
@@ -21,7 +20,7 @@ Implemented now as the latest full entity slice.
 
 ## Important Rules
 
-- retcon documents must live under `users/{uid}/projects/{projectId}/retcons/{retconId}`
+- retcon rows must stay scoped by `user_id`, `project_id`, and readable `id`
 - Supabase rows keep the same scoped shape through `user_id`, `project_id`, and the readable `id`
 - the slice follows the same list/create/detail/edit pattern as the existing entity slices
 - the first-pass form stays intentionally focused on old canon, new canon, reason, and raw affected record IDs
@@ -30,7 +29,7 @@ Implemented now as the latest full entity slice.
 
 ## Current Role In The Architecture
 
-Retcons turns canon-change tracking into a real project-scoped slice without inventing a new workflow architecture. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/retcons.ts`. The old `lib/firebase/*` import path remains only as a compatibility shim.
+Retcons turns canon-change tracking into a real project-scoped slice without inventing a new workflow architecture. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/retcons.ts`.
 
 ## What Remains Later
 
@@ -38,4 +37,5 @@ Retcons turns canon-change tracking into a real project-scoped slice without inv
 - richer entity pickers and linked navigation to affected records
 - validation that affected IDs and collection types match real project documents
 - richer resolution workflow beyond the current first-pass status and resolved fields
+
 

@@ -77,7 +77,7 @@ Global entity rows without user and project scope are not part of this architect
 - `docs/README.md`: documentation index and read order
 - `docs/product/project-vision.md`: long-term product intent
 - `docs/architecture/current-status.md`: implemented vs partial vs planned
-- `docs/architecture/firestore-structure.md`: original Firestore scoping rules and migration context
+- `docs/architecture/firestore-structure.md`: historical Firestore path model and its current Supabase scope mapping
 - `docs/patterns/entity-slice-pattern.md`: reference pattern for new slices
 
 ## Current Entity Status

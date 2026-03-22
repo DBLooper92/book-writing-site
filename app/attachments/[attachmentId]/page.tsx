@@ -32,7 +32,7 @@ export default function AttachmentDetailPage() {
                 : "No active project selected"}
             </p>
             <p className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Scope: users/{`{uid}`}/projects/{activeProjectId ?? "{projectId}"}/attachments/
+              Scope: Supabase rows filtered by user_id and project_id for attachments/
               {attachmentId ?? "{attachmentId}"}
             </p>
           </div>

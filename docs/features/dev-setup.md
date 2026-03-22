@@ -24,3 +24,4 @@ Implemented now for development scaffolding.
 - optional richer reset or reseed tooling if ever needed
 - a clearer distinction between demo seed content and real project data, if the product evolves beyond personal use
 
+

@@ -7,7 +7,6 @@ Implemented now as the fourth full entity slice and the first manuscript-structu
 ## What Exists
 
 - `types/book.ts`
-- `lib/firebase/books.ts`
 - `lib/data/books.ts`
 - `hooks/use-books.ts`
 - `hooks/use-book.ts`
@@ -21,7 +20,7 @@ Implemented now as the fourth full entity slice and the first manuscript-structu
 
 ## Important Rules
 
-- book documents must live under `users/{uid}/projects/{projectId}/books/{bookId}`
+- book rows must stay scoped by `user_id`, `project_id`, and readable `id`
 - the slice follows the same list/create/detail/edit pattern as Characters, Locations, and Notes
 - the first-pass form stays intentionally focused on title, summary, premise, chronology years, and draft metadata
 - normalized records are used consistently in the UI
@@ -31,7 +30,7 @@ Implemented now as the fourth full entity slice and the first manuscript-structu
 
 Books is the first real manuscript-structure slice. It gives the repo a concrete parent entity for real chapter and scene work plus later chronology work without introducing a different architecture from the canon-oriented slices.
 
-The active Books runtime now uses a Supabase-backed fetch/refetch data path as the migration pilot slice. The old `lib/firebase/*` import path remains only as a compatibility shim.
+The active Books runtime now uses a Supabase-backed fetch/refetch data path as the migration pilot slice.
 
 ## What Remains Later
 
@@ -39,4 +38,5 @@ The active Books runtime now uses a Supabase-backed fetch/refetch data path as t
 - richer links to chapters, scenes, characters, and timeline events
 - manuscript progress views beyond the current detail page
 - linked navigation to referenced records
+
 

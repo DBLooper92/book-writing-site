@@ -40,7 +40,6 @@ Recommended scope for that pass:
 
 - smoke-test auth, project switching, seeding, and the backend test route against the real Supabase project
 - confirm each slice still preserves readable IDs, normalization, and edit behavior
-- decide whether `lib/firebase/*` compatibility shims should be removed or retained briefly to limit path churn
 - keep fetch/refetch semantics in the first pass instead of reproducing realtime subscriptions immediately
 - plan the later security hardening pass for stronger RLS and any stricter environment handling
 - refresh docs as verification finds real behavior differences

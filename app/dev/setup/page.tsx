@@ -91,7 +91,7 @@ export default function DevSetupPage() {
           {!user ? (
             <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
               The initializer requires an authenticated user because it writes
-              under <code>users/{`{uid}`}</code>. Sign in on the auth page, then
+              under the current signed-in user profile. Sign in on the auth page, then
               rerun setup.
               <div className="mt-4">
                 <Link
@@ -220,3 +220,4 @@ function SummaryBlock({ label, paths }: { label: string; paths: string[] }) {
     </div>
   );
 }
+

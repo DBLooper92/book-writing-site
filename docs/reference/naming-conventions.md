@@ -1,6 +1,6 @@
 # Naming Conventions
 
-## Firestore Collections
+## Tables And Collections
 
 - use plural collection names
 - use snake_case when the name has multiple words
@@ -52,12 +52,12 @@ Examples:
 - `CharacterFormValues`
 - `NormalizedLocationFormValues`
 
-## Firestore Utility Functions
+## Data Helpers
 
 Use explicit, entity-specific names:
 
-- `observeCharactersForProject`
-- `observeCharacterById`
+- `getCharactersForProject`
+- `getCharacterById`
 - `createCharacterForProject`
 - `updateCharacterForProject`
 

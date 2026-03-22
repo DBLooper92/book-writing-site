@@ -14,7 +14,7 @@ export default function ErasPage() {
     <PageShell
       eyebrow="Eras"
       title="Era index"
-      description="Browse, create, and manage era records inside the currently active story-bible project. All era documents are scoped to the active project under users/{uid}/projects/{projectId}/eras/{eraId}."
+      description="Browse, create, and manage era records inside the currently active story-bible project. All records stay scoped through Supabase rows keyed by user_id, project_id, and readable id."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -28,7 +28,7 @@ export default function ErasPage() {
                 : "Choose an active project to scope era data."}
             </p>
             <p className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Scope: users/{`{uid}`}/projects/{activeProjectId ?? "{projectId}"}/eras
+              Scope: Supabase rows filtered by user_id and project_id for eras
             </p>
           </div>
 
@@ -108,3 +108,4 @@ function StateCard({
     </section>
   );
 }
+

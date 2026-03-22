@@ -8,7 +8,6 @@ Implemented now.
 
 - `types/language.ts`
 - `lib/data/languages.ts`
-- `lib/firebase/languages.ts`
 - `hooks/use-languages.ts`
 - `hooks/use-language.ts`
 - `components/languages/language-form.tsx`
@@ -21,8 +20,8 @@ Implemented now.
 
 ## Important Rules
 
-- language documents must live under `users/{uid}/projects/{projectId}/languages/{languageId}`
-- Supabase rows now map closely to the existing Firestore shape using `user_id`, `project_id`, and `id`
+- language rows must stay scoped by `user_id`, `project_id`, and readable `id`
+- Supabase rows preserve the same project-scoped record shape through `user_id`, `project_id`, and readable `id`
 - the slice follows the same list/create/detail/edit pattern used by the existing canon slices
 - the initial form stays intentionally smaller than the canonical language shape
 - database rows and seeded records normalize into the same UI-ready type
@@ -30,7 +29,7 @@ Implemented now.
 
 ## Current Role In The Architecture
 
-Languages turns existing `languageIds` and `defaultLanguageId` references in Characters, Cultures, project settings, and the starter dataset into a real implemented slice instead of a seed-only placeholder. The active runtime now uses a simple Supabase fetch/refetch path for list, detail, create, and edit behavior. The old `lib/firebase/*` import path remains only as a compatibility shim.
+Languages turns existing `languageIds` and `defaultLanguageId` references in Characters, Cultures, project settings, and the starter dataset into a real implemented slice instead of a seed-only placeholder. The active runtime now uses a simple Supabase fetch/refetch path for list, detail, create, and edit behavior.
 
 ## What Remains Later
 
@@ -38,4 +37,5 @@ Languages turns existing `languageIds` and `defaultLanguageId` references in Cha
 - linked navigation from characters, cultures, and project settings into language detail pages
 - real entity pickers instead of raw ID entry
 - stronger validation across cross-entity language references
+
 

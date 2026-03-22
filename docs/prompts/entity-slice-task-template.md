@@ -4,7 +4,7 @@ Use this template when asking Codex to build a new entity slice.
 
 ## Prompt Template
 
-Build a new `<entity>` slice inside this existing Next.js + Firebase project.
+Build a new `<entity>` slice inside this existing Next.js + Supabase project.
 
 Before making changes, read:
 
@@ -21,12 +21,12 @@ Before making changes, read:
 
 Requirements:
 
-- keep all entity data scoped under `users/{uid}/projects/{projectId}/<entityCollection>/{entityId}`
-- do not create global collections
+- keep all entity data scoped by `user_id`, `project_id`, and readable `id`
+- do not create global unscoped entity rows
 - follow the existing entity-slice file layout
-- create canonical types, Firestore helpers, hooks, routes, and a reusable form
+- create canonical types, Supabase data helpers, hooks, routes, and a reusable form
 - keep the first-pass form intentionally small if needed
-- normalize Firestore docs before use in the UI
+- normalize backend rows before use in the UI
 - make the docs honest about implemented versus planned behavior
 
 Deliverables:
