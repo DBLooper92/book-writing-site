@@ -14,6 +14,7 @@ Implemented now.
 - active project stored on `profiles.active_project_id`
 - compact header project control that shows `Project` until an active project exists, then shows the active project title
 - header project menu option that opens the project create screen
+- header profile icon with a small account menu that can open the profile lightbox or log the user out
 
 ## Important Rules
 

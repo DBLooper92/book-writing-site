@@ -32,7 +32,8 @@ export function TimelineBrainDumpLightbox({
               <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">
                 Paste freeform planning text for {activeProjectTitle}. The AI will extract
                 reviewable proposals for timeline events, scenes, chapter outlines, and
-                characters without automatically writing canon rows.
+                characters without automatically writing canon rows. This uses the OpenAI key saved
+                in Profile.
               </p>
             </div>
 

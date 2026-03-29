@@ -9,5 +9,5 @@ env:
     availability:
       - BUILD
       - RUNTIME
-  - variable: OPENAI_API_KEY
-    secret: openai-api-key
+  - variable: PROFILE_SECRETS_ENCRYPTION_KEY
+    secret: profile-secrets-encryption-key

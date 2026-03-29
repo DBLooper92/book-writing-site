@@ -31,15 +31,16 @@ Implemented now as the latest full entity slice.
 - the slice follows the same list/create/detail/edit pattern as the existing entity slices
 - metadata create/edit stays intentionally focused on summarized session fields, not full transcript storage
 - brain-dump extraction stores source text, AI guidance, extraction status, and structured proposal output on the same scoped `ai_sessions` row
+- brain-dump extraction now reads the signed-in user's saved OpenAI key from encrypted profile settings instead of a single app-wide OpenAI key
 - brain-dump output is reviewable planning structure only, not automatic canon creation
-- the server route requires `OPENAI_API_KEY` and uses a structured-output response shape
+- the server route requires a server-side encryption key so user-saved API keys can be encrypted at rest
 - the brain-dump form can be reached from both the dedicated AI Sessions route and the Timeline workspace lightbox
 - normalized records are used consistently in the UI
 - readable IDs are generated from the title with collision handling
 
 ## Current Role In The Architecture
 
-AI Sessions turns tracked brainstorming, summarization, editing, drafting, and first-pass brain-dump extraction work into a real project-scoped slice without letting AI chat state become the source of truth for canon. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/ai-sessions.ts`, and the dedicated brain-dump route calls OpenAI to turn long-form text into reviewable character, timeline event, chapter outline, and scene proposals stored back on the same scoped row.
+AI Sessions turns tracked brainstorming, summarization, editing, drafting, and first-pass brain-dump extraction work into a real project-scoped slice without letting AI chat state become the source of truth for canon. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/ai-sessions.ts`, and the dedicated brain-dump route calls OpenAI with the authenticated user's saved key to turn long-form text into reviewable character, timeline event, chapter outline, and scene proposals stored back on the same scoped row.
 
 ## What Remains Later
 

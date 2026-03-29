@@ -18,6 +18,9 @@ export type Database = {
           plan: string;
           status: string;
           active_project_id: string | null;
+          openai_api_key_encrypted: string | null;
+          openai_api_key_last4: string | null;
+          openai_api_key_updated_at: string | null;
           created_at: string;
           updated_at: string;
           last_login_at: string | null;
@@ -30,6 +33,9 @@ export type Database = {
           plan?: string;
           status?: string;
           active_project_id?: string | null;
+          openai_api_key_encrypted?: string | null;
+          openai_api_key_last4?: string | null;
+          openai_api_key_updated_at?: string | null;
           created_at?: string;
           updated_at?: string;
           last_login_at?: string | null;
@@ -42,6 +48,9 @@ export type Database = {
           plan?: string;
           status?: string;
           active_project_id?: string | null;
+          openai_api_key_encrypted?: string | null;
+          openai_api_key_last4?: string | null;
+          openai_api_key_updated_at?: string | null;
           created_at?: string;
           updated_at?: string;
           last_login_at?: string | null;

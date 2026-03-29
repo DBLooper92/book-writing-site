@@ -79,9 +79,9 @@ export default function BrainDumpPage() {
           </section>
 
           <StateCard tone="neutral">
-            This route requires a server-side `OPENAI_API_KEY`. The first pass stores the raw dump,
-            the AI guidance, and the structured extraction result on the scoped `ai_sessions` row so
-            you can review it later.
+            Save an OpenAI API key under Profile {">"} API keys before using this route. The first
+            pass stores the raw dump, the AI guidance, and the structured extraction result on the
+            scoped `ai_sessions` row so you can review it later.
           </StateCard>
         </>
       )}

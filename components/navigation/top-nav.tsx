@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { ProfileLightbox } from "@/components/profile/profile-lightbox";
 import { useAuthUser } from "@/hooks/use-auth-user";
+import { signOutCurrentUser } from "@/lib/auth";
 import { emitProjectsChanged, useUserProjects } from "@/hooks/use-user-projects";
 import { rememberLastAppRoute } from "@/lib/navigation/last-app-route";
 import { setActiveProjectForUser } from "@/lib/data/projects";
@@ -39,10 +41,11 @@ const createLinks = [
   { href: "/ai-sessions/new", label: "AI session" },
 ] as const;
 
-type OpenMenu = "create" | "project" | null;
+type OpenMenu = "create" | "project" | "account" | null;
 
 export function TopNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, uid } = useAuthUser();
   const { projects, activeProjectId, loading: projectsLoading } = useUserProjects(uid);
   const activeProject = useMemo(
@@ -52,7 +55,9 @@ export function TopNav() {
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const [switchingProject, setSwitchingProject] = useState(false);
   const [projectMenuError, setProjectMenuError] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
+  const [profileOpen, setProfileOpen] = useState(false);
   const menuContainerRef = useRef<HTMLDivElement>(null);
   const lastScrollYRef = useRef(0);
 
@@ -147,15 +152,32 @@ export function TopNav() {
     }
   }
 
+  async function handleLogout() {
+    setLoggingOut(true);
+
+    try {
+      await signOutCurrentUser();
+      setOpenMenu(null);
+      setProfileOpen(false);
+      router.push("/auth");
+    } catch {
+      setOpenMenu(null);
+      router.push("/auth");
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   return (
-    <header
-      className={`fixed inset-x-0 top-0 z-40 transition-transform duration-300 ${
-        isVisible ? "translate-y-0" : "-translate-y-full"
-      }`}
-    >
-      <div className="border-b border-zinc-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-7xl justify-end px-6 py-4">
-          <div ref={menuContainerRef} className="flex flex-wrap justify-end gap-3">
+    <>
+      <header
+        className={`fixed inset-x-0 top-0 z-40 transition-transform duration-300 ${
+          isVisible ? "translate-y-0" : "-translate-y-full"
+        }`}
+      >
+        <div className="border-b border-zinc-200 bg-white/95 backdrop-blur">
+          <div className="mx-auto flex w-full max-w-7xl justify-end px-6 py-4">
+            <div ref={menuContainerRef} className="flex flex-wrap justify-end gap-3">
             <Link
               href="/timeline"
               className={getNavButtonClass(isTimelinePath(pathname))}
@@ -204,104 +226,169 @@ export function TopNav() {
               ) : null}
             </div>
 
-            <div className="relative">
-              <button
-                type="button"
-                aria-expanded={openMenu === "project"}
-                onClick={() => {
-                  setProjectMenuError(null);
-                  setOpenMenu((current) => (current === "project" ? null : "project"));
-                }}
-                className={getNavButtonClass(
-                  openMenu === "project" || isActivePath(pathname, "/projects")
-                )}
-              >
-                <span className="max-w-[12rem] truncate">
-                  {activeProject?.title || "Project"}
-                </span>
-                <span className="text-[10px] uppercase tracking-[0.2em] text-current/70">
-                  v
-                </span>
-              </button>
+            {user ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-expanded={openMenu === "account"}
+                  onClick={() =>
+                    setOpenMenu((current) => (current === "account" ? null : "account"))
+                  }
+                  className={getNavButtonClass(openMenu === "account" || profileOpen)}
+                >
+                  <ProfileIcon />
+                </button>
 
-              {openMenu === "project" ? (
-                <div className="absolute right-0 top-[calc(100%+0.75rem)] w-80 rounded-3xl border border-zinc-200 bg-white p-2 shadow-xl">
-                  {!user ? (
-                    <div className="rounded-2xl bg-zinc-50 px-4 py-4 text-sm leading-6 text-zinc-600">
-                      Sign in to switch projects or create a new one.
-                    </div>
-                  ) : projectsLoading ? (
-                    <div className="rounded-2xl bg-zinc-50 px-4 py-4 text-sm leading-6 text-zinc-600">
-                      Loading projects...
-                    </div>
-                  ) : projects.length === 0 ? (
-                    <div className="space-y-2">
+                {openMenu === "account" ? (
+                  <div className="absolute right-0 top-[calc(100%+0.75rem)] w-56 rounded-3xl border border-zinc-200 bg-white p-2 shadow-xl">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setProfileOpen(true);
+                      }}
+                      className="flex w-full rounded-2xl px-4 py-3 text-left text-sm text-zinc-700 transition hover:bg-zinc-100"
+                    >
+                      Profile
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleLogout()}
+                      disabled={loggingOut}
+                      className="flex w-full rounded-2xl px-4 py-3 text-left text-sm text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:text-zinc-400"
+                    >
+                      {loggingOut ? "Logging out..." : "Logout"}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-expanded={openMenu === "project"}
+                  onClick={() => {
+                    setProjectMenuError(null);
+                    setOpenMenu((current) => (current === "project" ? null : "project"));
+                  }}
+                  className={getNavButtonClass(
+                    openMenu === "project" || isActivePath(pathname, "/projects")
+                  )}
+                >
+                  <span className="max-w-[12rem] truncate">
+                    {activeProject?.title || "Project"}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-current/70">
+                    v
+                  </span>
+                </button>
+
+                {openMenu === "project" ? (
+                  <div className="absolute right-0 top-[calc(100%+0.75rem)] w-80 rounded-3xl border border-zinc-200 bg-white p-2 shadow-xl">
+                    {!user ? (
                       <div className="rounded-2xl bg-zinc-50 px-4 py-4 text-sm leading-6 text-zinc-600">
-                        No projects found for this account yet.
+                        Sign in to switch projects or create a new one.
                       </div>
-                      <Link href="/projects/new" className="flex rounded-2xl px-4 py-3 text-sm text-zinc-700 transition hover:bg-zinc-100">
-                        Create new project
-                      </Link>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="max-h-[20rem] overflow-y-auto">
-                        {projects.map((project) => {
-                          const isActiveProject = project.id === activeProjectId;
-
-                          return (
-                            <button
-                              key={project.id}
-                              type="button"
-                              disabled={switchingProject}
-                              onClick={() => handleProjectChange(project.id)}
-                              className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm transition ${
-                                isActiveProject
-                                  ? "bg-zinc-950 text-white"
-                                  : "text-zinc-700 hover:bg-zinc-100"
-                              } disabled:cursor-not-allowed disabled:opacity-60`}
-                            >
-                              <span className="min-w-0">
-                                <span className="block truncate font-medium">
-                                  {project.title}
-                                </span>
-                                <span className="block truncate text-xs uppercase tracking-[0.16em] text-current/60">
-                                  {project.id}
-                                </span>
-                              </span>
-                              {isActiveProject ? (
-                                <span className="rounded-full bg-white/12 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-current">
-                                  Active
-                                </span>
-                              ) : null}
-                            </button>
-                          );
-                        })}
+                    ) : projectsLoading ? (
+                      <div className="rounded-2xl bg-zinc-50 px-4 py-4 text-sm leading-6 text-zinc-600">
+                        Loading projects...
                       </div>
-
-                      <div className="mt-2 border-t border-zinc-200 pt-2">
-                        <Link
-                          href="/projects/new"
-                          className="flex rounded-2xl px-4 py-3 text-sm text-zinc-700 transition hover:bg-zinc-100"
-                        >
+                    ) : projects.length === 0 ? (
+                      <div className="space-y-2">
+                        <div className="rounded-2xl bg-zinc-50 px-4 py-4 text-sm leading-6 text-zinc-600">
+                          No projects found for this account yet.
+                        </div>
+                        <Link href="/projects/new" className="flex rounded-2xl px-4 py-3 text-sm text-zinc-700 transition hover:bg-zinc-100">
                           Create new project
                         </Link>
                       </div>
-                    </>
-                  )}
+                    ) : (
+                      <>
+                        <div className="max-h-[20rem] overflow-y-auto">
+                          {projects.map((project) => {
+                            const isActiveProject = project.id === activeProjectId;
 
-                  {projectMenuError ? (
-                    <p className="mt-2 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
-                      {projectMenuError}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
+                            return (
+                              <button
+                                key={project.id}
+                                type="button"
+                                disabled={switchingProject}
+                                onClick={() => handleProjectChange(project.id)}
+                                className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm transition ${
+                                  isActiveProject
+                                    ? "bg-zinc-950 text-white"
+                                    : "text-zinc-700 hover:bg-zinc-100"
+                                } disabled:cursor-not-allowed disabled:opacity-60`}
+                              >
+                                <span className="min-w-0">
+                                  <span className="block truncate font-medium">
+                                    {project.title}
+                                  </span>
+                                  <span className="block truncate text-xs uppercase tracking-[0.16em] text-current/60">
+                                    {project.id}
+                                  </span>
+                                </span>
+                                {isActiveProject ? (
+                                  <span className="rounded-full bg-white/12 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-current">
+                                    Active
+                                  </span>
+                                ) : null}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="mt-2 border-t border-zinc-200 pt-2">
+                          <Link
+                            href="/projects/new"
+                            className="flex rounded-2xl px-4 py-3 text-sm text-zinc-700 transition hover:bg-zinc-100"
+                          >
+                            Create new project
+                          </Link>
+                        </div>
+                      </>
+                    )}
+
+                    {projectMenuError ? (
+                      <p className="mt-2 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                        {projectMenuError}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {profileOpen && user ? (
+        <ProfileLightbox
+          displayName={user.displayName}
+          email={user.email}
+          onClose={() => setProfileOpen(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function ProfileIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" />
+      <path d="M4 20a8 8 0 0 1 16 0" />
+    </svg>
   );
 }
 

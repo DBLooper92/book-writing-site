@@ -87,6 +87,7 @@ Partial or placeholder:
 - Keep list, create, detail, and edit pages consistent across slices.
 - Preserve seed compatibility so seeded docs and user-created docs normalize into the same UI shape.
 - Be deliberate about Supabase reads and writes so the app stays inexpensive to run.
+- When you create or update a Supabase migration, apply it from the project root with `npx supabase@latest db push`.
 - Do not document aspirational behavior as if it already exists.
 
 ## Documentation Maintenance

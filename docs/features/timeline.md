@@ -38,7 +38,7 @@ Implemented now as the first derived workspace built on top of an existing slice
 - the filter bar sits at the top of the chronology pane and can be pinned or unpinned without changing the underlying filter model
 - inline workspace authoring should still write to the same `timeline_events` documents and reuse the same normalization and validation path as the dedicated detail/edit surfaces
 - workspace event viewing and editing should prefer in-place lightboxes and sheets over routing authors away from `/timeline`
-- the main chronology toolbar can launch a brain-dump lightbox beside the create button, but that flow should still save its extraction output onto project-scoped `ai_sessions` rows rather than directly creating canon records
+- the main chronology toolbar can launch a brain-dump lightbox beside the create button, but that flow should still use the signed-in user's saved OpenAI key and save its extraction output onto project-scoped `ai_sessions` rows rather than directly creating canon records
 - the workspace event editor can open nested inline-create lightboxes for the current linked timeline-event picker slices and should reselect the newly created record without closing the editor
 - linked chips inside workspace event detail should open nested record lightboxes instead of routing authors away from the current timeline overlay stack
 - linked warnings should derive from already loaded project-scoped slice records instead of introducing a separate validation collection

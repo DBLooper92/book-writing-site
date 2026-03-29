@@ -9,6 +9,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - Next.js App Router application shell
 - Tailwind-based UI styling
 - compact fixed header with Timeline, +Create, and Project controls aligned top-right
+- profile icon menu in the header with profile-lightbox and logout entry points for authenticated users
 - header hide-on-scroll-down and reveal-on-scroll-up behavior
 - home, auth, auth verification, backend test, and developer setup routes
 - Supabase browser/server clients, Next proxy session refresh, SQL migrations for `profiles`, `projects`, and the current story-bible entity tables, plus a simple non-realtime data layer for the active runtime
@@ -31,6 +32,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - project rename
 - active project switching from the Projects page and header dropdown without route changes
 - `profiles.active_project_id` stored on the current Supabase-backed profile row
+- encrypted per-user OpenAI key metadata stored on the current Supabase-backed profile row for AI brain-dump usage
 - last usable in-app route remembered client-side and only resumed when it still matches the same user and active project
 - simple fetch/refetch-oriented project data layer with client-side refresh triggers instead of realtime listeners
 
@@ -341,11 +343,13 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - create page
 - dedicated `/ai-sessions/brain-dump` route for long-form text extraction
 - authenticated `/api/ai-sessions/brain-dump` server action that calls OpenAI Responses API with structured output and writes back to the scoped `ai_sessions` row
+- authenticated `/api/profile/openai-key` server action for saving, masking, and deleting the signed-in user's OpenAI key on the profile row
 - detail page
 - edit page
 - reusable form, card, and detail-section components
 - persisted brain-dump source text, author guidance, extraction status, extraction error, extraction model, and structured proposal output on `ai_sessions`
 - detail-page rendering for reviewable character, timeline event, chapter outline, and scene proposals generated from brain-dump text
+- profile lightbox with Details and API keys tabs so each user can manage the key used by brain-dump extraction
 
 ## Partially Implemented
 

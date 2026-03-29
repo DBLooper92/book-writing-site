@@ -150,3 +150,9 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: First provider-backed AI workflow
 - Decision: Brain-dump AI output must be stored as reviewable proposals on the project-scoped `ai_sessions` row instead of auto-creating characters, chapters, scenes, or timeline events.
 - Why it stays in force: Structured project data remains the source of truth, the author keeps canon control, and the first AI workflow stays cheap, reversible, and consistent with the rule that AI assists language and planning work without silently mutating schema-backed canon.
+
+### D-024
+
+- Origin: Per-user API key shift
+- Decision: User-supplied provider keys belong to the authenticated user's `profiles` row as encrypted account-level settings, not as project-scoped entity data and not as a single app-wide OpenAI key.
+- Why it stays in force: Provider credentials are account preferences rather than story-bible canon, every signed-in user needs independent billing and access control, and storing them encrypted on `profiles` keeps the ownership model simple while avoiding plaintext storage or project-level duplication.

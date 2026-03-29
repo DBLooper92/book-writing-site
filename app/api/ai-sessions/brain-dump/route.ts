@@ -8,6 +8,7 @@ import {
   normalizeBrainDumpRequestInput,
   validateBrainDumpRequestInput,
 } from "@/lib/ai/brain-dump";
+import { decryptProfileSecret } from "@/lib/security/profile-secrets";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { BRAIN_DUMP_RESPONSE_SCHEMA } from "@/types/ai-brain-dump";
 import { buildAiSessionIdFromTitle, slugifyAiSessionTitle } from "@/types/ai-session";
@@ -27,15 +28,6 @@ const BRAIN_DUMP_INSTRUCTIONS = [
 type AiSessionInsert = Database["public"]["Tables"]["ai_sessions"]["Insert"];
 
 export async function POST(request: Request) {
-  const openAiApiKey = process.env.OPENAI_API_KEY;
-
-  if (!openAiApiKey) {
-    return NextResponse.json(
-      { error: "OPENAI_API_KEY is not configured on the server." },
-      { status: 500 }
-    );
-  }
-
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
@@ -81,7 +73,40 @@ export async function POST(request: Request) {
     );
   }
 
-  const model = process.env.OPENAI_BRAIN_DUMP_MODEL?.trim() || DEFAULT_BRAIN_DUMP_MODEL;
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("openai_api_key_encrypted")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    return NextResponse.json({ error: profileError.message }, { status: 500 });
+  }
+
+  if (!profile?.openai_api_key_encrypted) {
+    return NextResponse.json(
+      { error: "Save your OpenAI API key in Profile before using brain dump extraction." },
+      { status: 400 }
+    );
+  }
+
+  let openAiApiKey: string;
+
+  try {
+    openAiApiKey = decryptProfileSecret(profile.openai_api_key_encrypted);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Your saved OpenAI API key could not be read.",
+      },
+      { status: 500 }
+    );
+  }
+
+  const model = DEFAULT_BRAIN_DUMP_MODEL;
   const aiSessionId = await getAvailableAiSessionId(supabase, user.id, project.id, input.title);
   const now = new Date().toISOString();
 

@@ -28,7 +28,9 @@ export async function getProfileById(uid: string) {
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select(
+      "id, email, display_name, role, plan, status, active_project_id, created_at, updated_at, last_login_at"
+    )
     .eq("id", uid)
     .maybeSingle();
 
