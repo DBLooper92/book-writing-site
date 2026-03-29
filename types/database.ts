@@ -1619,6 +1619,12 @@ export type Database = {
           purpose: string;
           prompt_excerpt: string;
           output_summary: string;
+          source_text: string;
+          source_guidance: string;
+          extraction_status: string;
+          extraction_error: string;
+          extraction_model: string;
+          extraction_result: Json | null;
           linked_entity_types: string[];
           linked_entity_ids: string[];
           messages_count: number | null;
@@ -1644,6 +1650,12 @@ export type Database = {
           purpose?: string;
           prompt_excerpt?: string;
           output_summary?: string;
+          source_text?: string;
+          source_guidance?: string;
+          extraction_status?: string;
+          extraction_error?: string;
+          extraction_model?: string;
+          extraction_result?: Json | null;
           linked_entity_types?: string[];
           linked_entity_ids?: string[];
           messages_count?: number | null;
@@ -1669,6 +1681,12 @@ export type Database = {
           purpose?: string;
           prompt_excerpt?: string;
           output_summary?: string;
+          source_text?: string;
+          source_guidance?: string;
+          extraction_status?: string;
+          extraction_error?: string;
+          extraction_model?: string;
+          extraction_result?: Json | null;
           linked_entity_types?: string[];
           linked_entity_ids?: string[];
           messages_count?: number | null;

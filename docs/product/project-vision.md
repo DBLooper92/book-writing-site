@@ -70,4 +70,4 @@ The project should remain:
 
 Today, the repo is in an early but working product stage. It already has Supabase Auth, authenticated project workspaces, active-project switching, a dev seeding flow, and first-pass slices across the current story-bible surface including Books, Chapters, Scenes, Characters, Relationships, Timeline Events, Notes, worldbuilding entities, Attachments, and AI Sessions.
 
-The Timeline workspace now exists as a real top-level chronology surface derived from `timeline_events`. Attachments and AI Sessions are implemented as metadata-first slices, while richer upload/storage workflow, deeper chronology tooling, and richer AI-writing operations are still future work.
+The Timeline workspace now exists as a real top-level chronology surface derived from `timeline_events`. Attachments is still a metadata-first slice, while AI Sessions now includes a first-pass brain-dump extraction workflow that produces reviewable planning proposals without auto-writing canon. Richer upload/storage workflow, deeper chronology tooling, proposal-import actions, and broader AI-writing operations are still future work.

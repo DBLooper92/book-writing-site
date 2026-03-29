@@ -35,6 +35,12 @@ export default function AiSessionsPage() {
 
           <div className="flex flex-wrap gap-3">
             <Link
+              href="/ai-sessions/brain-dump"
+              className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+            >
+              Brain dump
+            </Link>
+            <Link
               href="/projects"
               className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
             >
@@ -73,8 +79,12 @@ export default function AiSessionsPage() {
       ) : aiSessions.length === 0 ? (
         <StateCard tone="neutral">
           No AI sessions exist in {activeProject.title} yet.{" "}
+          <Link href="/ai-sessions/brain-dump" className="font-medium underline">
+            Start with a brain dump
+          </Link>{" "}
+          or{" "}
           <Link href="/ai-sessions/new" className="font-medium underline">
-            Create the first AI session
+            create the first AI session
           </Link>
           .
         </StateCard>

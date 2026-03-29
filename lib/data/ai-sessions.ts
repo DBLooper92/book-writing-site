@@ -3,11 +3,14 @@ import "client-only";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/types/database";
 import {
+  buildAiSessionIdFromTitle,
   buildAiSessionDocument,
   coerceAiSessionCanonLevel,
   coerceAiSessionConfidence,
+  coerceAiSessionExtractionStatus,
   coerceAiSessionStatus,
   coerceAiSessionType,
+  normalizeAiSessionExtractionResult,
   slugifyAiSessionTitle,
   type AiSession,
   type NormalizedAiSessionFormValues,
@@ -88,6 +91,12 @@ export async function createAiSessionForProject(
     purpose: aiSessionDocument.purpose,
     prompt_excerpt: aiSessionDocument.promptExcerpt,
     output_summary: aiSessionDocument.outputSummary,
+    source_text: aiSessionDocument.sourceText,
+    source_guidance: aiSessionDocument.sourceGuidance,
+    extraction_status: aiSessionDocument.extractionStatus,
+    extraction_error: aiSessionDocument.extractionError,
+    extraction_model: aiSessionDocument.extractionModel,
+    extraction_result: aiSessionDocument.extractionResult,
     linked_entity_types: aiSessionDocument.linkedEntityTypes,
     linked_entity_ids: aiSessionDocument.linkedEntityIds,
     messages_count: aiSessionDocument.messagesCount,
@@ -190,6 +199,12 @@ function normalizeAiSessionRow(row: AiSessionRow): AiSession {
     purpose: row.purpose || "",
     promptExcerpt: row.prompt_excerpt || "",
     outputSummary: row.output_summary || "",
+    sourceText: row.source_text || "",
+    sourceGuidance: row.source_guidance || "",
+    extractionStatus: coerceAiSessionExtractionStatus(row.extraction_status),
+    extractionError: row.extraction_error || "",
+    extractionModel: row.extraction_model || "",
+    extractionResult: normalizeAiSessionExtractionResult(row.extraction_result),
     linkedEntityTypes: row.linked_entity_types ?? [],
     linkedEntityIds: row.linked_entity_ids ?? [],
     messagesCount: row.messages_count,
@@ -199,8 +214,7 @@ function normalizeAiSessionRow(row: AiSessionRow): AiSession {
 }
 
 function buildAiSessionId(title: string) {
-  const normalized = slugifyAiSessionTitle(title).replace(/-/g, "_");
-  return `session_${normalized || "ai_session"}`;
+  return buildAiSessionIdFromTitle(title);
 }
 
 function compareAiSessions(left: AiSession, right: AiSession) {

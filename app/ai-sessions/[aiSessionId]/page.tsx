@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { AiSessionBrainDumpDetail } from "@/components/ai-sessions/ai-session-brain-dump-detail";
 import { AiSessionDetailSection } from "@/components/ai-sessions/ai-session-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useAiSession } from "@/hooks/use-ai-session";
@@ -108,6 +109,10 @@ export default function AiSessionDetailPage() {
               <TextBlock label="Output summary" value={aiSession.outputSummary} />
             </div>
           </AiSessionDetailSection>
+
+          {aiSession.sessionType === "brain_dump" || aiSession.sourceText ? (
+            <AiSessionBrainDumpDetail aiSession={aiSession} />
+          ) : null}
 
           <AiSessionDetailSection title="Linked records">
             <div className="grid gap-4 lg:grid-cols-2">

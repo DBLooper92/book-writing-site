@@ -22,7 +22,7 @@ This file tracks the short-term development direction implied by the current rep
 - Technologies now makes existing `technologyIds` references point at a real slice rather than seed-only records.
 - Retcons now turns seeded canon-change records into a real project-scoped slice for old canon, new canon, and downstream impact tracking without changing the entity architecture.
 - Attachments now turns seeded reference-file metadata into a real project-scoped slice without pretending a full upload workflow exists yet.
-- AI Sessions now turns seeded prompt/output tracking into a real project-scoped slice without making provider-specific workflow metadata the source of truth for canon.
+- AI Sessions now turns seeded prompt/output tracking into a real project-scoped slice and now also supports a first-pass brain-dump extraction workflow without making AI output the source of truth for canon.
 - Outlines now turns seeded planning records into a real project-scoped slice without changing the entity architecture.
 - Glossary Terms now turns seeded vocabulary records into a real project-scoped slice without changing the entity architecture.
 - Relationships now turns seeded connection records into a real project-scoped slice without changing the entity architecture.
@@ -31,18 +31,18 @@ This file tracks the short-term development direction implied by the current rep
 
 ## Next Recommended Focus
 
-- verify the Supabase-only runtime end to end against a real project, including dev seeding and the backend test route
+- add author-controlled accept or import actions from brain-dump proposals into real `characters`, `timeline_events`, `chapters`, and `scenes` rows
 
 Reason:
-The repo now uses Supabase Auth, Supabase-backed projects, and Supabase-backed Books, Chapters, Scenes, Characters, Relationships, Locations, Factions, Cultures, Religions, Themes, Eras, Technologies, Timeline Events, Plot Threads, Governments, Organizations, Languages, Species, Items, Outlines, Glossary Terms, Notes, Retcons, Attachments, and AI Sessions slices in the active runtime. The migration priority has shifted from backend replacement to runtime validation, cleanup follow-through, and future hardening.
+The repo now has a real provider-backed AI extraction workflow, but its output intentionally stops at reviewable proposals stored on `ai_sessions`. The next high-value step is converting that review surface into a safe, explicit bridge from AI-assisted planning into structured canon without auto-writing canon rows.
 
 Recommended scope for that pass:
 
-- smoke-test auth, project switching, seeding, and the backend test route against the real Supabase project
-- confirm each slice still preserves readable IDs, normalization, and edit behavior
-- keep fetch/refetch semantics in the first pass instead of reproducing realtime subscriptions immediately
-- plan the later security hardening pass for stronger RLS and any stricter environment handling
-- refresh docs as verification finds real behavior differences
+- let the author create a real entity from one proposal at a time instead of batch auto-importing everything
+- reuse the existing slice normalization and write helpers for any accepted proposal
+- preserve project scoping and readable IDs on all accepted writes
+- keep the AI session detail page as the review and launch surface for those actions
+- leave broader transcript history, richer model controls, and autonomous multi-entity writes for later
 
 ## Follow-Up Cleanup Items
 
@@ -74,4 +74,4 @@ Recommended scope for that pass:
 - dedicated delete flow for AI Sessions
 - richer cross-entity pickers, linked navigation, and validation
 - richer chronology tooling on top of the current `/timeline` workspace
-- later specialized slices building on top of `ai_sessions` and richer file workflows
+- later specialized slices and richer AI workflows building on top of `ai_sessions`, plus richer file workflows

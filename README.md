@@ -35,12 +35,13 @@ The current repo already has:
 - Supabase-backed Retcons pages
 - Supabase-backed Attachments pages
 - Supabase-backed AI Sessions pages
+- a provider-backed AI brain-dump workflow that turns long freeform text into reviewable planning proposals
 - Supabase-backed Relationships pages
 - Supabase-backed Timeline Event detail and edit pages
 - a Timeline workspace route with a visual center-line chronology, quick navigation, filters, and inline authoring
 - a developer seeding flow for a default story-bible project
 
-Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions currently have list, create, detail, and edit flows. `/timeline` remains the sole top-level chronology surface for browsing and creating timeline records. The workspace adds a visual center-line chronology, quick navigation, filters, derived insertion notches, compressed time-jump markers, and inline create/edit entry points on top of `timeline_events`, while Timeline Events supports picker-style linking for the main connected slices. Delete flows, richer cross-entity linking, deeper timeline continuity tooling, upload/storage workflow, and richer AI tooling are still future work.
+Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions currently have list, create, detail, and edit flows. `/timeline` remains the sole top-level chronology surface for browsing and creating timeline records. The workspace adds a visual center-line chronology, quick navigation, filters, derived insertion notches, compressed time-jump markers, and inline create/edit entry points on top of `timeline_events`, while Timeline Events supports picker-style linking for the main connected slices. AI Sessions now also has a first-pass brain-dump route that calls OpenAI and stores reviewable proposals for characters, timeline events, chapter outlines, and scenes on the scoped `ai_sessions` row. Delete flows, richer cross-entity linking, deeper timeline continuity tooling, upload/storage workflow, automatic canon import from AI output, and broader AI tooling are still future work.
 
 ## Local Development
 
@@ -54,6 +55,8 @@ Current env requirements:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`
+- `OPENAI_API_KEY` for the `/ai-sessions/brain-dump` route
+- optional `OPENAI_BRAIN_DUMP_MODEL`
 
 ## Architecture Summary
 

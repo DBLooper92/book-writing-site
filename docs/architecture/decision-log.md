@@ -144,3 +144,9 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: Auth redirect refinement
 - Decision: Post-sign-in routing should keep the durable project pointer in `profiles.active_project_id`, while the last restorable in-app route is remembered client-side and only reused when it still matches the same user and active project.
 - Why it stays in force: This avoids adding database state just to restore navigation, preserves the existing project-scoping model, keeps sign-in redirects cheap, and prevents reopening a stale entity route against the wrong active project.
+
+### D-023
+
+- Origin: First provider-backed AI workflow
+- Decision: Brain-dump AI output must be stored as reviewable proposals on the project-scoped `ai_sessions` row instead of auto-creating characters, chapters, scenes, or timeline events.
+- Why it stays in force: Structured project data remains the source of truth, the author keeps canon control, and the first AI workflow stays cheap, reversible, and consistent with the rule that AI assists language and planning work without silently mutating schema-backed canon.

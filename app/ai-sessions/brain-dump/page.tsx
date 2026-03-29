@@ -4,33 +4,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { AiSessionForm } from "@/components/ai-sessions/ai-session-form";
+import { BrainDumpForm } from "@/components/ai-sessions/brain-dump-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { useActiveProject } from "@/hooks/use-active-project";
-import { createAiSessionForProject } from "@/lib/data/ai-sessions";
-import type { NormalizedAiSessionFormValues } from "@/types/ai-session";
 
-export default function NewAiSessionPage() {
+export default function BrainDumpPage() {
   const router = useRouter();
-  const { user, uid, activeProjectId, activeProject, loading } = useActiveProject();
-
-  async function handleCreateAiSession(values: NormalizedAiSessionFormValues) {
-    if (!uid || !activeProjectId) {
-      throw new Error("Select an active project before creating an AI session.");
-    }
-
-    const aiSessionId = await createAiSessionForProject(uid, activeProjectId, values);
-    router.push(`/ai-sessions/${aiSessionId}`);
-  }
+  const { user, activeProjectId, activeProject, loading } = useActiveProject();
 
   return (
     <PageShell
       eyebrow="AI Sessions"
-      title="Create AI session"
-      description="Start a new tracked AI session inside the currently active project. This first-pass form focuses on session metadata, linked records, and summarized prompt/output context rather than provider integration."
+      title="Brain dump to structure"
+      description="Paste messy planning text, exploratory prose, or long-form notes and turn it into reviewable AI proposals for characters, timeline events, chapter outlines, and scenes inside the active project."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
               Active project
@@ -38,7 +27,10 @@ export default function NewAiSessionPage() {
             <p className="mt-2 text-sm leading-6 text-zinc-600">
               {activeProject
                 ? `${activeProject.title} (${activeProject.id})`
-                : "A project must be active before AI session creation can continue."}
+                : "A project must be active before brain dump extraction can continue."}
+            </p>
+            <p className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Output stays as reviewable AI-session proposals until you turn it into real canon by hand.
             </p>
           </div>
 
@@ -50,10 +42,10 @@ export default function NewAiSessionPage() {
               Back to AI sessions
             </Link>
             <Link
-              href="/ai-sessions/brain-dump"
+              href="/ai-sessions/new"
               className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
             >
-              Use brain dump
+              Metadata-only session
             </Link>
           </div>
         </div>
@@ -61,7 +53,7 @@ export default function NewAiSessionPage() {
 
       {!user ? (
         <StateCard tone="warning">
-          Sign in first to create AI sessions.{" "}
+          Sign in first to use brain dump extraction.{" "}
           <Link href="/auth" className="font-medium underline">
             Go to auth
           </Link>
@@ -78,9 +70,20 @@ export default function NewAiSessionPage() {
           .
         </StateCard>
       ) : (
-        <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <AiSessionForm submitLabel="Create AI session" onSubmit={handleCreateAiSession} />
-        </section>
+        <>
+          <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <BrainDumpForm
+              projectId={activeProjectId}
+              onSuccess={(aiSessionId) => router.push(`/ai-sessions/${aiSessionId}`)}
+            />
+          </section>
+
+          <StateCard tone="neutral">
+            This route requires a server-side `OPENAI_API_KEY`. The first pass stores the raw dump,
+            the AI guidance, and the structured extraction result on the scoped `ai_sessions` row so
+            you can review it later.
+          </StateCard>
+        </>
       )}
     </PageShell>
   );
@@ -104,4 +107,3 @@ function StateCard({
     </section>
   );
 }
-

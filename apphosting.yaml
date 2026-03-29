@@ -9,3 +9,5 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: OPENAI_API_KEY
+    secret: openai-api-key

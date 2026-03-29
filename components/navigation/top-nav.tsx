@@ -35,6 +35,7 @@ const createLinks = [
   { href: "/notes/new", label: "Note" },
   { href: "/retcons/new", label: "Retcon" },
   { href: "/attachments/new", label: "Attachment" },
+  { href: "/ai-sessions/brain-dump", label: "Brain dump" },
   { href: "/ai-sessions/new", label: "AI session" },
 ] as const;
 

@@ -118,4 +118,4 @@ Implemented now:
 Partial or planned:
 
 - deeper timeline continuity editing and validation are still planned
-- richer attachment upload workflow and richer AI tooling are still planned
+- richer attachment upload workflow and richer AI tooling beyond the first brain-dump extraction pass are still planned

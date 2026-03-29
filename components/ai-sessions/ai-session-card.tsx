@@ -26,12 +26,18 @@ export function AiSessionCard({ aiSession }: AiSessionCardProps) {
           <Badge>{formatEnumLabel(aiSession.status)}</Badge>
           <Badge>{formatEnumLabel(aiSession.sessionType)}</Badge>
           <Badge>{aiSession.provider || "No provider"}</Badge>
+          {aiSession.sessionType === "brain_dump" ? (
+            <Badge>{formatEnumLabel(aiSession.extractionStatus)}</Badge>
+          ) : null}
         </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-500">
         <span>Model: {aiSession.model || "None"}</span>
         <span>Messages: {aiSession.messagesCount ?? "Unknown"}</span>
+        {aiSession.sessionType === "brain_dump" && aiSession.outputSummary ? (
+          <span>{aiSession.outputSummary}</span>
+        ) : null}
       </div>
     </article>
   );

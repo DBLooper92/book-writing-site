@@ -1,4 +1,9 @@
 import type { AppTimestamp } from "@/types/timestamp";
+import {
+  normalizeBrainDumpExtractionResult,
+  type BrainDumpExtractionResult,
+} from "@/types/ai-brain-dump";
+import type { Json } from "@/types/database";
 
 export const AI_SESSION_STATUS_VALUES = [
   "planned",
@@ -7,12 +12,19 @@ export const AI_SESSION_STATUS_VALUES = [
   "archived",
 ] as const;
 export const AI_SESSION_TYPE_VALUES = [
+  "brain_dump",
   "brainstorm",
   "summary",
   "editing",
   "drafting",
   "schema_seed",
   "other",
+] as const;
+export const AI_SESSION_EXTRACTION_STATUS_VALUES = [
+  "not_requested",
+  "processing",
+  "succeeded",
+  "failed",
 ] as const;
 export const AI_SESSION_CANON_LEVEL_VALUES = [
   "core",
@@ -29,6 +41,8 @@ export const AI_SESSION_CONFIDENCE_VALUES = [
 
 export type AiSessionStatus = (typeof AI_SESSION_STATUS_VALUES)[number];
 export type AiSessionType = (typeof AI_SESSION_TYPE_VALUES)[number];
+export type AiSessionExtractionStatus =
+  (typeof AI_SESSION_EXTRACTION_STATUS_VALUES)[number];
 export type AiSessionCanonLevel = (typeof AI_SESSION_CANON_LEVEL_VALUES)[number];
 export type AiSessionConfidence = (typeof AI_SESSION_CONFIDENCE_VALUES)[number];
 export type AiSessionTimestamp = AppTimestamp;
@@ -51,6 +65,12 @@ export type AiSession = {
   purpose: string;
   promptExcerpt: string;
   outputSummary: string;
+  sourceText: string;
+  sourceGuidance: string;
+  extractionStatus: AiSessionExtractionStatus;
+  extractionError: string;
+  extractionModel: string;
+  extractionResult: BrainDumpExtractionResult | null;
   linkedEntityTypes: string[];
   linkedEntityIds: string[];
   messagesCount: number | null;
@@ -112,6 +132,7 @@ export const AI_SESSION_TYPE_OPTIONS: ReadonlyArray<{
   value: AiSessionType;
   label: string;
 }> = [
+  { value: "brain_dump", label: "Brain dump" },
   { value: "brainstorm", label: "Brainstorm" },
   { value: "summary", label: "Summary" },
   { value: "editing", label: "Editing" },
@@ -122,6 +143,7 @@ export const AI_SESSION_TYPE_OPTIONS: ReadonlyArray<{
 
 const DEFAULT_AI_SESSION_STATUS: AiSessionStatus = "completed";
 const DEFAULT_AI_SESSION_TYPE: AiSessionType = "brainstorm";
+const DEFAULT_AI_SESSION_EXTRACTION_STATUS: AiSessionExtractionStatus = "not_requested";
 const DEFAULT_AI_SESSION_CANON_LEVEL: AiSessionCanonLevel = "working";
 const DEFAULT_AI_SESSION_CONFIDENCE: AiSessionConfidence = "medium";
 
@@ -205,6 +227,12 @@ export function buildAiSessionDocument({
     purpose: values.purpose,
     promptExcerpt: values.promptExcerpt,
     outputSummary: values.outputSummary,
+    sourceText: "",
+    sourceGuidance: "",
+    extractionStatus: DEFAULT_AI_SESSION_EXTRACTION_STATUS,
+    extractionError: "",
+    extractionModel: "",
+    extractionResult: null,
     linkedEntityTypes: values.linkedEntityTypes,
     linkedEntityIds: values.linkedEntityIds,
     messagesCount: values.messagesCount,
@@ -261,6 +289,14 @@ export function coerceAiSessionCanonLevel(value: unknown): AiSessionCanonLevel {
     : DEFAULT_AI_SESSION_CANON_LEVEL;
 }
 
+export function coerceAiSessionExtractionStatus(
+  value: unknown
+): AiSessionExtractionStatus {
+  return isAllowedValue(AI_SESSION_EXTRACTION_STATUS_VALUES, value)
+    ? value
+    : DEFAULT_AI_SESSION_EXTRACTION_STATUS;
+}
+
 export function coerceAiSessionConfidence(value: unknown): AiSessionConfidence {
   if (isAllowedValue(AI_SESSION_CONFIDENCE_VALUES, value)) {
     return value;
@@ -299,6 +335,15 @@ export function coerceAiSessionConfidence(value: unknown): AiSessionConfidence {
 
 export function slugifyAiSessionTitle(value: string) {
   return slugify(value);
+}
+
+export function buildAiSessionIdFromTitle(value: string) {
+  const normalized = slugifyAiSessionTitle(value).replace(/-/g, "_");
+  return `session_${normalized || "ai_session"}`;
+}
+
+export function normalizeAiSessionExtractionResult(value: Json | null | undefined) {
+  return normalizeBrainDumpExtractionResult(value);
 }
 
 function isAllowedValue<const Values extends readonly string[]>(

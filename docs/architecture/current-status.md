@@ -338,9 +338,13 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - list and detail hooks
 - list page
 - create page
+- dedicated `/ai-sessions/brain-dump` route for long-form text extraction
+- authenticated `/api/ai-sessions/brain-dump` server action that calls OpenAI Responses API with structured output and writes back to the scoped `ai_sessions` row
 - detail page
 - edit page
 - reusable form, card, and detail-section components
+- persisted brain-dump source text, author guidance, extraction status, extraction error, extraction model, and structured proposal output on `ai_sessions`
+- detail-page rendering for reviewable character, timeline event, chapter outline, and scene proposals generated from brain-dump text
 
 ## Partially Implemented
 
@@ -354,7 +358,7 @@ Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religion
 
 ### Workflow Depth
 
-Attachments and AI Sessions now have real slices, but both stay intentionally metadata-first in their initial pass. Upload/storage workflow, provider integration, and richer operational tooling are still future work.
+Attachments stays intentionally metadata-first in its initial pass. AI Sessions now goes one step further with a first-pass provider-backed brain-dump extraction flow, but automatic canon writes, richer operational tooling, and broader AI workflows are still future work.
 
 ### Cross-Entity Linking
 
@@ -367,7 +371,8 @@ The `/timeline` workspace now exists as the sole route-level visual chronology s
 ## Planned Later
 
 - upload and storage workflow for attachments
-- richer AI writing workflows
+- author-controlled import or acceptance flow from AI proposals into real canon rows
+- richer AI writing workflows beyond the current brain-dump extraction pass
 
 ## Documentation Rule
 

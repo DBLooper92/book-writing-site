@@ -1,0 +1,10 @@
+
+> book_writing_site@0.1.0 start
+> next start --port 3221
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3221
+- Network:       http://192.168.1.223:3221
+
+✓ Starting...
+✓ Ready in 2.9s
