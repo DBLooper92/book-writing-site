@@ -13,6 +13,7 @@ Implemented now as the first derived workspace built on top of an existing slice
 - `hooks/use-timeline-workspace.ts`
 - `hooks/use-timeline-form-options.ts`
 - `components/timeline/timeline-workspace-controls.tsx`
+- `components/timeline/timeline-brain-dump-lightbox.tsx`
 - `components/timeline/timeline-event-composer-sheet.tsx`
 - `components/timeline/timeline-event-detail-lightbox.tsx`
 - `components/timeline/timeline-workspace-event-card.tsx`
@@ -37,6 +38,7 @@ Implemented now as the first derived workspace built on top of an existing slice
 - the filter bar sits at the top of the chronology pane and can be pinned or unpinned without changing the underlying filter model
 - inline workspace authoring should still write to the same `timeline_events` documents and reuse the same normalization and validation path as the dedicated detail/edit surfaces
 - workspace event viewing and editing should prefer in-place lightboxes and sheets over routing authors away from `/timeline`
+- the main chronology toolbar can launch a brain-dump lightbox beside the create button, but that flow should still save its extraction output onto project-scoped `ai_sessions` rows rather than directly creating canon records
 - the workspace event editor can open nested inline-create lightboxes for the current linked timeline-event picker slices and should reselect the newly created record without closing the editor
 - linked chips inside workspace event detail should open nested record lightboxes instead of routing authors away from the current timeline overlay stack
 - linked warnings should derive from already loaded project-scoped slice records instead of introducing a separate validation collection
@@ -46,7 +48,7 @@ Implemented now as the first derived workspace built on top of an existing slice
 
 ## Current Role In The Architecture
 
-The Timeline workspace turns `/timeline` into the sole top-level project-scoped chronology surface without changing the project-scoped data model. It now gives the existing `timeline_events` slice a split-pane chronology workspace with a floating quick-map rail, a pinnable filter header, a center-line visual timeline, derived insertion points, query-driven create entry points, in-place event lightboxes, nested linked-record detail lightboxes, inline create/edit entry points, nested linked-record creation lightboxes inside the event editor, timeline-specific filters, year/month/day-aware chronology ordering, and first-pass integrity warnings while keeping timeline data grounded in the same normalized event records used elsewhere in the app.
+The Timeline workspace turns `/timeline` into the sole top-level project-scoped chronology surface without changing the project-scoped data model. It now gives the existing `timeline_events` slice a split-pane chronology workspace with a floating quick-map rail, a pinnable filter header, a center-line visual timeline, derived insertion points, query-driven create entry points, an in-place brain-dump lightbox next to the main create button, in-place event lightboxes, nested linked-record detail lightboxes, inline create/edit entry points, nested linked-record creation lightboxes inside the event editor, timeline-specific filters, year/month/day-aware chronology ordering, and first-pass integrity warnings while keeping timeline data grounded in the same normalized event records used elsewhere in the app.
 
 ## What Remains Later
 

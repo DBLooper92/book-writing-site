@@ -33,6 +33,7 @@ Implemented now as the latest full entity slice.
 - brain-dump extraction stores source text, AI guidance, extraction status, and structured proposal output on the same scoped `ai_sessions` row
 - brain-dump output is reviewable planning structure only, not automatic canon creation
 - the server route requires `OPENAI_API_KEY` and uses a structured-output response shape
+- the brain-dump form can be reached from both the dedicated AI Sessions route and the Timeline workspace lightbox
 - normalized records are used consistently in the UI
 - readable IDs are generated from the title with collision handling
 

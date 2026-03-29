@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { TimelineBrainDumpLightbox } from "@/components/timeline/timeline-brain-dump-lightbox";
 import { TimelineEventComposerSheet } from "@/components/timeline/timeline-event-composer-sheet";
 import { TimelineEventDetailLightbox } from "@/components/timeline/timeline-event-detail-lightbox";
 import { TimelineWorkspaceControls } from "@/components/timeline/timeline-workspace-controls";
@@ -58,6 +59,7 @@ export function TimelineWorkspaceVisual({
   const [filtersPinned, setFiltersPinned] = useState(false);
   const [requestedSelectedEventId, setRequestedSelectedEventId] = useState<string | null>(null);
   const [viewerEventId, setViewerEventId] = useState<string | null>(null);
+  const [brainDumpOpen, setBrainDumpOpen] = useState(false);
   const [localComposerState, setLocalComposerState] = useState<
     | {
         initialValuesOverride?: TimelineEventFormValues | null;
@@ -250,12 +252,21 @@ export function TimelineWorkspaceVisual({
 
           <div className="space-y-6 p-4 sm:p-6 xl:p-8">
             <div className="flex justify-end">
-              <Link
-                href={buildTimelineCreateHref()}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Create timeline event
-              </Link>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => setBrainDumpOpen(true)}
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+                >
+                  Brain dump
+                </button>
+                <Link
+                  href={buildTimelineCreateHref()}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Create timeline event
+                </Link>
+              </div>
             </div>
 
             {stats.totalEvents === 0 ? (
@@ -331,6 +342,18 @@ export function TimelineWorkspaceVisual({
           onSaved={handleSaved}
           timelineEvent={editingTimelineEvent}
           uid={uid}
+        />
+      ) : null}
+
+      {brainDumpOpen ? (
+        <TimelineBrainDumpLightbox
+          activeProjectId={activeProjectId}
+          activeProjectTitle={activeProjectTitle}
+          onClose={() => setBrainDumpOpen(false)}
+          onSuccess={(aiSessionId) => {
+            setBrainDumpOpen(false);
+            router.push(`/ai-sessions/${aiSessionId}`);
+          }}
         />
       ) : null}
 

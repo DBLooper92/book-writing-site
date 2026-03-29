@@ -105,6 +105,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - chronology sorting that uses date fields for dated events, preserves insertion-hint ordering only for undated event groups, and uses same-date sequence ordering for tied dated placements
 - validation warnings for invalid date ranges and missing linked slice records
 - query-driven timeline create entry points that can prefill shared-year context inside `/timeline`
+- toolbar-level brain-dump lightbox beside the main create button so authors can launch AI extraction without leaving `/timeline`
 - inline timeline composer sheet for create-from-notch and edit-in-place flows inside `/timeline`
 - nested inline-create lightboxes from the timeline event editor so linked books, chapters, scenes, characters, locations, eras, themes, plot threads, technologies, religions, cultures, and factions can be created without leaving the workspace sheet
 - nested linked-record detail lightboxes from timeline event linked chips so authors can inspect referenced slice records without leaving the timeline overlay stack
