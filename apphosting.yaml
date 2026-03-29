@@ -11,3 +11,5 @@ env:
       - RUNTIME
   - variable: PROFILE_SECRETS_ENCRYPTION_KEY
     secret: profile-secrets-encryption-key
+    availability:
+      - RUNTIME

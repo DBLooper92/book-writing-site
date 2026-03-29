@@ -33,6 +33,13 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# local-only private notes and scratch docs
+/local-notes/
+/private-notes/
+/docs-local/
+/*.local.md
+/*.private.md
+
 # vercel
 .vercel
 
