@@ -308,15 +308,12 @@ function ApiKeysTab({
         shared app key.
       </section>
 
-      <InfoCard
-        label="Saved key"
-        value={
-          loadingKeyState
-            ? "Loading..."
-            : keyState.hasKey
-              ? `Saved key ending in ${keyState.last4 ?? "unknown"}`
-              : "No OpenAI key saved yet."
-        }
+      <SavedKeyCard
+        deleting={deleting}
+        hasKey={keyState.hasKey}
+        last4={keyState.last4}
+        loading={loadingKeyState}
+        onDelete={onDelete}
       />
 
       <label className="block">
@@ -351,19 +348,66 @@ function ApiKeysTab({
         >
           {saving ? "Saving..." : keyState.hasKey ? "Replace key" : "Save key"}
         </button>
+      </div>
+    </div>
+  );
+}
 
-        {keyState.hasKey ? (
+function SavedKeyCard({
+  deleting,
+  hasKey,
+  last4,
+  loading,
+  onDelete,
+}: {
+  deleting: boolean;
+  hasKey: boolean;
+  last4: string | null;
+  loading: boolean;
+  onDelete: () => Promise<void>;
+}) {
+  async function handleDeleteClick() {
+    const shouldDelete = window.confirm(
+      "Remove the saved OpenAI API key from your profile?"
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    await onDelete();
+  }
+
+  return (
+    <section className="rounded-3xl border border-zinc-200 bg-white p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+            Saved key
+          </p>
+          <p className="mt-3 text-sm leading-6 text-zinc-700">
+            {loading
+              ? "Loading..."
+              : hasKey
+                ? `Saved key ending in ${last4 ?? "unknown"}`
+                : "No OpenAI key saved yet."}
+          </p>
+        </div>
+
+        {hasKey && !loading ? (
           <button
             type="button"
-            onClick={() => void onDelete()}
-            disabled={saving || deleting}
-            className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:border-zinc-100 disabled:text-zinc-400"
+            onClick={() => void handleDeleteClick()}
+            disabled={deleting}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:border-zinc-100 disabled:text-zinc-400"
+            aria-label="Remove saved OpenAI key"
+            title="Remove saved OpenAI key"
           >
-            {deleting ? "Removing..." : "Remove key"}
+            {deleting ? <SpinnerIcon /> : <TrashIcon />}
           </button>
         ) : null}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -393,5 +437,43 @@ function FeedbackCard({
     >
       {children}
     </div>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  );
+}
+
+function SpinnerIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4 animate-spin"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 12a9 9 0 1 1-9-9" />
+    </svg>
   );
 }
