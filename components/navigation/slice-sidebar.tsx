@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLayoutEffect, useRef } from "react";
 
 import { useAiSessions } from "@/hooks/use-ai-sessions";
 import { useAttachments } from "@/hooks/use-attachments";
@@ -83,6 +84,9 @@ type SliceSidebarListItem = {
   label: string;
 };
 
+const SIDEBAR_SCROLL_STORAGE_KEY = "book-writing-site:slice-sidebar-scroll-top";
+let savedSidebarScrollTop = 0;
+
 export function getActiveSliceNavigationConfig(pathname: string | null) {
   if (!pathname) {
     return null;
@@ -93,6 +97,44 @@ export function getActiveSliceNavigationConfig(pathname: string | null) {
 
 export function SliceSidebar({ pathname }: { pathname: string }) {
   const activeConfig = getActiveSliceNavigationConfig(pathname);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (!activeConfig) {
+      return;
+    }
+
+    const scrollContainer = scrollContainerRef.current;
+
+    if (!scrollContainer) {
+      return;
+    }
+
+    const restoreScrollPosition = () => {
+      scrollContainer.scrollTop = getSavedSidebarScrollTop();
+    };
+
+    restoreScrollPosition();
+
+    const animationFrame = window.requestAnimationFrame(restoreScrollPosition);
+    const contentNode = contentRef.current;
+    const observer =
+      contentNode && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            restoreScrollPosition();
+          })
+        : null;
+
+    if (observer && contentNode) {
+      observer.observe(contentNode);
+    }
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      observer?.disconnect();
+    };
+  }, [activeConfig, pathname]);
 
   if (!activeConfig) {
     return <></>;
@@ -100,46 +142,54 @@ export function SliceSidebar({ pathname }: { pathname: string }) {
 
   return (
     <aside className="border-b border-zinc-200 bg-[#fafaf8] xl:h-full xl:overflow-hidden xl:border-b-0 xl:border-r xl:shadow-[20px_0_40px_-32px_rgba(24,24,27,0.55)]">
-      <div className="flex h-full flex-col xl:sticky xl:top-0 xl:overflow-y-auto">
-        <div className="border-b border-zinc-200 px-5 py-5 sm:px-6">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-400">
-            Navigation
-          </p>
-          <p className="mt-3 text-sm leading-6 text-zinc-600">
-            The rail stays in the same place as timeline. Only the links inside it change.
-          </p>
-        </div>
+      <div
+        ref={scrollContainerRef}
+        onScroll={(event) => {
+          setSavedSidebarScrollTop(event.currentTarget.scrollTop);
+        }}
+        className="flex h-full flex-col xl:sticky xl:top-0 xl:overflow-y-auto"
+      >
+        <div ref={contentRef}>
+          <div className="border-b border-zinc-200 px-5 py-5 sm:px-6">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-400">
+              Navigation
+            </p>
+            <p className="mt-3 text-sm leading-6 text-zinc-600">
+              The rail stays in the same place as timeline. Only the links inside it change.
+            </p>
+          </div>
 
-        <nav className="flex-1">
-          {SLICE_NAVIGATION_CONFIG.map((config, index) => {
-            const isActive = config.key === activeConfig.key;
-            const ActiveSliceContent = config.renderContent;
+          <nav className="flex-1">
+            {SLICE_NAVIGATION_CONFIG.map((config, index) => {
+              const isActive = config.key === activeConfig.key;
+              const ActiveSliceContent = config.renderContent;
 
-            return (
-              <div
-                key={config.key}
-                className={index === 0 ? undefined : "border-t border-zinc-200"}
-              >
-                <div className="px-5 py-4 sm:px-6">
-                  <Link
-                    href={config.href}
-                    scroll={false}
-                    aria-current={isActive ? "page" : undefined}
-                    className={`inline-flex text-sm leading-6 underline-offset-4 transition ${
-                      isActive
-                        ? "font-semibold text-zinc-950 underline decoration-zinc-950"
-                        : "text-zinc-600 decoration-zinc-300 hover:text-zinc-950 hover:underline"
-                    }`}
-                  >
-                    {config.label}
-                  </Link>
+              return (
+                <div
+                  key={config.key}
+                  className={index === 0 ? undefined : "border-t border-zinc-200"}
+                >
+                  <div className="px-5 py-4 sm:px-6">
+                    <Link
+                      href={config.href}
+                      scroll={false}
+                      aria-current={isActive ? "page" : undefined}
+                      className={`inline-flex text-sm leading-6 underline-offset-4 transition ${
+                        isActive
+                          ? "font-semibold text-zinc-950 underline decoration-zinc-950"
+                          : "text-zinc-600 decoration-zinc-300 hover:text-zinc-950 hover:underline"
+                      }`}
+                    >
+                      {config.label}
+                    </Link>
 
-                  {isActive ? <ActiveSliceContent pathname={pathname} /> : null}
+                    {isActive ? <ActiveSliceContent pathname={pathname} /> : null}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </nav>
+              );
+            })}
+          </nav>
+        </div>
       </div>
     </aside>
   );
@@ -265,6 +315,27 @@ function getSidebarLabel(label: string, fallbackId: string) {
 
 function matchesSlicePath(basePath: string) {
   return (pathname: string) => pathname === basePath || pathname.startsWith(`${basePath}/`);
+}
+
+function getSavedSidebarScrollTop() {
+  if (typeof window === "undefined") {
+    return savedSidebarScrollTop;
+  }
+
+  const rawValue = window.sessionStorage.getItem(SIDEBAR_SCROLL_STORAGE_KEY);
+  const parsedValue = rawValue ? Number.parseFloat(rawValue) : Number.NaN;
+
+  return Number.isFinite(parsedValue) ? parsedValue : savedSidebarScrollTop;
+}
+
+function setSavedSidebarScrollTop(value: number) {
+  savedSidebarScrollTop = value;
+
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.setItem(SIDEBAR_SCROLL_STORAGE_KEY, String(value));
 }
 
 function ProjectOverviewSidebarContent() {
