@@ -39,7 +39,7 @@ export function SlicePageLayout({
 
   return (
     <main className="mx-auto w-full max-w-[90rem] px-6 py-10">
-      <section className="grid gap-6 xl:grid-cols-[18rem_minmax(0,1fr)]">
+      <section className="grid gap-6 xl:grid-cols-[22rem_minmax(0,1fr)]">
         <SliceSidebar pathname={pathname} />
 
         <div className="flex min-w-0 flex-col gap-6">

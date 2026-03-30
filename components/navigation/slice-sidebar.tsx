@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 
-import { useActiveProject } from "@/hooks/use-active-project";
 import { useAiSessions } from "@/hooks/use-ai-sessions";
 import { useAttachments } from "@/hooks/use-attachments";
 import { useBooks } from "@/hooks/use-books";
@@ -101,34 +100,47 @@ export function SliceSidebar({ pathname }: { pathname: string }) {
 
   return (
     <aside className="min-w-0 xl:sticky xl:top-28 xl:h-fit">
-      <div className="max-h-[calc(100vh-10rem)] overflow-y-auto pr-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-400">
-          Navigation
-        </p>
-        <nav className="mt-4 space-y-2">
-          {SLICE_NAVIGATION_CONFIG.map((config) => {
-            const isActive = config.key === activeConfig.key;
-            const ActiveSliceContent = config.renderContent;
+      <div className="overflow-hidden border-b border-zinc-200 bg-[#fafaf8] xl:border xl:border-zinc-200 xl:shadow-[20px_0_40px_-32px_rgba(24,24,27,0.55)]">
+        <div className="max-h-[calc(100vh-10rem)] overflow-y-auto">
+          <div className="border-b border-zinc-200 px-5 py-5 sm:px-6">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-400">
+              Navigation
+            </p>
+            <p className="mt-3 text-sm leading-6 text-zinc-600">
+              The rail stays in the same place as timeline. Only the links inside it change.
+            </p>
+          </div>
 
-            return (
-              <div key={config.key} className="space-y-2">
-                <Link
-                  href={config.href}
-                  aria-current={isActive ? "page" : undefined}
-                  className={`inline-flex text-sm leading-6 underline-offset-4 transition ${
-                    isActive
-                      ? "font-semibold text-zinc-950 underline decoration-zinc-950"
-                      : "text-zinc-600 decoration-zinc-300 hover:text-zinc-950 hover:underline"
-                  }`}
+          <nav>
+            {SLICE_NAVIGATION_CONFIG.map((config, index) => {
+              const isActive = config.key === activeConfig.key;
+              const ActiveSliceContent = config.renderContent;
+
+              return (
+                <div
+                  key={config.key}
+                  className={index === 0 ? undefined : "border-t border-zinc-200"}
                 >
-                  {config.label}
-                </Link>
+                  <div className="px-5 py-4 sm:px-6">
+                    <Link
+                      href={config.href}
+                      aria-current={isActive ? "page" : undefined}
+                      className={`inline-flex text-sm leading-6 underline-offset-4 transition ${
+                        isActive
+                          ? "font-semibold text-zinc-950 underline decoration-zinc-950"
+                          : "text-zinc-600 decoration-zinc-300 hover:text-zinc-950 hover:underline"
+                      }`}
+                    >
+                      {config.label}
+                    </Link>
 
-                {isActive ? <ActiveSliceContent pathname={pathname} /> : null}
-              </div>
-            );
-          })}
-        </nav>
+                    {isActive ? <ActiveSliceContent pathname={pathname} /> : null}
+                  </div>
+                </div>
+              );
+            })}
+          </nav>
+        </div>
       </div>
     </aside>
   );
@@ -195,18 +207,7 @@ function SliceSidebarRecordList({
   user: unknown;
 }) {
   return (
-    <div className="pl-4">
-      <div className="pb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-          Current project
-        </p>
-        <p className="mt-1 text-xs leading-5 text-zinc-500">
-          {activeProject
-            ? `${activeProject.title} (${activeProject.id})`
-            : "Choose an active project to browse scoped records."}
-        </p>
-      </div>
-
+    <div className="mt-3 pl-3">
       {!user ? (
         <SliceSidebarState>Sign in to load this slice.</SliceSidebarState>
       ) : loading ? (
@@ -267,23 +268,7 @@ function matchesSlicePath(basePath: string) {
 }
 
 function ProjectOverviewSidebarContent() {
-  const { user, activeProjectId, activeProject, loading } = useActiveProject();
-
-  return (
-    <div className="pl-4">
-      {!user ? (
-        <SliceSidebarState>Sign in to load the active project overview.</SliceSidebarState>
-      ) : loading ? (
-        <SliceSidebarState>Loading project overview...</SliceSidebarState>
-      ) : !activeProjectId || !activeProject ? (
-        <SliceSidebarState>No active project selected.</SliceSidebarState>
-      ) : (
-        <p className="text-xs leading-5 text-zinc-500">
-          Overview for {activeProject.title} ({activeProject.id}).
-        </p>
-      )}
-    </div>
-  );
+  return <div className="mt-3" />;
 }
 
 const BooksSliceContent = createSliceSidebarContent({
