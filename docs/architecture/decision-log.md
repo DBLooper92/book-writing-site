@@ -168,3 +168,9 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: Brain-dump workflow completion
 - Decision: The staged brain-dump workflow is now considered complete for the current main target slices once timeline events, characters, chapters, and scenes all support cheap matching, on-demand targeted context, explicit reviewed-state gating, explicit target selection, and author-approved apply paths; later work should be treated as expansion or polish, not as the unfinished core workflow.
 - Why it stays in force: This keeps future planning honest about what is already delivered, prevents reopening the core brain-dump architecture unnecessarily, and sets a clear boundary between the completed canon-bridge workflow and optional broader-slice or deeper-analysis improvements.
+
+### D-027
+
+- Origin: First storage-backed image workflow
+- Decision: Record images should be modeled as scoped `attachments` rows backed by a private Supabase Storage bucket instead of adding per-entity image columns or separate image tables to every slice.
+- Why it stays in force: This keeps uploads inside the existing project-scoped attachment model, avoids duplicating media schema across slices, preserves one source of truth for linked image metadata, and lets detail pages share one upload/delete implementation.

@@ -110,7 +110,7 @@ Not yet implemented as full features:
 
 - richer cross-entity navigation and validation
 - deeper timeline continuity tooling
-- attachment upload workflow
+- broader non-image attachment upload workflow
 - AI writing surfaces
 
 ## Related Docs

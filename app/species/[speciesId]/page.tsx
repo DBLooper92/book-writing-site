@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { PageShell } from "@/components/layout/page-shell";
 import { SpeciesDetailSection } from "@/components/species/species-detail-section";
 import { useSpeciesRecord } from "@/hooks/use-species-record";
@@ -80,6 +81,13 @@ export default function SpeciesDetailPage() {
         </StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="species"
+            entityId={species.id}
+          />
+
           <SpeciesDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{species.summary || "No summary yet."}</p>

@@ -15,12 +15,14 @@ import {
 type AttachmentFormProps = {
   initialValues?: AttachmentFormValues;
   submitLabel: string;
+  lockedStorageFields?: boolean;
   onSubmit: (values: NormalizedAttachmentFormValues) => Promise<void>;
 };
 
 export function AttachmentForm({
   initialValues,
   submitLabel,
+  lockedStorageFields = false,
   onSubmit,
 }: AttachmentFormProps) {
   const [values, setValues] = useState<AttachmentFormValues>(() =>
@@ -86,20 +88,30 @@ export function AttachmentForm({
           value={values.storageStatus}
           onChange={(value) => updateField("storageStatus", value)}
           options={ATTACHMENT_STORAGE_STATUS_OPTIONS}
+          disabled={lockedStorageFields}
         />
         <Field
           label="File name"
           value={values.fileName}
           onChange={(value) => updateField("fileName", value)}
           placeholder="greyfen-map-placeholder.txt"
+          disabled={lockedStorageFields}
         />
         <Field
           label="MIME type"
           value={values.mimeType}
           onChange={(value) => updateField("mimeType", value)}
           placeholder="text/plain"
+          disabled={lockedStorageFields}
         />
       </section>
+
+      {lockedStorageFields ? (
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+          This attachment is backed by Supabase Storage. File name, MIME type, URL, and storage
+          status stay locked to the uploaded file metadata.
+        </div>
+      ) : null}
 
       <TextareaField
         label="Summary"
@@ -131,7 +143,8 @@ export function AttachmentForm({
           value={values.url}
           onChange={(value) => updateField("url", value)}
           placeholder="https://example.com/greyfen-map"
-          hint="Optional for the current metadata-only pass."
+          hint="Optional for external-link attachments."
+          disabled={lockedStorageFields}
         />
         <Field
           label="Linked entity type"
@@ -201,11 +214,13 @@ function SelectField<Value extends string>({
   value,
   onChange,
   options,
+  disabled = false,
 }: {
   label: string;
   value: Value;
   onChange: (value: Value) => void;
   options: ReadonlyArray<{ value: Value; label: string }>;
+  disabled?: boolean;
 }) {
   return (
     <label className="block">
@@ -213,6 +228,7 @@ function SelectField<Value extends string>({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as Value)}
+        disabled={disabled}
         className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400"
       >
         {options.map((option) => (
@@ -232,6 +248,7 @@ function Field({
   placeholder,
   required = false,
   hint,
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -239,6 +256,7 @@ function Field({
   placeholder: string;
   required?: boolean;
   hint?: string;
+  disabled?: boolean;
 }) {
   return (
     <label className="block">
@@ -251,7 +269,8 @@ function Field({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required={required}
-        className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400"
+        disabled={disabled}
+        className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-100"
       />
       {hint ? <span className="mt-2 block text-xs text-zinc-500">{hint}</span> : null}
     </label>
@@ -265,6 +284,7 @@ function TextareaField({
   placeholder,
   rows,
   hint,
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -272,6 +292,7 @@ function TextareaField({
   placeholder: string;
   rows: number;
   hint?: string;
+  disabled?: boolean;
 }) {
   return (
     <label className="block">
@@ -281,7 +302,8 @@ function TextareaField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-950 outline-none transition focus:border-zinc-400"
+        disabled={disabled}
+        className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-950 outline-none transition focus:border-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-100"
       />
       {hint ? <span className="mt-2 block text-xs text-zinc-500">{hint}</span> : null}
     </label>

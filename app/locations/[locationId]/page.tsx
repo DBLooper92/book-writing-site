@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { PageShell } from "@/components/layout/page-shell";
 import { LocationDetailSection } from "@/components/locations/location-detail-section";
 import { useLocation } from "@/hooks/use-location";
@@ -80,6 +81,13 @@ export default function LocationDetailPage() {
         </StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="locations"
+            entityId={location.id}
+          />
+
           <LocationDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{location.summary || "No summary yet."}</p>

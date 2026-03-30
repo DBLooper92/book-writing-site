@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { ItemDetailSection } from "@/components/items/item-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useItem } from "@/hooks/use-item";
@@ -77,6 +78,13 @@ export default function ItemDetailPage() {
         <StateCard tone="error">{error ?? "Item not found in the active project."}</StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="items"
+            entityId={item.id}
+          />
+
           <ItemDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{item.summary || "No summary yet."}</p>

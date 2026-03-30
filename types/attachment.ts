@@ -59,6 +59,9 @@ export type Attachment = {
   mimeType: string;
   sourceNote: string;
   url: string | null;
+  storageBucket: string | null;
+  storagePath: string | null;
+  fileSizeBytes: number | null;
   linkedEntityType: string | null;
   linkedEntityId: string | null;
   linkedNoteIds: string[];
@@ -230,6 +233,9 @@ export function buildAttachmentDocument({
     mimeType: values.mimeType,
     sourceNote: values.sourceNote,
     url: values.url,
+    storageBucket: null,
+    storagePath: null,
+    fileSizeBytes: null,
     linkedEntityType: values.linkedEntityType,
     linkedEntityId: values.linkedEntityId,
     linkedNoteIds: values.linkedNoteIds,
@@ -353,6 +359,12 @@ export function coerceAttachmentConfidence(value: unknown): AttachmentConfidence
 
 export function slugifyAttachmentTitle(value: string) {
   return slugify(value);
+}
+
+export function isStorageManagedAttachment(
+  attachment: Pick<Attachment, "storageBucket" | "storagePath">
+) {
+  return Boolean(attachment.storageBucket && attachment.storagePath);
 }
 
 function isAllowedValue<const Values extends readonly string[]>(

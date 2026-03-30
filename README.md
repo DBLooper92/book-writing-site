@@ -35,6 +35,7 @@ The current repo already has:
 - Supabase-backed Notes pages
 - Supabase-backed Retcons pages
 - Supabase-backed Attachments pages
+- attachment-backed image galleries on entity detail pages with private Supabase Storage upload and delete flow
 - Supabase-backed AI Sessions pages
 - a provider-backed AI brain-dump workflow that turns long freeform text into reviewable planning proposals using each signed-in user's saved OpenAI key
 - Supabase-backed Relationships pages
@@ -42,7 +43,7 @@ The current repo already has:
 - a Timeline workspace route with a visual center-line chronology, quick navigation, filters, and inline authoring
 - a developer seeding flow for a default story-bible project
 
-Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions currently have list, create, detail, and edit flows. `/timeline` remains the sole top-level chronology surface for browsing and creating timeline records. The workspace adds a visual center-line chronology, quick navigation, filters, derived insertion notches, compressed time-jump markers, inline create/edit entry points, and a toolbar brain-dump lightbox on top of `timeline_events`, while Timeline Events supports picker-style linking for the main connected slices. AI Sessions now also has a first-pass brain-dump flow that uses the authenticated user's saved OpenAI key and stores reviewable proposals for characters, timeline events, chapter outlines, and scenes on the scoped `ai_sessions` row. Delete flows, richer cross-entity linking, deeper timeline continuity tooling, upload/storage workflow, automatic canon import from AI output, and broader AI tooling are still future work.
+Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions currently have list, create, detail, and edit flows. `/timeline` remains the sole top-level chronology surface for browsing and creating timeline records. The workspace adds a visual center-line chronology, quick navigation, filters, derived insertion notches, compressed time-jump markers, inline create/edit entry points, and a toolbar brain-dump lightbox on top of `timeline_events`, while Timeline Events supports picker-style linking for the main connected slices. Linked entity detail pages now also support private Supabase Storage image uploads backed by scoped `attachments` rows. AI Sessions now also has a first-pass brain-dump flow that uses the authenticated user's saved OpenAI key and stores reviewable proposals for characters, timeline events, chapter outlines, and scenes on the scoped `ai_sessions` row. Dedicated slice delete flows, richer cross-entity linking, deeper timeline continuity tooling, broader non-image attachment workflows, automatic canon import from AI output, and broader AI tooling are still future work.
 
 ## Local Development
 

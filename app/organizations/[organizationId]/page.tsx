@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { PageShell } from "@/components/layout/page-shell";
 import { OrganizationDetailSection } from "@/components/organizations/organization-detail-section";
 import { useOrganization } from "@/hooks/use-organization";
@@ -81,6 +82,13 @@ export default function OrganizationDetailPage() {
         </StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="organizations"
+            entityId={organization.id}
+          />
+
           <OrganizationDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{organization.summary || "No summary yet."}</p>

@@ -1547,6 +1547,9 @@ export type Database = {
           mime_type: string;
           source_note: string;
           url: string | null;
+          storage_bucket: string | null;
+          storage_path: string | null;
+          file_size_bytes: number | null;
           linked_entity_type: string | null;
           linked_entity_id: string | null;
           linked_note_ids: string[];
@@ -1573,6 +1576,9 @@ export type Database = {
           mime_type?: string;
           source_note?: string;
           url?: string | null;
+          storage_bucket?: string | null;
+          storage_path?: string | null;
+          file_size_bytes?: number | null;
           linked_entity_type?: string | null;
           linked_entity_id?: string | null;
           linked_note_ids?: string[];
@@ -1599,6 +1605,9 @@ export type Database = {
           mime_type?: string;
           source_note?: string;
           url?: string | null;
+          storage_bucket?: string | null;
+          storage_path?: string | null;
+          file_size_bytes?: number | null;
           linked_entity_type?: string | null;
           linked_entity_id?: string | null;
           linked_note_ids?: string[];

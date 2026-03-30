@@ -335,6 +335,9 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - detail page
 - edit page
 - reusable form, card, and detail-section components
+- private `entity-images` Supabase Storage bucket plus scoped storage metadata on `attachments`
+- shared image-gallery uploader on linked Books, Chapters, Scenes, Characters, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Notes, Retcons, and Timeline Event detail pages
+- direct delete action for uploaded entity images from that shared gallery
 
 ### AI Sessions
 
@@ -388,7 +391,7 @@ Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religion
 
 ### Workflow Depth
 
-Attachments stays intentionally metadata-first in its initial pass. AI Sessions now goes one step further with a provider-backed brain-dump extraction flow, persisted proposal-review scaffolding, a cheap deterministic matching pass against existing characters, timeline events, chapters, and scenes, same-dump duplicate detection for those extracted proposal groups, session-level linked-record IDs derived from strong cheap matches, on-demand targeted-context endpoints for timeline, character, chapter, and scene proposal review, and explicit author-driven apply paths that can write reviewed timeline, character, chapter, and scene proposals into real scoped canon rows. Timeline context now derives first-pass placement guidance plus continuity warnings grounded in both the loaded summaries and the anchor event's existing linked records, character context now loads matched character-sheet summaries, linked event context, and related-scene continuity warnings, chapter context now loads matched chapter summaries, point-of-view context, and linked scene context, the current chapter/scene apply routes repair safe reverse manuscript links so `chapters.scene_ids` and `scenes.chapter_id` stay aligned more often after author-approved applies, the character apply route now repairs safe reverse scene and chapter character links, and the review/apply layer now lets authors explicitly pick the target match while requiring a saved `reviewed` state before any canon write. Broader contradiction review beyond the current targeted checks, richer search beyond the current candidate lists, and broader AI workflows are still future work.
+Attachments now supports private image upload and delete workflow for linked entity detail pages through scoped `attachments` rows plus Supabase Storage, while the standalone manual attachment form remains intentionally metadata-first for broader file-reference use. AI Sessions now goes one step further with a provider-backed brain-dump extraction flow, persisted proposal-review scaffolding, a cheap deterministic matching pass against existing characters, timeline events, chapters, and scenes, same-dump duplicate detection for those extracted proposal groups, session-level linked-record IDs derived from strong cheap matches, on-demand targeted-context endpoints for timeline, character, chapter, and scene proposal review, and explicit author-driven apply paths that can write reviewed timeline, character, chapter, and scene proposals into real scoped canon rows. Timeline context now derives first-pass placement guidance plus continuity warnings grounded in both the loaded summaries and the anchor event's existing linked records, character context now loads matched character-sheet summaries, linked event context, and related-scene continuity warnings, chapter context now loads matched chapter summaries, point-of-view context, and linked scene context, the current chapter/scene apply routes repair safe reverse manuscript links so `chapters.scene_ids` and `scenes.chapter_id` stay aligned more often after author-approved applies, the character apply route now repairs safe reverse scene and chapter character links, and the review/apply layer now lets authors explicitly pick the target match while requiring a saved `reviewed` state before any canon write. Broader contradiction review beyond the current targeted checks, richer search beyond the current candidate lists, broader non-image file workflows, and broader AI workflows are still future work.
 
 ### Cross-Entity Linking
 
@@ -400,7 +403,7 @@ The `/timeline` workspace now exists as the sole route-level visual chronology s
 
 ## Planned Later
 
-- upload and storage workflow for attachments
+- broader non-image attachment upload workflow
 - broader-slice proposal matching refinement before create/update decisions
 - targeted continuity and contradiction review using only relevant existing slice context rather than full-project rereads
 - richer AI writing workflows beyond the current brain-dump extraction pass

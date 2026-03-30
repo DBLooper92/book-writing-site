@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { PageShell } from "@/components/layout/page-shell";
 import { ThemeDetailSection } from "@/components/themes/theme-detail-section";
 import { useTheme } from "@/hooks/use-theme";
@@ -77,6 +78,13 @@ export default function ThemeDetailPage() {
         <StateCard tone="error">{error ?? "Theme not found in the active project."}</StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="themes"
+            entityId={theme.id}
+          />
+
           <ThemeDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{theme.summary || "No summary yet."}</p>

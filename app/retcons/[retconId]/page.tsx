@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { PageShell } from "@/components/layout/page-shell";
 import { RetconDetailSection } from "@/components/retcons/retcon-detail-section";
 import { useRetcon } from "@/hooks/use-retcon";
@@ -77,6 +78,13 @@ export default function RetconDetailPage() {
         <StateCard tone="error">{error ?? "Retcon not found in the active project."}</StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="retcons"
+            entityId={retcon.id}
+          />
+
           <RetconDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{retcon.summary || "No summary yet."}</p>

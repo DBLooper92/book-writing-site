@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { AttachmentImagePreview } from "@/components/attachments/attachment-image-preview";
 import { AttachmentDetailSection } from "@/components/attachments/attachment-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useAttachment } from "@/hooks/use-attachment";
@@ -87,9 +88,9 @@ export default function AttachmentDetailPage() {
             </div>
           </AttachmentDetailSection>
 
-          <AttachmentDetailSection title="File metadata">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <DetailItem label="Status" value={formatEnumLabel(attachment.status)} />
+        <AttachmentDetailSection title="File metadata">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <DetailItem label="Status" value={formatEnumLabel(attachment.status)} />
               <DetailItem
                 label="Attachment type"
                 value={formatEnumLabel(attachment.attachmentType)}
@@ -100,9 +101,21 @@ export default function AttachmentDetailPage() {
               />
               <DetailItem label="File name" value={attachment.fileName || "None"} />
               <DetailItem label="MIME type" value={attachment.mimeType || "None"} />
+              <DetailItem
+                label="File size"
+                value={formatBytes(attachment.fileSizeBytes) || "Unknown"}
+              />
               <DetailItem label="URL" value={attachment.url ?? "None"} />
+              <DetailItem label="Storage bucket" value={attachment.storageBucket ?? "None"} />
+              <DetailItem label="Storage path" value={attachment.storagePath ?? "None"} />
             </div>
           </AttachmentDetailSection>
+
+          {attachment.attachmentType === "image" ? (
+            <AttachmentDetailSection title="Preview">
+              <AttachmentImagePreview attachment={attachment} />
+            </AttachmentDetailSection>
+          ) : null}
 
           <AttachmentDetailSection title="Links and source">
             <div className="grid gap-4 lg:grid-cols-2">
@@ -197,4 +210,20 @@ function StateCard({
 
 function formatEnumLabel(value: string) {
   return value.replace(/_/g, " ");
+}
+
+function formatBytes(value: number | null) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+
+  if (value < 1024) {
+    return `${value} B`;
+  }
+
+  if (value < 1024 * 1024) {
+    return `${(value / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }

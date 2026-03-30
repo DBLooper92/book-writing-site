@@ -27,7 +27,7 @@ export default function NewAttachmentPage() {
     <PageShell
       eyebrow="Attachments"
       title="Create attachment"
-      description="Start a new attachment metadata record inside the currently active project. This first-pass form focuses on file metadata and raw link targets while leaving real upload workflow for a later pass."
+      description="Create an attachment metadata record inside the currently active project. Linked entity detail pages can also create uploaded image attachments directly into this same scoped slice."
     >
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

@@ -58,6 +58,7 @@ Detail pages should:
 - show active project context
 - show the scoped project context
 - group information into readable sections
+- include the shared attachment-backed image gallery when that record type supports linked images
 - tolerate sparse early data gracefully
 
 ## Styling Guidance

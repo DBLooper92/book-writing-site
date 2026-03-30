@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { PageShell } from "@/components/layout/page-shell";
 import { TimelineEventDetailView } from "@/components/timeline-events/timeline-event-detail-view";
 import { useTimelineFormOptions } from "@/hooks/use-timeline-form-options";
@@ -93,12 +94,21 @@ export default function TimelineEventDetailPage() {
           Linked label data could not be loaded for this timeline event.
         </StateCard>
       ) : (
-        <TimelineEventDetailView
-          knownTimelineEventIds={knownTimelineEventIds}
-          referenceMaps={formOptions.referenceMaps}
-          referenceSets={formOptions.referenceSets}
-          timelineEvent={timelineEvent}
-        />
+        <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="timeline_events"
+            entityId={timelineEvent.id}
+          />
+
+          <TimelineEventDetailView
+            knownTimelineEventIds={knownTimelineEventIds}
+            referenceMaps={formOptions.referenceMaps}
+            referenceSets={formOptions.referenceSets}
+            timelineEvent={timelineEvent}
+          />
+        </>
       )}
     </PageShell>
   );

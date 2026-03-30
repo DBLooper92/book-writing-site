@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { PageShell } from "@/components/layout/page-shell";
 import { PlotThreadDetailSection } from "@/components/plot-threads/plot-thread-detail-section";
 import { usePlotThread } from "@/hooks/use-plot-thread";
@@ -81,6 +82,13 @@ export default function PlotThreadDetailPage() {
         </StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="plot_threads"
+            entityId={plotThread.id}
+          />
+
           <PlotThreadDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{plotThread.summary || "No summary yet."}</p>

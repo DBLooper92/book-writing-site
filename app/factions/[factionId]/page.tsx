@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { FactionDetailSection } from "@/components/factions/faction-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useFaction } from "@/hooks/use-faction";
@@ -80,6 +81,13 @@ export default function FactionDetailPage() {
         </StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="factions"
+            entityId={faction.id}
+          />
+
           <FactionDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{faction.summary || "No summary yet."}</p>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { BookDetailSection } from "@/components/books/book-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useBook } from "@/hooks/use-book";
@@ -77,6 +78,13 @@ export default function BookDetailPage() {
         <StateCard tone="error">{error ?? "Book not found in the active project."}</StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="books"
+            entityId={book.id}
+          />
+
           <BookDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{book.summary || "No summary yet."}</p>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { CharacterDetailSection } from "@/components/characters/character-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useCharacter } from "@/hooks/use-character";
@@ -80,6 +81,13 @@ export default function CharacterDetailPage() {
         </StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="characters"
+            entityId={character.id}
+          />
+
           <CharacterDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{character.summary || "No summary yet."}</p>

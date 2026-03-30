@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { EraDetailSection } from "@/components/eras/era-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useEra } from "@/hooks/use-era";
@@ -77,6 +78,13 @@ export default function EraDetailPage() {
         <StateCard tone="error">{error ?? "Era not found in the active project."}</StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="eras"
+            entityId={era.id}
+          />
+
           <EraDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{era.summary || "No summary yet."}</p>

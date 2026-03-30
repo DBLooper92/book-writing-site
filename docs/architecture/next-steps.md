@@ -21,7 +21,7 @@ This file tracks the short-term development direction implied by the current rep
 - Items now makes existing item references point at a real slice rather than seed-only records.
 - Technologies now makes existing `technologyIds` references point at a real slice rather than seed-only records.
 - Retcons now turns seeded canon-change records into a real project-scoped slice for old canon, new canon, and downstream impact tracking without changing the entity architecture.
-- Attachments now turns seeded reference-file metadata into a real project-scoped slice without pretending a full upload workflow exists yet.
+- Attachments now turns seeded reference-file metadata into a real project-scoped slice and now also backs private image uploads on linked entity detail pages without introducing per-slice media tables.
 - AI Sessions now turns seeded prompt/output tracking into a real project-scoped slice and now also supports a first-pass brain-dump extraction workflow without making AI output the source of truth for canon.
 - Outlines now turns seeded planning records into a real project-scoped slice without changing the entity architecture.
 - Glossary Terms now turns seeded vocabulary records into a real project-scoped slice without changing the entity architecture.
@@ -76,4 +76,4 @@ Recommended scope for the next pass:
 - dedicated delete flow for AI Sessions
 - richer cross-entity pickers, linked navigation, and validation
 - richer chronology tooling on top of the current `/timeline` workspace
-- later specialized slices and richer AI workflows building on top of `ai_sessions`, plus richer file workflows
+- later specialized slices and richer AI workflows building on top of `ai_sessions`, plus broader non-image file workflows

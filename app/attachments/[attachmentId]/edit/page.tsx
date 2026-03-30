@@ -10,6 +10,7 @@ import { useAttachment } from "@/hooks/use-attachment";
 import { updateAttachmentForProject } from "@/lib/data/attachments";
 import {
   attachmentToFormValues,
+  isStorageManagedAttachment,
   type NormalizedAttachmentFormValues,
 } from "@/types/attachment";
 
@@ -95,6 +96,7 @@ export default function EditAttachmentPage() {
           <AttachmentForm
             initialValues={attachmentToFormValues(attachment)}
             submitLabel="Save changes"
+            lockedStorageFields={isStorageManagedAttachment(attachment)}
             onSubmit={handleUpdateAttachment}
           />
         </section>

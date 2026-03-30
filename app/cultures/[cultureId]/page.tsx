@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { CultureDetailSection } from "@/components/cultures/culture-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useCulture } from "@/hooks/use-culture";
@@ -80,6 +81,13 @@ export default function CultureDetailPage() {
         </StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="cultures"
+            entityId={culture.id}
+          />
+
           <CultureDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{culture.summary || "No summary yet."}</p>

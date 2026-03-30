@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { PageShell } from "@/components/layout/page-shell";
 import { LanguageDetailSection } from "@/components/languages/language-detail-section";
 import { useLanguage } from "@/hooks/use-language";
@@ -80,6 +81,13 @@ export default function LanguageDetailPage() {
         </StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="languages"
+            entityId={language.id}
+          />
+
           <LanguageDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{language.summary || "No summary yet."}</p>

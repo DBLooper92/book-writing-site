@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { ChapterDetailSection } from "@/components/chapters/chapter-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useChapter } from "@/hooks/use-chapter";
@@ -78,6 +79,13 @@ export default function ChapterDetailPage() {
         <StateCard tone="error">{error ?? "Chapter not found in the active project."}</StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="chapters"
+            entityId={chapter.id}
+          />
+
           <ChapterDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{chapter.summary || "No summary yet."}</p>

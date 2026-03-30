@@ -16,6 +16,16 @@ import {
 
 type AttachmentRow = Database["public"]["Tables"]["attachments"]["Row"];
 
+export const ATTACHMENT_IMAGE_BUCKET_ID = "entity-images";
+export const ATTACHMENT_IMAGE_MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+export const ATTACHMENT_IMAGE_ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+] as const;
+
 export async function getAttachmentsForProject(uid: string, projectId: string) {
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase
@@ -48,6 +58,52 @@ export async function getAttachmentById(uid: string, projectId: string, attachme
   }
 
   return data ? normalizeAttachmentRow(data as AttachmentRow) : null;
+}
+
+export async function getImageAttachmentsForEntity(
+  uid: string,
+  projectId: string,
+  entityType: string,
+  entityId: string
+) {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("attachments")
+    .select("*")
+    .eq("user_id", uid)
+    .eq("project_id", projectId)
+    .eq("attachment_type", "image")
+    .eq("linked_entity_type", entityType)
+    .eq("linked_entity_id", entityId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? [])
+    .map((row) => normalizeAttachmentRow(row as AttachmentRow))
+    .sort(compareImageAttachments);
+}
+
+export async function getAttachmentFileUrl(
+  attachment: Pick<Attachment, "storageBucket" | "storagePath" | "url">,
+  expiresInSeconds = 60 * 60
+) {
+  if (attachment.storageBucket && attachment.storagePath) {
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase.storage
+      .from(attachment.storageBucket)
+      .createSignedUrl(attachment.storagePath, expiresInSeconds);
+
+    if (error) {
+      throw error;
+    }
+
+    return data.signedUrl;
+  }
+
+  return attachment.url;
 }
 
 export async function createAttachmentForProject(
@@ -89,6 +145,9 @@ export async function createAttachmentForProject(
     mime_type: attachmentDocument.mimeType,
     source_note: attachmentDocument.sourceNote,
     url: attachmentDocument.url,
+    storage_bucket: attachmentDocument.storageBucket,
+    storage_path: attachmentDocument.storagePath,
+    file_size_bytes: attachmentDocument.fileSizeBytes,
     linked_entity_type: attachmentDocument.linkedEntityType,
     linked_entity_id: attachmentDocument.linkedEntityId,
     linked_note_ids: attachmentDocument.linkedNoteIds,
@@ -117,6 +176,26 @@ export async function updateAttachmentForProject(
   }
 
   const supabase = getSupabaseBrowserClient();
+  const { data: currentRow, error: currentRowError } = await supabase
+    .from("attachments")
+    .select("*")
+    .eq("user_id", uid)
+    .eq("project_id", projectId)
+    .eq("id", attachmentId)
+    .maybeSingle();
+
+  if (currentRowError) {
+    throw currentRowError;
+  }
+
+  if (!currentRow) {
+    throw new Error("Attachment not found in the active project.");
+  }
+
+  const currentAttachment = normalizeAttachmentRow(currentRow as AttachmentRow);
+  const isStorageManaged =
+    Boolean(currentAttachment.storageBucket) && Boolean(currentAttachment.storagePath);
+
   const { error } = await supabase
     .from("attachments")
     .update({
@@ -127,11 +206,11 @@ export async function updateAttachmentForProject(
       status: values.status,
       is_archived: values.status === "archived",
       attachment_type: values.attachmentType,
-      storage_status: values.storageStatus,
-      file_name: values.fileName,
-      mime_type: values.mimeType,
+      storage_status: isStorageManaged ? currentAttachment.storageStatus : values.storageStatus,
+      file_name: isStorageManaged ? currentAttachment.fileName : values.fileName,
+      mime_type: isStorageManaged ? currentAttachment.mimeType : values.mimeType,
       source_note: values.sourceNote,
-      url: values.url,
+      url: isStorageManaged ? currentAttachment.url : values.url,
       linked_entity_type: values.linkedEntityType,
       linked_entity_id: values.linkedEntityId,
       linked_note_ids: values.linkedNoteIds,
@@ -143,6 +222,125 @@ export async function updateAttachmentForProject(
     .eq("id", attachmentId);
 
   if (error) {
+    throw error;
+  }
+}
+
+export async function uploadImageAttachmentForEntity(
+  uid: string,
+  projectId: string,
+  entityType: string,
+  entityId: string,
+  file: File
+) {
+  validateImageFile(file);
+
+  const attachmentTitle = buildAttachmentTitleFromFileName(file.name);
+  const attachmentId = await getAvailableAttachmentId(uid, projectId, attachmentTitle);
+  const storagePath = buildAttachmentImageStoragePath({
+    uid,
+    projectId,
+    entityType,
+    entityId,
+    attachmentId,
+    fileName: file.name,
+  });
+  const supabase = getSupabaseBrowserClient();
+  const { error: uploadError } = await supabase.storage
+    .from(ATTACHMENT_IMAGE_BUCKET_ID)
+    .upload(storagePath, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type || undefined,
+    });
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const now = new Date().toISOString();
+  const sourceNote = `Uploaded from ${entityType}/${entityId}.`;
+  const { error: insertError } = await supabase.from("attachments").insert({
+    user_id: uid,
+    project_id: projectId,
+    id: attachmentId,
+    title: attachmentTitle,
+    slug: slugifyAttachmentTitle(attachmentTitle),
+    summary: "",
+    description: "",
+    status: "active",
+    tags: [],
+    is_archived: false,
+    canon_level: "working",
+    confidence: "medium",
+    attachment_type: "image",
+    storage_status: "uploaded",
+    file_name: file.name,
+    mime_type: file.type || "",
+    source_note: sourceNote,
+    url: null,
+    storage_bucket: ATTACHMENT_IMAGE_BUCKET_ID,
+    storage_path: storagePath,
+    file_size_bytes: file.size,
+    linked_entity_type: entityType,
+    linked_entity_id: entityId,
+    linked_note_ids: [],
+    linked_outline_ids: [],
+    created_at: now,
+    updated_at: now,
+  });
+
+  if (insertError) {
+    await supabase.storage.from(ATTACHMENT_IMAGE_BUCKET_ID).remove([storagePath]);
+    throw insertError;
+  }
+
+  return attachmentId;
+}
+
+export async function deleteAttachmentForProject(
+  uid: string,
+  projectId: string,
+  attachmentId: string
+) {
+  const attachment = await getAttachmentById(uid, projectId, attachmentId);
+
+  if (!attachment) {
+    throw new Error("Attachment not found in the active project.");
+  }
+
+  const supabase = getSupabaseBrowserClient();
+
+  if (attachment.storageBucket && attachment.storagePath) {
+    const { error: removeError } = await supabase.storage
+      .from(attachment.storageBucket)
+      .remove([attachment.storagePath]);
+
+    if (removeError) {
+      throw removeError;
+    }
+  }
+
+  const { error } = await supabase
+    .from("attachments")
+    .delete()
+    .eq("user_id", uid)
+    .eq("project_id", projectId)
+    .eq("id", attachmentId);
+
+  if (error) {
+    if (attachment.storageBucket && attachment.storagePath) {
+      await supabase
+        .from("attachments")
+        .update({
+          storage_status: "missing",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", uid)
+        .eq("project_id", projectId)
+        .eq("id", attachmentId);
+    }
+
     throw error;
   }
 }
@@ -193,6 +391,9 @@ function normalizeAttachmentRow(row: AttachmentRow): Attachment {
     mimeType: row.mime_type || "",
     sourceNote: row.source_note || "",
     url: row.url,
+    storageBucket: row.storage_bucket,
+    storagePath: row.storage_path,
+    fileSizeBytes: readNumberOrNull(row.file_size_bytes),
     linkedEntityType: row.linked_entity_type,
     linkedEntityId: row.linked_entity_id,
     linkedNoteIds: row.linked_note_ids ?? [],
@@ -211,6 +412,17 @@ function compareAttachments(left: Attachment, right: Attachment) {
   return left.title.localeCompare(right.title);
 }
 
+function compareImageAttachments(left: Attachment, right: Attachment) {
+  const leftTime = left.createdAt?.getTime() ?? 0;
+  const rightTime = right.createdAt?.getTime() ?? 0;
+
+  if (leftTime !== rightTime) {
+    return rightTime - leftTime;
+  }
+
+  return left.title.localeCompare(right.title);
+}
+
 function readDateOrNull(value: string | null) {
   if (!value) {
     return null;
@@ -218,4 +430,66 @@ function readDateOrNull(value: string | null) {
 
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function readNumberOrNull(value: number | string | null) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function validateImageFile(file: File) {
+  if (!ATTACHMENT_IMAGE_ALLOWED_MIME_TYPES.includes(file.type as (typeof ATTACHMENT_IMAGE_ALLOWED_MIME_TYPES)[number])) {
+    throw new Error("Only JPEG, PNG, WebP, GIF, and AVIF images are supported.");
+  }
+
+  if (file.size > ATTACHMENT_IMAGE_MAX_FILE_SIZE_BYTES) {
+    throw new Error("Each image must be 10 MB or smaller.");
+  }
+}
+
+function buildAttachmentTitleFromFileName(fileName: string) {
+  const withoutExtension = fileName.replace(/\.[^/.]+$/, "").trim();
+  const normalized = withoutExtension.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  return normalized || "Image";
+}
+
+function buildAttachmentImageStoragePath({
+  uid,
+  projectId,
+  entityType,
+  entityId,
+  attachmentId,
+  fileName,
+}: {
+  uid: string;
+  projectId: string;
+  entityType: string;
+  entityId: string;
+  attachmentId: string;
+  fileName: string;
+}) {
+  const normalizedFileName = sanitizeStorageFileName(fileName);
+  return [uid, projectId, entityType, entityId, attachmentId, normalizedFileName].join("/");
+}
+
+function sanitizeStorageFileName(fileName: string) {
+  const trimmed = fileName.trim();
+  const extensionMatch = trimmed.match(/(\.[a-zA-Z0-9]+)$/);
+  const extension = extensionMatch ? extensionMatch[1].toLowerCase() : "";
+  const baseName = extension ? trimmed.slice(0, -extension.length) : trimmed;
+  const normalizedBaseName =
+    baseName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "image";
+
+  return `${normalizedBaseName}${extension}`;
 }

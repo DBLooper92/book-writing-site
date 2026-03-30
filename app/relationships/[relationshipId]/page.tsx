@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
 import { PageShell } from "@/components/layout/page-shell";
 import { RelationshipDetailSection } from "@/components/relationships/relationship-detail-section";
 import { useRelationship } from "@/hooks/use-relationship";
@@ -81,6 +82,13 @@ export default function RelationshipDetailPage() {
         </StateCard>
       ) : (
         <>
+          <EntityImageGallery
+            uid={user.uid}
+            projectId={activeProjectId}
+            entityType="relationships"
+            entityId={relationship.id}
+          />
+
           <RelationshipDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{relationship.summary || "No summary yet."}</p>

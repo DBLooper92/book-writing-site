@@ -63,12 +63,13 @@ Implemented now:
 - notes slice with list, create, detail, and edit flows
 - retcons slice with list, create, detail, and edit flows
 - attachments slice with list, create, detail, and edit flows
+- attachment-backed image galleries on entity detail pages with private Supabase Storage upload and delete flow
 - AI sessions slice with list, create, detail, and edit flows
 
 Partial or placeholder:
 
 - timeline continuity editing and validation are still first-pass only
-- richer attachment upload workflow and richer AI tooling are still future work
+- broader non-image attachment workflows and richer AI tooling are still future work
 
 ## Architectural Rules
 
