@@ -99,48 +99,46 @@ export function SliceSidebar({ pathname }: { pathname: string }) {
   }
 
   return (
-    <aside className="min-w-0 xl:sticky xl:top-28 xl:h-fit">
-      <div className="overflow-hidden border-b border-zinc-200 bg-[#fafaf8] xl:border xl:border-zinc-200 xl:shadow-[20px_0_40px_-32px_rgba(24,24,27,0.55)]">
-        <div className="max-h-[calc(100vh-10rem)] overflow-y-auto">
-          <div className="border-b border-zinc-200 px-5 py-5 sm:px-6">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-400">
-              Navigation
-            </p>
-            <p className="mt-3 text-sm leading-6 text-zinc-600">
-              The rail stays in the same place as timeline. Only the links inside it change.
-            </p>
-          </div>
-
-          <nav>
-            {SLICE_NAVIGATION_CONFIG.map((config, index) => {
-              const isActive = config.key === activeConfig.key;
-              const ActiveSliceContent = config.renderContent;
-
-              return (
-                <div
-                  key={config.key}
-                  className={index === 0 ? undefined : "border-t border-zinc-200"}
-                >
-                  <div className="px-5 py-4 sm:px-6">
-                    <Link
-                      href={config.href}
-                      aria-current={isActive ? "page" : undefined}
-                      className={`inline-flex text-sm leading-6 underline-offset-4 transition ${
-                        isActive
-                          ? "font-semibold text-zinc-950 underline decoration-zinc-950"
-                          : "text-zinc-600 decoration-zinc-300 hover:text-zinc-950 hover:underline"
-                      }`}
-                    >
-                      {config.label}
-                    </Link>
-
-                    {isActive ? <ActiveSliceContent pathname={pathname} /> : null}
-                  </div>
-                </div>
-              );
-            })}
-          </nav>
+    <aside className="border-b border-zinc-200 bg-[#fafaf8] xl:h-full xl:overflow-hidden xl:border-b-0 xl:border-r xl:shadow-[20px_0_40px_-32px_rgba(24,24,27,0.55)]">
+      <div className="flex h-full flex-col xl:sticky xl:top-0 xl:overflow-y-auto">
+        <div className="border-b border-zinc-200 px-5 py-5 sm:px-6">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-400">
+            Navigation
+          </p>
+          <p className="mt-3 text-sm leading-6 text-zinc-600">
+            The rail stays in the same place as timeline. Only the links inside it change.
+          </p>
         </div>
+
+        <nav className="flex-1">
+          {SLICE_NAVIGATION_CONFIG.map((config, index) => {
+            const isActive = config.key === activeConfig.key;
+            const ActiveSliceContent = config.renderContent;
+
+            return (
+              <div
+                key={config.key}
+                className={index === 0 ? undefined : "border-t border-zinc-200"}
+              >
+                <div className="px-5 py-4 sm:px-6">
+                  <Link
+                    href={config.href}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`inline-flex text-sm leading-6 underline-offset-4 transition ${
+                      isActive
+                        ? "font-semibold text-zinc-950 underline decoration-zinc-950"
+                        : "text-zinc-600 decoration-zinc-300 hover:text-zinc-950 hover:underline"
+                    }`}
+                  >
+                    {config.label}
+                  </Link>
+
+                  {isActive ? <ActiveSliceContent pathname={pathname} /> : null}
+                </div>
+              </div>
+            );
+          })}
+        </nav>
       </div>
     </aside>
   );

@@ -16,7 +16,7 @@ Each page should provide:
 
 The description should usually restate the current scope or project data context.
 
-On slice routes and the dedicated project-overview route, that shared shell now adds a left navigation rail. Keep the rail itself aligned with the timeline workspace's left-column placement and width so moving between timeline and the other pages feels structurally consistent. Inside that rail, keep the links wiki-like: simple text links, underline on hover/selection, and color changes for the selected top-level entry and selected sub-entry. The `Project Overview` entry should route to its dedicated screen, while the slice names should route to each slice's create page and the currently active slice should expand to show the active project's record links for that slice.
+On slice routes and the dedicated project-overview route, that shared shell now adds a full-width workspace frame instead of a centered floating container. Keep the rail itself aligned with the timeline workspace's left-column placement and width so moving between timeline and the other pages feels structurally consistent. Inside that rail, keep the links wiki-like: simple text links, underline on hover/selection, and color changes for the selected top-level entry and selected sub-entry. The `Project Overview` entry should route to its dedicated screen, while the slice names should route to each slice's create page and the currently active slice should expand to show the active project's record links for that slice.
 
 ## Standard Slice Pages
 

@@ -38,18 +38,20 @@ export function SlicePageLayout({
   }
 
   return (
-    <main className="mx-auto w-full max-w-[90rem] px-6 py-10">
-      <section className="grid gap-6 xl:grid-cols-[22rem_minmax(0,1fr)]">
+    <main className="flex min-h-[calc(100vh-6rem)] w-full flex-col xl:h-[calc(100vh-6rem)] xl:min-h-0">
+      <section className="grid flex-1 xl:grid-cols-[22rem_minmax(0,1fr)] xl:overflow-hidden">
         <SliceSidebar pathname={pathname} />
 
-        <div className="flex min-w-0 flex-col gap-6">
-          <PageShellHeader
-            eyebrow={eyebrow}
-            title={title}
-            description={description}
-          />
-          {children}
-        </div>
+        <section className="min-h-0 bg-[linear-gradient(180deg,#fcfcfb_0%,#f8f8f6_100%)] xl:overflow-y-auto">
+          <div className="space-y-6 p-4 sm:p-6 xl:p-8">
+            <PageShellHeader
+              eyebrow={eyebrow}
+              title={title}
+              description={description}
+            />
+            {children}
+          </div>
+        </section>
       </section>
     </main>
   );
