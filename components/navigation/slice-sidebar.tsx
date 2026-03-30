@@ -123,6 +123,7 @@ export function SliceSidebar({ pathname }: { pathname: string }) {
                 <div className="px-5 py-4 sm:px-6">
                   <Link
                     href={config.href}
+                    scroll={false}
                     aria-current={isActive ? "page" : undefined}
                     className={`inline-flex text-sm leading-6 underline-offset-4 transition ${
                       isActive
@@ -222,6 +223,7 @@ function SliceSidebarRecordList({
             <Link
               key={item.id}
               href={item.href}
+              scroll={false}
               aria-current={item.isActive ? "page" : undefined}
               className={`block text-sm leading-6 underline-offset-4 transition ${
                 item.isActive
