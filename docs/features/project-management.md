@@ -9,10 +9,12 @@ Implemented now.
 - project listing through the Supabase `projects` table
 - active project observation
 - active project switching from the header dropdown and projects page without navigating away from the current route
+- dedicated `/project-overview` route for the active project's summary, metadata, chronology defaults, and runtime settings
 - project creation from a dedicated `/projects/new` screen
 - project rename
 - active project stored on `profiles.active_project_id`
 - compact header project control that shows `Project` until an active project exists, then shows the active project title
+- compact header overview control with a globe icon that routes directly to `/project-overview`
 - header project menu option that opens the project create screen
 - header profile icon with a small account menu that can open the profile lightbox or log the user out
 

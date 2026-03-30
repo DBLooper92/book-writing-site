@@ -63,6 +63,7 @@ Own:
 Own:
 
 - page shell copy
+- the shared slice-navigation rail that links every slice name to its create route and expands the active slice into project-scoped record links
 - auth gating
 - active-project gating
 - empty, loading, and error states

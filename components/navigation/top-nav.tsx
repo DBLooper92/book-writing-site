@@ -179,6 +179,14 @@ export function TopNav() {
           <div className="mx-auto flex w-full max-w-7xl justify-end px-6 py-4">
             <div ref={menuContainerRef} className="flex flex-wrap justify-end gap-3">
             <Link
+              href="/project-overview"
+              className={getNavButtonClass(isProjectOverviewPath(pathname))}
+            >
+              <GlobeIcon />
+              <span>Overview</span>
+            </Link>
+
+            <Link
               href="/timeline"
               className={getNavButtonClass(isTimelinePath(pathname))}
             >
@@ -392,6 +400,26 @@ function ProfileIcon() {
   );
 }
 
+function GlobeIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3a14.5 14.5 0 0 1 0 18" />
+      <path d="M12 3a14.5 14.5 0 0 0 0 18" />
+    </svg>
+  );
+}
+
 function isActivePath(pathname: string, href: string) {
   if (href === "/") {
     return pathname === href;
@@ -406,6 +434,10 @@ function isCreatePath(pathname: string) {
 
 function isTimelinePath(pathname: string) {
   return isActivePath(pathname, "/timeline");
+}
+
+function isProjectOverviewPath(pathname: string) {
+  return isActivePath(pathname, "/project-overview");
 }
 
 function getNavButtonClass(active: boolean) {

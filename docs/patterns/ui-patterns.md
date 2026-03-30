@@ -16,6 +16,8 @@ Each page should provide:
 
 The description should usually restate the current scope or project data context.
 
+On slice routes and the dedicated project-overview route, that shared shell now adds a left navigation rail. Keep it wiki-like: simple text links, underline on hover/selection, and color changes for the selected top-level entry and selected sub-entry. The `Project Overview` entry should route to its dedicated screen, while the slice names should route to each slice's create page and the currently active slice should expand to show the active project's record links for that slice.
+
 ## Standard Slice Pages
 
 Entity slices should aim for consistent route coverage:

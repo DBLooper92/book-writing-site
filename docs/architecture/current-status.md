@@ -8,7 +8,8 @@ This file describes the codebase as it exists now. It should stay honest even wh
 
 - Next.js App Router application shell
 - Tailwind-based UI styling
-- compact fixed header with Timeline, +Create, and Project controls aligned top-right
+- compact fixed header with Project Overview, Timeline, +Create, Project, and account controls aligned top-right
+- shared slice-page shell that now adds a wiki-like left navigation rail across the entity slices plus the dedicated project-overview screen, with top-level text links routing to project overview or slice create pages and the active entry expanding into project-scoped record links
 - profile icon menu in the header with profile-lightbox and logout entry points for authenticated users
 - header hide-on-scroll-down and reveal-on-scroll-up behavior
 - home, auth, auth verification, backend test, and developer setup routes
@@ -29,6 +30,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 
 - user project listing through Supabase `projects`
 - project creation from a dedicated `/projects/new` page
+- dedicated `/project-overview` page for the active project's summary, writing metadata, chronology defaults, and runtime settings
 - project rename
 - active project switching from the Projects page and header dropdown without route changes
 - `profiles.active_project_id` stored on the current Supabase-backed profile row
