@@ -89,6 +89,36 @@ export function deriveLinkedEntityTypesFromBrainDump(result: BrainDumpExtraction
   return linkedTypes;
 }
 
+export function deriveLinkedEntityIdsFromBrainDump(result: BrainDumpExtractionResult) {
+  const linkedIds = new Set<string>();
+
+  for (const proposal of result.characters) {
+    if (proposal.review.matchedRecord?.recordId) {
+      linkedIds.add(proposal.review.matchedRecord.recordId);
+    }
+  }
+
+  for (const proposal of result.timelineEvents) {
+    if (proposal.review.matchedRecord?.recordId) {
+      linkedIds.add(proposal.review.matchedRecord.recordId);
+    }
+  }
+
+  for (const proposal of result.chapterOutlines) {
+    if (proposal.review.matchedRecord?.recordId) {
+      linkedIds.add(proposal.review.matchedRecord.recordId);
+    }
+  }
+
+  for (const proposal of result.scenes) {
+    if (proposal.review.matchedRecord?.recordId) {
+      linkedIds.add(proposal.review.matchedRecord.recordId);
+    }
+  }
+
+  return [...linkedIds];
+}
+
 export function buildPromptExcerpt(sourceText: string) {
   if (sourceText.length <= BRAIN_DUMP_PROMPT_EXCERPT_LIMIT) {
     return sourceText;

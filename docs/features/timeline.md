@@ -39,6 +39,13 @@ Implemented now as the first derived workspace built on top of an existing slice
 - inline workspace authoring should still write to the same `timeline_events` documents and reuse the same normalization and validation path as the dedicated detail/edit surfaces
 - workspace event viewing and editing should prefer in-place lightboxes and sheets over routing authors away from `/timeline`
 - the main chronology toolbar can launch a brain-dump lightbox beside the create button, but that flow should still use the signed-in user's saved OpenAI key and save its extraction output onto project-scoped `ai_sessions` rows rather than directly creating canon records
+- timeline proposals saved from that brain-dump flow now carry review metadata, deterministic candidate matches against existing project timeline rows, same-dump duplicate signals, and persisted placement-suggestion data on the `ai_sessions` row
+- timeline proposals in the AI-session review surface can now load targeted chronology context on demand, including matched or candidate event summaries, nearby chronology records, and linked character/chapter/scene summaries
+- that targeted chronology context now also derives a first-pass placement recommendation plus focused continuity warnings for timeline proposal review
+- those continuity warnings now also compare proposal-linked characters, chapters, and scenes against the current links on the matched or candidate anchor event
+- timeline proposals in the AI-session review surface now also let the author persist review status, chosen action, placement, optional start/end years, and optional display date label back onto the scoped `ai_sessions` row before any canon write happens
+- reviewed timeline proposals in that same AI-session review surface can now apply `create`, `update`, or `merge` decisions into real scoped `timeline_events` rows, reusing the existing timeline-event validation and write shape instead of bypassing the slice
+- reviewed timeline proposals now also require an explicitly saved `reviewed` status and can target a saved matched existing event before any `update` or `merge` write runs
 - the workspace event editor can open nested inline-create lightboxes for the current linked timeline-event picker slices and should reselect the newly created record without closing the editor
 - linked chips inside workspace event detail should open nested record lightboxes instead of routing authors away from the current timeline overlay stack
 - linked warnings should derive from already loaded project-scoped slice records instead of introducing a separate validation collection
@@ -48,7 +55,7 @@ Implemented now as the first derived workspace built on top of an existing slice
 
 ## Current Role In The Architecture
 
-The Timeline workspace turns `/timeline` into the sole top-level project-scoped chronology surface without changing the project-scoped data model. It now gives the existing `timeline_events` slice a split-pane chronology workspace with a floating quick-map rail, a pinnable filter header, a center-line visual timeline, derived insertion points, query-driven create entry points, an in-place brain-dump lightbox next to the main create button, in-place event lightboxes, nested linked-record detail lightboxes, inline create/edit entry points, nested linked-record creation lightboxes inside the event editor, timeline-specific filters, year/month/day-aware chronology ordering, and first-pass integrity warnings while keeping timeline data grounded in the same normalized event records used elsewhere in the app.
+The Timeline workspace turns `/timeline` into the sole top-level project-scoped chronology surface without changing the project-scoped data model. It now gives the existing `timeline_events` slice a split-pane chronology workspace with a floating quick-map rail, a pinnable filter header, a center-line visual timeline, derived insertion points, query-driven create entry points, an in-place brain-dump lightbox next to the main create button, in-place event lightboxes, nested linked-record detail lightboxes, inline create/edit entry points, nested linked-record creation lightboxes inside the event editor, timeline-specific filters, year/month/day-aware chronology ordering, first-pass integrity warnings, and a timeline-first brain-dump review/apply path that stays grounded in the same normalized `timeline_events` records used elsewhere in the app.
 
 ## What Remains Later
 
@@ -56,6 +63,8 @@ The Timeline workspace turns `/timeline` into the sole top-level project-scoped 
 - a decision on whether `timeOfDayLabel` should stay display-only or gain a real sortable time value
 - lighter-weight or lazy reference loading so the workspace does not need every connected slice subscribed on first paint
 - linked-ID validation against more entity slices than the current first-pass connected set
+- AI-assisted placement review that can improve on the current first-pass placement recommendation with richer contradiction and chronology reasoning before the author applies changes
+- contradiction warnings that compare proposed events against likely related timeline and character records before the author applies changes
 - richer chronology models beyond the current year/month/day plus sequence fields, such as calendar-system support or finer-grained timestamps
 - denser or zoomed chronology views for era-scale navigation
 

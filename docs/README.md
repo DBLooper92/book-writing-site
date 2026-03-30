@@ -11,11 +11,12 @@ For any substantial task, read in this order:
 3. `architecture/current-status.md`
 4. `architecture/decision-log.md`
 5. `architecture/next-steps.md`
-6. `architecture/project-scope-model.md`
-7. `architecture/system-architecture.md`
-8. relevant files under `patterns/`
-9. relevant files under `features/`
-10. relevant files under `reference/` and `prompts/`
+6. `architecture/brain-dump-implementation-plan.md` when the task is about the next AI brain-dump pass
+7. `architecture/project-scope-model.md`
+8. `architecture/system-architecture.md`
+9. relevant files under `patterns/`
+10. relevant files under `features/`
+11. relevant files under `reference/` and `prompts/`
 
 ## Sections
 
@@ -30,6 +31,7 @@ For any substantial task, read in this order:
 - `architecture/current-status.md`: implemented now vs partial vs planned
 - `architecture/decision-log.md`: durable architectural and product-direction decisions
 - `architecture/next-steps.md`: short-term development direction grounded in the current repo
+- `architecture/brain-dump-implementation-plan.md`: ordered execution plan for the next staged brain-dump workflow pass
 
 ### Patterns
 

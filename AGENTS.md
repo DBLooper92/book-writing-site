@@ -111,6 +111,7 @@ Docs must stay honest about what is implemented now, what is partial, and what i
 - `docs/architecture/current-status.md`
 - `docs/architecture/decision-log.md`
 - `docs/architecture/next-steps.md`
+- `docs/architecture/brain-dump-implementation-plan.md` when the task is about the next brain-dump workflow pass
 - `docs/patterns/entity-slice-pattern.md`
 - `docs/patterns/scoping-and-data-patterns.md`
 - `docs/patterns/typing-and-normalization.md`

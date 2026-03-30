@@ -31,18 +31,20 @@ This file tracks the short-term development direction implied by the current rep
 
 ## Next Recommended Focus
 
-- add author-controlled accept or import actions from brain-dump proposals into real `characters`, `timeline_events`, `chapters`, and `scenes` rows
+- keep the now-complete staged brain-dump workflow stable and only expand it beyond the current main target slices when there is a clear product reason
 
 Reason:
-The repo now has a real provider-backed AI extraction workflow, but its output intentionally stops at reviewable proposals stored on `ai_sessions`. The next high-value step is converting that review surface into a safe, explicit bridge from AI-assisted planning into structured canon without auto-writing canon rows.
+The repo now has the intended staged bridge from raw brain-dump text into structured canon: extraction, cheap matching, on-demand targeted context, explicit review, and author-approved apply paths across timeline events, characters, chapters, and scenes. The next high-value work is no longer “finish brain dump,” but either runtime verification/polish or optional broader-slice expansion built on the completed core pattern.
 
-Recommended scope for that pass:
+Execution order for the finished core workflow remains documented in `brain-dump-implementation-plan.md`, but future work should treat that plan as complete for the current target slices rather than as an open unfinished feature.
 
-- let the author create a real entity from one proposal at a time instead of batch auto-importing everything
-- reuse the existing slice normalization and write helpers for any accepted proposal
-- preserve project scoping and readable IDs on all accepted writes
-- keep the AI session detail page as the review and launch surface for those actions
-- leave broader transcript history, richer model controls, and autonomous multi-entity writes for later
+Recommended scope for the next pass:
+
+- do live smoke testing of the completed timeline, character, chapter, and scene review/apply flows
+- fix any real runtime defects found during that verification without reopening the core architecture
+- only expand brain-dump to additional slices such as locations, factions, technologies, or plot threads if the current main-slice workflow proves solid in use
+- preserve project scoping, readable IDs, targeted-context loading, and explicit author review/apply rules on any later expansion
+- leave broader target search, richer contradiction analysis, autonomous batch operations, and full-project prompt stuffing for later
 
 ## Follow-Up Cleanup Items
 

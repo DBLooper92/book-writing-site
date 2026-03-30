@@ -349,6 +349,28 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - reusable form, card, and detail-section components
 - persisted brain-dump source text, author guidance, extraction status, extraction error, extraction model, and structured proposal output on `ai_sessions`
 - detail-page rendering for reviewable character, timeline event, chapter outline, and scene proposals generated from brain-dump text
+- proposal-level brain-dump review scaffolding persisted on `ai_sessions.extraction_result`, including review status, suggested action, matched-record placeholder data, candidate-match slots, and timeline placement suggestion placeholders
+- deterministic cheap matching against existing scoped characters, timeline events, chapters, and scenes during brain-dump completion so new proposals can save candidate matches and `create` versus `update` suggestions without rereading the whole project canon
+- same-dump duplicate detection across extracted characters, timeline events, chapter outlines, and scenes so proposals can also save duplicate candidates and conservative `merge` suggestions for author review
+- strong cheap-match results now also populate `ai_sessions.linked_entity_ids`, while weaker partial and token-overlap matches are filtered more conservatively to reduce false positives before deeper review
+- on-demand targeted context loading for timeline proposals from the AI session detail page, including matched/candidate timeline event summaries, nearby chronology records, and linked character/chapter/scene summaries fetched only when requested
+- targeted timeline context now also derives a first-pass placement recommendation and focused continuity warnings from the loaded chronology and linked summaries
+- targeted timeline continuity warnings now also compare proposal-linked characters, chapters, and scenes against the matched or candidate anchor event's existing links
+- timeline proposals now also support author-editable review controls in the AI session detail page, persisting review status, chosen action, placement, optional start/end years, and optional display date label back onto `ai_sessions.extraction_result`
+- reviewed timeline proposals can now apply `create`, `update`, or `merge` decisions into real scoped `timeline_events` rows from the AI session detail page, reusing the existing timeline-event validation and document-building path before marking the proposal applied
+- character proposals now also support author-editable review controls in the AI session detail page, persisting review status and chosen action back onto `ai_sessions.extraction_result` before any character canon write happens
+- reviewed character proposals can now apply `create`, `update`, or `merge` decisions into real scoped `characters` rows from the AI session detail page, reusing the existing character document-building path and preserving existing linked records conservatively on updates
+- character apply now also repairs safe reverse scene and chapter character links, so approved related-scene matches update `scenes.character_ids` and parent `chapters.character_ids` alongside the character row
+- on-demand targeted context loading for character proposals from the AI session detail page, including matched/candidate character summaries, linked timeline-event summaries, related-scene summaries, and focused continuity warnings
+- chapter proposals now also support author-editable review controls in the AI session detail page, persisting review status and chosen action back onto `ai_sessions.extraction_result` before any chapter canon write happens
+- reviewed chapter proposals can now apply `create`, `update`, or `merge` decisions into real scoped `chapters` rows from the AI session detail page, reusing the existing chapter document-building path and preserving matched scene and POV links conservatively on updates
+- on-demand targeted context loading for chapter proposals from the AI session detail page, including matched/candidate chapter summaries, point-of-view character context, linked scene summaries, and focused continuity warnings
+- scene proposals now also support author-editable review controls in the AI session detail page, persisting review status and chosen action back onto `ai_sessions.extraction_result` before any scene canon write happens
+- reviewed scene proposals can now apply `create`, `update`, or `merge` decisions into real scoped `scenes` rows from the AI session detail page, reusing the existing scene document-building path and preserving existing chapter/book linkage conservatively on updates
+- on-demand targeted context loading for scene proposals from the AI session detail page, including matched/candidate scene summaries, parent-chapter context, point-of-view character context, linked timeline-event summaries, and focused continuity warnings
+- chapter and scene brain-dump apply routes now also repair reverse manuscript links conservatively, syncing matched scene rows back to the applied chapter and syncing applied scenes back into their linked chapter's `scene_ids` when the existing scoped linkage is safe to preserve
+- proposal review panels can now explicitly promote a candidate match into the saved `matchedRecord`, so authors can choose the exact existing target before `update` or `merge`
+- brain-dump apply routes now reject repeat applies by default, require the proposal to be explicitly saved as `reviewed` before any canon write, and still require a saved `matchedRecord` before any `update` or `merge` write runs
 - profile lightbox with Details and API keys tabs so each user can manage the key used by brain-dump extraction
 
 ## Partially Implemented
@@ -363,7 +385,7 @@ Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religion
 
 ### Workflow Depth
 
-Attachments stays intentionally metadata-first in its initial pass. AI Sessions now goes one step further with a first-pass provider-backed brain-dump extraction flow, but automatic canon writes, richer operational tooling, and broader AI workflows are still future work.
+Attachments stays intentionally metadata-first in its initial pass. AI Sessions now goes one step further with a provider-backed brain-dump extraction flow, persisted proposal-review scaffolding, a cheap deterministic matching pass against existing characters, timeline events, chapters, and scenes, same-dump duplicate detection for those extracted proposal groups, session-level linked-record IDs derived from strong cheap matches, on-demand targeted-context endpoints for timeline, character, chapter, and scene proposal review, and explicit author-driven apply paths that can write reviewed timeline, character, chapter, and scene proposals into real scoped canon rows. Timeline context now derives first-pass placement guidance plus continuity warnings grounded in both the loaded summaries and the anchor event's existing linked records, character context now loads matched character-sheet summaries, linked event context, and related-scene continuity warnings, chapter context now loads matched chapter summaries, point-of-view context, and linked scene context, the current chapter/scene apply routes repair safe reverse manuscript links so `chapters.scene_ids` and `scenes.chapter_id` stay aligned more often after author-approved applies, the character apply route now repairs safe reverse scene and chapter character links, and the review/apply layer now lets authors explicitly pick the target match while requiring a saved `reviewed` state before any canon write. Broader contradiction review beyond the current targeted checks, richer search beyond the current candidate lists, and broader AI workflows are still future work.
 
 ### Cross-Entity Linking
 
@@ -376,7 +398,8 @@ The `/timeline` workspace now exists as the sole route-level visual chronology s
 ## Planned Later
 
 - upload and storage workflow for attachments
-- author-controlled import or acceptance flow from AI proposals into real canon rows
+- broader-slice proposal matching refinement before create/update decisions
+- targeted continuity and contradiction review using only relevant existing slice context rather than full-project rereads
 - richer AI writing workflows beyond the current brain-dump extraction pass
 
 ## Documentation Rule

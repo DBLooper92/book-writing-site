@@ -156,3 +156,15 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: Per-user API key shift
 - Decision: User-supplied provider keys belong to the authenticated user's `profiles` row as encrypted account-level settings, not as project-scoped entity data and not as a single app-wide OpenAI key.
 - Why it stays in force: Provider credentials are account preferences rather than story-bible canon, every signed-in user needs independent billing and access control, and storing them encrypted on `profiles` keeps the ownership model simple while avoiding plaintext storage or project-level duplication.
+
+### D-025
+
+- Origin: Brain-dump workflow planning
+- Decision: Brain-dump evolution should use a staged pipeline of dump-only extraction, cheap code-side proposal matching, targeted context retrieval, and explicit author review/apply actions instead of prompting the model with the whole project canon on every run.
+- Why it stays in force: This keeps token usage and latency predictable as projects grow, preserves the rule that structured canon stays the source of truth, and still allows later contradiction checks and timeline-placement help by loading only the specific existing records most relevant to each proposal.
+
+### D-026
+
+- Origin: Brain-dump workflow completion
+- Decision: The staged brain-dump workflow is now considered complete for the current main target slices once timeline events, characters, chapters, and scenes all support cheap matching, on-demand targeted context, explicit reviewed-state gating, explicit target selection, and author-approved apply paths; later work should be treated as expansion or polish, not as the unfinished core workflow.
+- Why it stays in force: This keeps future planning honest about what is already delivered, prevents reopening the core brain-dump architecture unnecessarily, and sets a clear boundary between the completed canon-bridge workflow and optional broader-slice or deeper-analysis improvements.

@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
 import {
+  applyCheapBrainDumpMatching,
+  type BrainDumpMatchRecord,
+} from "@/lib/ai/brain-dump-matching";
+import {
   buildBrainDumpModelInput,
+  deriveLinkedEntityIdsFromBrainDump,
   buildBrainDumpOutputSummary,
   buildPromptExcerpt,
   deriveLinkedEntityTypesFromBrainDump,
@@ -10,7 +15,10 @@ import {
 } from "@/lib/ai/brain-dump";
 import { decryptProfileSecret } from "@/lib/security/profile-secrets";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { BRAIN_DUMP_RESPONSE_SCHEMA } from "@/types/ai-brain-dump";
+import {
+  BRAIN_DUMP_RESPONSE_SCHEMA,
+  normalizeBrainDumpExtractionResult,
+} from "@/types/ai-brain-dump";
 import { buildAiSessionIdFromTitle, slugifyAiSessionTitle } from "@/types/ai-session";
 import type { Database } from "@/types/database";
 
@@ -192,14 +200,29 @@ export async function POST(request: Request) {
       throw new Error("OpenAI returned no structured brain dump output.");
     }
 
-    const extractionResult = JSON.parse(outputText);
-    const outputSummary = buildBrainDumpOutputSummary(extractionResult);
-    const linkedEntityTypes = deriveLinkedEntityTypesFromBrainDump(extractionResult);
+    const extractionResult = normalizeBrainDumpExtractionResult(JSON.parse(outputText));
+
+    if (!extractionResult) {
+      throw new Error("OpenAI returned invalid structured brain dump output.");
+    }
+
+    const extractionResultWithMatches = applyCheapBrainDumpMatching({
+      extractionResult,
+      ...(await loadExistingMatchRecords({
+        supabase,
+        uid: user.id,
+        projectId: project.id,
+        extractionResult,
+      })),
+    });
+    const outputSummary = buildBrainDumpOutputSummary(extractionResultWithMatches);
+    const linkedEntityTypes = deriveLinkedEntityTypesFromBrainDump(extractionResultWithMatches);
+    const linkedEntityIds = deriveLinkedEntityIdsFromBrainDump(extractionResultWithMatches);
 
     const { error: updateError } = await supabase
       .from("ai_sessions")
       .update({
-        summary: extractionResult.summary || "Brain dump extraction completed.",
+        summary: extractionResultWithMatches.summary || "Brain dump extraction completed.",
         description:
           input.purpose ||
           "AI-generated planning proposals extracted from a freeform project brain dump.",
@@ -210,9 +233,9 @@ export async function POST(request: Request) {
         extraction_status: "succeeded",
         extraction_error: "",
         extraction_model: model,
-        extraction_result: extractionResult,
+        extraction_result: extractionResultWithMatches,
         linked_entity_types: linkedEntityTypes,
-        linked_entity_ids: [],
+        linked_entity_ids: linkedEntityIds,
         messages_count: 2,
         updated_at: new Date().toISOString(),
       })
@@ -284,4 +307,97 @@ function readOpenAiError(value: unknown) {
 
   const error = (value as { error?: { message?: unknown } }).error;
   return typeof error?.message === "string" ? error.message : null;
+}
+
+async function loadExistingMatchRecords({
+  supabase,
+  uid,
+  projectId,
+  extractionResult,
+}: {
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
+  uid: string;
+  projectId: string;
+  extractionResult: NonNullable<ReturnType<typeof normalizeBrainDumpExtractionResult>>;
+}) {
+  const [
+    characterResult,
+    timelineEventResult,
+    chapterResult,
+    sceneResult,
+  ] = await Promise.all([
+    extractionResult.characters.length > 0
+      ? supabase
+          .from("characters")
+          .select("id, name, aliases")
+          .eq("user_id", uid)
+          .eq("project_id", projectId)
+      : Promise.resolve({ data: [], error: null }),
+    extractionResult.timelineEvents.length > 0
+      ? supabase
+          .from("timeline_events")
+          .select("id, title")
+          .eq("user_id", uid)
+          .eq("project_id", projectId)
+      : Promise.resolve({ data: [], error: null }),
+    extractionResult.chapterOutlines.length > 0
+      ? supabase
+          .from("chapters")
+          .select("id, title")
+          .eq("user_id", uid)
+          .eq("project_id", projectId)
+      : Promise.resolve({ data: [], error: null }),
+    extractionResult.scenes.length > 0
+      ? supabase
+          .from("scenes")
+          .select("id, title")
+          .eq("user_id", uid)
+          .eq("project_id", projectId)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (characterResult.error) {
+    throw new Error(characterResult.error.message);
+  }
+
+  if (timelineEventResult.error) {
+    throw new Error(timelineEventResult.error.message);
+  }
+
+  if (chapterResult.error) {
+    throw new Error(chapterResult.error.message);
+  }
+
+  if (sceneResult.error) {
+    throw new Error(sceneResult.error.message);
+  }
+
+  return {
+    existingCharacters: (characterResult.data ?? []).map((row) =>
+      createMatchRecord("characters", row.id, row.name, row.aliases ?? [])
+    ),
+    existingTimelineEvents: (timelineEventResult.data ?? []).map((row) =>
+      createMatchRecord("timeline_events", row.id, row.title)
+    ),
+    existingChapters: (chapterResult.data ?? []).map((row) =>
+      createMatchRecord("chapters", row.id, row.title)
+    ),
+    existingScenes: (sceneResult.data ?? []).map((row) =>
+      createMatchRecord("scenes", row.id, row.title)
+    ),
+  };
+}
+
+function createMatchRecord(
+  entityType: BrainDumpMatchRecord["entityType"],
+  recordId: string,
+  recordLabel: string,
+  alternateLabels: string[] = []
+): BrainDumpMatchRecord {
+  return {
+    entityType,
+    recordId,
+    recordLabel,
+    alternateLabels,
+  };
 }
