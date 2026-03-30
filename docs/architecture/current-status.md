@@ -349,6 +349,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - reusable form, card, and detail-section components
 - persisted brain-dump source text, author guidance, extraction status, extraction error, extraction model, and structured proposal output on `ai_sessions`
 - detail-page rendering for reviewable character, timeline event, chapter outline, and scene proposals generated from brain-dump text
+- the brain-dump extraction route now tolerates Responses API structured output arriving through nested response content instead of only top-level `output_text`, and it now surfaces clearer failures when OpenAI stops early before finishing structured JSON
 - proposal-level brain-dump review scaffolding persisted on `ai_sessions.extraction_result`, including review status, suggested action, matched-record placeholder data, candidate-match slots, and timeline placement suggestion placeholders
 - deterministic cheap matching against existing scoped characters, timeline events, chapters, and scenes during brain-dump completion so new proposals can save candidate matches and `create` versus `update` suggestions without rereading the whole project canon
 - same-dump duplicate detection across extracted characters, timeline events, chapter outlines, and scenes so proposals can also save duplicate candidates and conservative `merge` suggestions for author review

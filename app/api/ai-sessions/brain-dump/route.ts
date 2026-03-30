@@ -20,7 +20,7 @@ import {
   normalizeBrainDumpExtractionResult,
 } from "@/types/ai-brain-dump";
 import { buildAiSessionIdFromTitle, slugifyAiSessionTitle } from "@/types/ai-session";
-import type { Database } from "@/types/database";
+import type { Database, Json } from "@/types/database";
 
 const DEFAULT_BRAIN_DUMP_MODEL = "gpt-5-mini";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
@@ -193,16 +193,28 @@ export async function POST(request: Request) {
       throw new Error(errorMessage);
     }
 
-    const outputText =
-      typeof responseJson?.output_text === "string" ? responseJson.output_text : "";
+    const structuredOutput = extractStructuredBrainDumpOutput(responseJson);
 
-    if (!outputText) {
+    if (!structuredOutput) {
+      const incompleteReason = readOpenAiIncompleteReason(responseJson);
+
+      if (incompleteReason === "max_output_tokens") {
+        throw new Error(
+          "OpenAI stopped before finishing the structured brain dump output. Try a smaller dump or split it into multiple passes."
+        );
+      }
+
+      console.error("Brain dump extraction returned no structured output.", summarizeOpenAiResponse(responseJson));
       throw new Error("OpenAI returned no structured brain dump output.");
     }
 
-    const extractionResult = normalizeBrainDumpExtractionResult(JSON.parse(outputText));
+    const extractionResult = normalizeBrainDumpExtractionResult(structuredOutput as Json);
 
     if (!extractionResult) {
+      console.error(
+        "Brain dump extraction returned invalid structured output.",
+        summarizeOpenAiResponse(responseJson)
+      );
       throw new Error("OpenAI returned invalid structured brain dump output.");
     }
 
@@ -309,6 +321,124 @@ function readOpenAiError(value: unknown) {
   return typeof error?.message === "string" ? error.message : null;
 }
 
+function readOpenAiIncompleteReason(value: unknown) {
+  if (!isRecord(value) || !isRecord(value.incomplete_details)) {
+    return null;
+  }
+
+  return typeof value.incomplete_details.reason === "string"
+    ? value.incomplete_details.reason
+    : null;
+}
+
+function extractStructuredBrainDumpOutput(value: unknown) {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const parsedCandidate = readParsedCandidate(value.output_parsed);
+
+  if (parsedCandidate) {
+    return parsedCandidate;
+  }
+
+  const textCandidates = new Set<string>();
+
+  if (typeof value.output_text === "string" && value.output_text.trim()) {
+    textCandidates.add(value.output_text);
+  }
+
+  for (const textCandidate of readStructuredOutputTextCandidates(value.output)) {
+    textCandidates.add(textCandidate);
+  }
+
+  for (const textCandidate of textCandidates) {
+    try {
+      const parsed = JSON.parse(textCandidate);
+      const parsedCandidateFromText = readParsedCandidate(parsed);
+
+      if (parsedCandidateFromText) {
+        return parsedCandidateFromText;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+function readStructuredOutputTextCandidates(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const textCandidates: string[] = [];
+
+  for (const outputItem of value) {
+    if (!isRecord(outputItem) || !Array.isArray(outputItem.content)) {
+      continue;
+    }
+
+    for (const contentItem of outputItem.content) {
+      if (!isRecord(contentItem)) {
+        continue;
+      }
+
+      const parsedCandidate = readParsedCandidate(contentItem.parsed);
+
+      if (parsedCandidate) {
+        return [JSON.stringify(parsedCandidate)];
+      }
+
+      if (typeof contentItem.text === "string" && contentItem.text.trim()) {
+        textCandidates.push(contentItem.text);
+      }
+
+      if (typeof contentItem.output_text === "string" && contentItem.output_text.trim()) {
+        textCandidates.push(contentItem.output_text);
+      }
+    }
+  }
+
+  return textCandidates;
+}
+
+function readParsedCandidate(value: unknown) {
+  return isRecord(value) ? value : null;
+}
+
+function summarizeOpenAiResponse(value: unknown) {
+  if (!isRecord(value)) {
+    return { responseType: typeof value };
+  }
+
+  return {
+    id: typeof value.id === "string" ? value.id : null,
+    status: typeof value.status === "string" ? value.status : null,
+    incompleteReason: readOpenAiIncompleteReason(value),
+    outputTextLength: typeof value.output_text === "string" ? value.output_text.length : 0,
+    outputTypes: Array.isArray(value.output)
+      ? value.output
+          .map((item) => (isRecord(item) && typeof item.type === "string" ? item.type : null))
+          .filter((item): item is string => Boolean(item))
+      : [],
+    contentTypes: Array.isArray(value.output)
+      ? value.output.flatMap((item) =>
+          isRecord(item) && Array.isArray(item.content)
+            ? item.content
+                .map((contentItem) =>
+                  isRecord(contentItem) && typeof contentItem.type === "string"
+                    ? contentItem.type
+                    : null
+                )
+                .filter((contentType): contentType is string => Boolean(contentType))
+            : []
+        )
+      : [],
+  };
+}
+
 async function loadExistingMatchRecords({
   supabase,
   uid,
@@ -400,4 +530,8 @@ function createMatchRecord(
     recordLabel,
     alternateLabels,
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
