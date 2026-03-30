@@ -9,12 +9,18 @@ import {
   deriveLinkedEntityIdsFromBrainDump,
   buildBrainDumpOutputSummary,
   buildPromptExcerpt,
+  BRAIN_DUMP_OPENAI_MAX_OUTPUT_TOKENS,
+  BRAIN_DUMP_OPENAI_TIMEOUT_MS,
   deriveLinkedEntityTypesFromBrainDump,
   normalizeBrainDumpRequestInput,
   validateBrainDumpRequestInput,
 } from "@/lib/ai/brain-dump";
 import { decryptProfileSecret } from "@/lib/security/profile-secrets";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import type {
+  BrainDumpFailureDebugInfo,
+  BrainDumpFailureType,
+} from "@/types/ai-brain-dump-debug";
 import {
   BRAIN_DUMP_RESPONSE_SCHEMA,
   normalizeBrainDumpExtractionResult,
@@ -24,6 +30,7 @@ import type { Database, Json } from "@/types/database";
 
 const DEFAULT_BRAIN_DUMP_MODEL = "gpt-5-mini";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+const OPENAI_RAW_RESPONSE_PREVIEW_LIMIT = 20000;
 const BRAIN_DUMP_INSTRUCTIONS = [
   "You are helping a fiction author turn a freeform brain dump into structured planning proposals.",
   "Do not invent canon when the text is ambiguous.",
@@ -34,6 +41,16 @@ const BRAIN_DUMP_INSTRUCTIONS = [
 ].join(" ");
 
 type AiSessionInsert = Database["public"]["Tables"]["ai_sessions"]["Insert"];
+type BrainDumpFailureError = Error & { debugInfo: BrainDumpFailureDebugInfo };
+type BrainDumpRequestDebugContext = {
+  aiSessionId: string;
+  model: string;
+  sourceLength: number;
+  guidanceLength: number;
+  purposeLength: number;
+  promptLength: number;
+  requestStartedAt: number;
+};
 
 export async function POST(request: Request) {
   const supabase = await getSupabaseServerClient();
@@ -117,6 +134,21 @@ export async function POST(request: Request) {
   const model = DEFAULT_BRAIN_DUMP_MODEL;
   const aiSessionId = await getAvailableAiSessionId(supabase, user.id, project.id, input.title);
   const now = new Date().toISOString();
+  const modelInput = buildBrainDumpModelInput({
+    projectTitle: project.title,
+    purpose: input.purpose,
+    guidance: input.guidance,
+    sourceText: input.sourceText,
+  });
+  const requestDebugContext: BrainDumpRequestDebugContext = {
+    aiSessionId,
+    model,
+    sourceLength: input.sourceText.length,
+    guidanceLength: input.guidance.length,
+    purposeLength: input.purpose.length,
+    promptLength: modelInput.length,
+    requestStartedAt: Date.now(),
+  };
 
   const initialInsert: AiSessionInsert = {
     user_id: user.id,
@@ -167,13 +199,8 @@ export async function POST(request: Request) {
         model,
         store: false,
         instructions: BRAIN_DUMP_INSTRUCTIONS,
-        input: buildBrainDumpModelInput({
-          projectTitle: project.title,
-          purpose: input.purpose,
-          guidance: input.guidance,
-          sourceText: input.sourceText,
-        }),
-        max_output_tokens: 6000,
+        input: modelInput,
+        max_output_tokens: BRAIN_DUMP_OPENAI_MAX_OUTPUT_TOKENS,
         text: {
           format: {
             type: "json_schema",
@@ -183,39 +210,77 @@ export async function POST(request: Request) {
           },
         },
       }),
-      signal: AbortSignal.timeout(90000),
+      signal: AbortSignal.timeout(BRAIN_DUMP_OPENAI_TIMEOUT_MS),
     });
 
-    const responseJson = await response.json().catch(() => null);
+    const responseText = await response.text().catch(() => null);
+    const responseJson = parseJsonString(responseText);
 
     if (!response.ok) {
-      const errorMessage = readOpenAiError(responseJson) || "OpenAI brain dump extraction failed.";
-      throw new Error(errorMessage);
+      const errorMessage =
+        readOpenAiError(responseJson) ||
+        `OpenAI brain dump extraction failed with status ${response.status}.`;
+
+      throw createBrainDumpFailureError(
+        errorMessage,
+        buildBrainDumpFailureDebugInfo({
+          context: requestDebugContext,
+          failureType: "provider_error",
+          errorMessage,
+          error: null,
+          openAiStatus: response.status,
+          openAiRequestId: readOpenAiRequestId(response),
+          openAiProcessingMs: response.headers.get("openai-processing-ms"),
+          responseJson,
+          responseText,
+        })
+      );
     }
 
     const structuredOutput = extractStructuredBrainDumpOutput(responseJson);
 
     if (!structuredOutput) {
       const incompleteReason = readOpenAiIncompleteReason(responseJson);
+      const errorMessage =
+        incompleteReason === "max_output_tokens"
+          ? "OpenAI stopped before finishing the structured brain dump output. Try a smaller dump or split it into multiple passes."
+          : "OpenAI returned no structured brain dump output.";
 
-      if (incompleteReason === "max_output_tokens") {
-        throw new Error(
-          "OpenAI stopped before finishing the structured brain dump output. Try a smaller dump or split it into multiple passes."
-        );
-      }
-
-      console.error("Brain dump extraction returned no structured output.", summarizeOpenAiResponse(responseJson));
-      throw new Error("OpenAI returned no structured brain dump output.");
+      throw createBrainDumpFailureError(
+        errorMessage,
+        buildBrainDumpFailureDebugInfo({
+          context: requestDebugContext,
+          failureType: "missing_structured_output",
+          errorMessage,
+          error: null,
+          openAiStatus: response.status,
+          openAiRequestId: readOpenAiRequestId(response),
+          openAiProcessingMs: response.headers.get("openai-processing-ms"),
+          responseJson,
+          responseText,
+        })
+      );
     }
 
     const extractionResult = normalizeBrainDumpExtractionResult(structuredOutput as Json);
 
     if (!extractionResult) {
-      console.error(
-        "Brain dump extraction returned invalid structured output.",
-        summarizeOpenAiResponse(responseJson)
+      const errorMessage = "OpenAI returned invalid structured brain dump output.";
+
+      throw createBrainDumpFailureError(
+        errorMessage,
+        buildBrainDumpFailureDebugInfo({
+          context: requestDebugContext,
+          failureType: "invalid_structured_output",
+          errorMessage,
+          error: null,
+          openAiStatus: response.status,
+          openAiRequestId: readOpenAiRequestId(response),
+          openAiProcessingMs: response.headers.get("openai-processing-ms"),
+          responseJson,
+          responseText,
+        })
       );
-      throw new Error("OpenAI returned invalid structured brain dump output.");
     }
 
     const extractionResultWithMatches = applyCheapBrainDumpMatching({
@@ -263,12 +328,22 @@ export async function POST(request: Request) {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unable to complete brain dump extraction.";
+    const debugInfo = isBrainDumpFailureError(error)
+      ? error.debugInfo
+      : buildBrainDumpFailureDebugInfo({
+          context: requestDebugContext,
+          failureType: isTimeoutError(error) ? "timeout" : "unknown",
+          errorMessage,
+          error,
+        });
+
+    console.error("Brain dump extraction failed.", debugInfo);
 
     await supabase
       .from("ai_sessions")
       .update({
         status: "completed",
-        output_summary: "Brain dump extraction failed.",
+        output_summary: buildBrainDumpFailureSummary(debugInfo),
         extraction_status: "failed",
         extraction_error: errorMessage,
         extraction_model: model,
@@ -279,7 +354,7 @@ export async function POST(request: Request) {
       .eq("project_id", project.id)
       .eq("id", aiSessionId);
 
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: errorMessage, aiSessionId, debug: debugInfo }, { status: 500 });
   }
 }
 
@@ -408,15 +483,24 @@ function readParsedCandidate(value: unknown) {
   return isRecord(value) ? value : null;
 }
 
-function summarizeOpenAiResponse(value: unknown) {
+function summarizeOpenAiResponse(value: unknown, responseTextLength = 0) {
   if (!isRecord(value)) {
-    return { responseType: typeof value };
+    return {
+      id: null,
+      status: null,
+      incompleteReason: null,
+      responseTextLength,
+      outputTextLength: 0,
+      outputTypes: [],
+      contentTypes: [],
+    };
   }
 
   return {
     id: typeof value.id === "string" ? value.id : null,
     status: typeof value.status === "string" ? value.status : null,
     incompleteReason: readOpenAiIncompleteReason(value),
+    responseTextLength,
     outputTextLength: typeof value.output_text === "string" ? value.output_text.length : 0,
     outputTypes: Array.isArray(value.output)
       ? value.output
@@ -437,6 +521,163 @@ function summarizeOpenAiResponse(value: unknown) {
         )
       : [],
   };
+}
+
+function buildBrainDumpFailureDebugInfo({
+  context,
+  failureType,
+  errorMessage,
+  error,
+  openAiStatus = null,
+  openAiRequestId = null,
+  openAiProcessingMs = null,
+  responseJson = null,
+  responseText = null,
+}: {
+  context: BrainDumpRequestDebugContext;
+  failureType: BrainDumpFailureType;
+  errorMessage: string;
+  error: unknown;
+  openAiStatus?: number | null;
+  openAiRequestId?: string | null;
+  openAiProcessingMs?: string | null;
+  responseJson?: unknown;
+  responseText?: string | null;
+}): BrainDumpFailureDebugInfo {
+  return {
+    aiSessionId: context.aiSessionId,
+    model: context.model,
+    timeoutMs: BRAIN_DUMP_OPENAI_TIMEOUT_MS,
+    maxOutputTokens: BRAIN_DUMP_OPENAI_MAX_OUTPUT_TOKENS,
+    sourceLength: context.sourceLength,
+    guidanceLength: context.guidanceLength,
+    purposeLength: context.purposeLength,
+    promptLength: context.promptLength,
+    startedAt: new Date(context.requestStartedAt).toISOString(),
+    elapsedMs: Math.max(Date.now() - context.requestStartedAt, 0),
+    failureType,
+    openAiStatus,
+    openAiRequestId,
+    openAiProcessingMs,
+    responseSummary:
+      responseJson !== null || responseText
+        ? summarizeOpenAiResponse(responseJson, responseText?.length ?? 0)
+        : null,
+    rawResponsePreview: responseText ? truncateText(responseText, OPENAI_RAW_RESPONSE_PREVIEW_LIMIT) : null,
+    errorName: error instanceof Error ? error.name : null,
+    errorMessage,
+    fixHints: buildBrainDumpFixHints({
+      failureType,
+      errorMessage,
+      sourceLength: context.sourceLength,
+      promptLength: context.promptLength,
+      responseJson,
+    }),
+  };
+}
+
+function buildBrainDumpFixHints({
+  failureType,
+  errorMessage,
+  sourceLength,
+  promptLength,
+  responseJson,
+}: {
+  failureType: BrainDumpFailureType;
+  errorMessage: string;
+  sourceLength: number;
+  promptLength: number;
+  responseJson: unknown;
+}) {
+  const hints: string[] = [];
+
+  if (failureType === "timeout") {
+    hints.push(
+      `The server aborted the OpenAI call after ${Math.round(BRAIN_DUMP_OPENAI_TIMEOUT_MS / 1000)} seconds without a complete response body.`
+    );
+  }
+
+  if (readOpenAiIncompleteReason(responseJson) === "max_output_tokens") {
+    hints.push(
+      `OpenAI reported max_output_tokens exhaustion. The current cap is ${BRAIN_DUMP_OPENAI_MAX_OUTPUT_TOKENS.toLocaleString()} output tokens.`
+    );
+  }
+
+  if (sourceLength >= 25000 || promptLength >= 30000) {
+    hints.push(
+      "This dump is large enough that chunking into multiple passes will usually be more reliable than one extraction request."
+    );
+  }
+
+  if (
+    errorMessage.toLowerCase().includes("context") ||
+    errorMessage.toLowerCase().includes("maximum context")
+  ) {
+    hints.push("The combined instructions, guidance, and source text may be too large for a single request.");
+  }
+
+  if (hints.length === 0) {
+    hints.push("Check the response summary and raw preview below to decide whether the next step is a larger timeout, higher output cap, or chunking.");
+  }
+
+  return hints;
+}
+
+function buildBrainDumpFailureSummary(debugInfo: BrainDumpFailureDebugInfo) {
+  const elapsedSeconds = (debugInfo.elapsedMs / 1000).toFixed(1);
+
+  if (debugInfo.failureType === "timeout") {
+    return `Brain dump extraction timed out after ${elapsedSeconds}s.`;
+  }
+
+  return `Brain dump extraction failed after ${elapsedSeconds}s (${debugInfo.failureType.replace(/_/g, " ")}).`;
+}
+
+function createBrainDumpFailureError(errorMessage: string, debugInfo: BrainDumpFailureDebugInfo) {
+  const error = new Error(errorMessage) as BrainDumpFailureError;
+  error.debugInfo = debugInfo;
+  return error;
+}
+
+function isBrainDumpFailureError(error: unknown): error is BrainDumpFailureError {
+  return error instanceof Error && "debugInfo" in error;
+}
+
+function isTimeoutError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (error.name === "TimeoutError" ||
+      error.name === "AbortError" ||
+      error.message.toLowerCase().includes("aborted due to timeout"))
+  );
+}
+
+function parseJsonString(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function readOpenAiRequestId(response: Response) {
+  return (
+    response.headers.get("x-request-id") ||
+    response.headers.get("request-id") ||
+    response.headers.get("openai-request-id")
+  );
+}
+
+function truncateText(value: string, maxLength: number) {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, maxLength)}\n... [truncated ${value.length - maxLength} chars]`;
 }
 
 async function loadExistingMatchRecords({

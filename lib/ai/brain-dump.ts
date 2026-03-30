@@ -2,6 +2,8 @@ import type { BrainDumpExtractionResult } from "@/types/ai-brain-dump";
 
 export const BRAIN_DUMP_MAX_CHARACTERS = 180000;
 export const BRAIN_DUMP_PROMPT_EXCERPT_LIMIT = 1500;
+export const BRAIN_DUMP_OPENAI_TIMEOUT_MS = 90000;
+export const BRAIN_DUMP_OPENAI_MAX_OUTPUT_TOKENS = 6000;
 
 export type BrainDumpRequestInput = {
   title: string;
