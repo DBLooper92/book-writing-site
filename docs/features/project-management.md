@@ -12,11 +12,13 @@ Implemented now.
 - dedicated `/project-overview` route for the active project's summary, metadata, chronology defaults, and runtime settings
 - project creation from a dedicated `/projects/new` screen
 - project rename
+- password-confirmed project deletion from the profile lightbox Security tab
 - active project stored on `profiles.active_project_id`
 - compact header project control that shows `Project` until an active project exists, then shows the active project title
 - compact header overview control with a globe icon that routes directly to `/project-overview`
 - header project menu option that opens the project create screen
 - header profile icon with a small account menu that can open the profile lightbox or log the user out
+- project deletion now removes the `projects` row, lets database cascades clear the scoped slice rows, removes uploaded files tied to that project, and switches `profiles.active_project_id` when the deleted project was active
 
 ## Important Rules
 
@@ -27,7 +29,7 @@ Implemented now.
 
 ## What Remains Later
 
-- project deletion or archiving flow
+- project archiving flow
 - richer project settings UI
 - project duplication or export workflows
 

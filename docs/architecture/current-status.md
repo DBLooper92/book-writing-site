@@ -10,7 +10,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - Tailwind-based UI styling
 - compact fixed header with Project Overview, Timeline, +Create, Project, and account controls aligned top-right
 - shared slice-page shell that now adds a wiki-like left navigation rail across the entity slices plus the dedicated project-overview screen, with top-level text links routing to project overview or slice create pages and the active entry expanding into project-scoped record links
-- profile icon menu in the header with profile-lightbox and logout entry points for authenticated users
+- profile icon menu in the header with profile-lightbox tabs for details, API keys, password-confirmed project deletion, password-confirmed full account deletion, and logout entry points for authenticated users
 - header hide-on-scroll-down and reveal-on-scroll-up behavior
 - home, auth, auth verification, backend test, and developer setup routes
 - Supabase browser/server clients, Next proxy session refresh, SQL migrations for `profiles`, `projects`, and the current story-bible entity tables, plus a simple non-realtime data layer for the active runtime
@@ -23,6 +23,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - signup redirect to a dedicated "verify your email" screen plus a dedicated post-verification confirmation screen
 - post-sign-in redirect that sends users without projects to `/projects/new` and otherwise resumes the last remembered in-app route for the active project
 - sign-out flow
+- password-confirmed full account deletion from the profile security tab, including removal of the Supabase auth user, profile row, projects, scoped records, and uploaded files before redirecting back to sign-up
 - auth state hook
 - normalized app-auth user mapping wired into the active routes
 
@@ -33,6 +34,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - dedicated `/project-overview` page for the active project's summary, writing metadata, chronology defaults, and runtime settings
 - project rename
 - active project switching from the Projects page and header dropdown without route changes
+- password-confirmed project deletion from the profile security tab, including scoped record cascade through the project-owned tables plus uploaded-file cleanup for that project
 - `profiles.active_project_id` stored on the current Supabase-backed profile row
 - encrypted per-user OpenAI key metadata stored on the current Supabase-backed profile row for AI brain-dump usage
 - last usable in-app route remembered client-side and only resumed when it still matches the same user and active project
@@ -378,7 +380,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - chapter and scene brain-dump apply routes now also repair reverse manuscript links conservatively, syncing matched scene rows back to the applied chapter and syncing applied scenes back into their linked chapter's `scene_ids` when the existing scoped linkage is safe to preserve
 - proposal review panels can now explicitly promote a candidate match into the saved `matchedRecord`, so authors can choose the exact existing target before `update` or `merge`
 - brain-dump apply routes now reject repeat applies by default, require the proposal to be explicitly saved as `reviewed` before any canon write, and still require a saved `matchedRecord` before any `update` or `merge` write runs
-- profile lightbox with Details and API keys tabs so each user can manage the key used by brain-dump extraction
+- profile lightbox with Details, API keys, and Security tabs so each user can manage the key used by brain-dump extraction, delete individual projects, or permanently delete the whole account after re-entering the current password
 
 ## Partially Implemented
 
@@ -388,7 +390,7 @@ The active app runtime now uses Supabase Auth, Supabase-backed profiles/projects
 
 ### CRUD Coverage
 
-Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Notes, Retcons, Attachments, and AI Sessions have create, list, detail, and edit flows. Timeline Events keeps dedicated detail and edit routes plus workspace-driven browse/create flows under `/timeline`. Dedicated delete actions are not implemented yet.
+Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Notes, Retcons, Attachments, and AI Sessions have create, list, detail, and edit flows. Timeline Events keeps dedicated detail and edit routes plus workspace-driven browse/create flows under `/timeline`. Dedicated slice-level delete actions are still not implemented, but password-confirmed project deletion and full account deletion now exist in the profile security tab.
 
 ### Workflow Depth
 

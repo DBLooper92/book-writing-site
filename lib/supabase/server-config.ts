@@ -8,6 +8,10 @@ type SupabaseServerConfig = {
   supabasePublishableKey: string;
 };
 
+type SupabaseAdminConfig = SupabaseServerConfig & {
+  supabaseServiceRoleKey: string;
+};
+
 let hasLoadedLocalEnv = false;
 
 function parseEnvFileValue(rawValue: string) {
@@ -91,5 +95,21 @@ export function getSupabaseServerConfig(): SupabaseServerConfig {
   return {
     supabaseUrl,
     supabasePublishableKey,
+  };
+}
+
+export function getSupabaseAdminConfig(): SupabaseAdminConfig {
+  const baseConfig = getSupabaseServerConfig();
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseServiceRoleKey) {
+    throw new Error(
+      "Missing Supabase environment variable: SUPABASE_SERVICE_ROLE_KEY."
+    );
+  }
+
+  return {
+    ...baseConfig,
+    supabaseServiceRoleKey,
   };
 }

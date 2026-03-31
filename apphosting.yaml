@@ -13,3 +13,7 @@ env:
     secret: profile-secrets-encryption-key
     availability:
       - RUNTIME
+  - variable: SUPABASE_SERVICE_ROLE_KEY
+    secret: supabase-service-role-key
+    availability:
+      - RUNTIME

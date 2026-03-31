@@ -174,3 +174,9 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: First storage-backed image workflow
 - Decision: Record images should be modeled as scoped `attachments` rows backed by a private Supabase Storage bucket instead of adding per-entity image columns or separate image tables to every slice.
 - Why it stays in force: This keeps uploads inside the existing project-scoped attachment model, avoids duplicating media schema across slices, preserves one source of truth for linked image metadata, and lets detail pages share one upload/delete implementation.
+
+### D-028
+
+- Origin: Profile security deletion pass
+- Decision: Destructive project and account deletion must run through password-confirmed server routes that clean up uploaded storage objects before deleting the owning project rows or Supabase auth user.
+- Why it stays in force: This keeps delete authority off the client, preserves the rule that scoped storage should disappear with its owning scope, and makes project/account deletion explicit without pretending slice-level delete flows already exist.

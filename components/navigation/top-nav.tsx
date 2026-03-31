@@ -375,6 +375,7 @@ export function TopNav() {
         <ProfileLightbox
           displayName={user.displayName}
           email={user.email}
+          uid={user.uid}
           onClose={() => setProfileOpen(false)}
         />
       ) : null}

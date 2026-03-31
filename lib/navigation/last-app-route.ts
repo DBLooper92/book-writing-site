@@ -43,6 +43,14 @@ export function rememberLastAppRoute({
   window.localStorage.setItem(LAST_APP_ROUTE_STORAGE_KEY, JSON.stringify(payload));
 }
 
+export function clearRememberedAppRoute() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(LAST_APP_ROUTE_STORAGE_KEY);
+}
+
 export async function resolvePostSignInPath(uid: string) {
   const [projects, storedActiveProjectId] = await Promise.all([
     listUserProjects(uid),

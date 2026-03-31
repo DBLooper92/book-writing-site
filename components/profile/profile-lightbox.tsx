@@ -1,19 +1,50 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+
+import { emitProjectsChanged, useUserProjects } from "@/hooks/use-user-projects";
+import { signOutCurrentUser } from "@/lib/auth";
+import { clearRememberedAppRoute } from "@/lib/navigation/last-app-route";
+import type { UserProject } from "@/lib/data/projects";
 
 type ProfileLightboxProps = {
   displayName: string | null;
   email: string | null;
   onClose: () => void;
+  uid: string;
 };
 
-type ProfileTab = "details" | "api_keys";
+type ProfileTab = "details" | "api_keys" | "security";
 
 type OpenAiKeyState = {
   hasKey: boolean;
   last4: string | null;
   updatedAt: string | null;
+};
+
+type FeedbackState =
+  | {
+      message: string;
+      tone: "error" | "success";
+    }
+  | null;
+
+type ProjectDeletionResponse = {
+  deletedProjectId?: string;
+  deletedProjectTitle?: string;
+  message?: string;
+  nextActiveProjectId?: string | null;
+  redirectTo?: string | null;
+  remainingProjectCount?: number;
+  wasActiveProject?: boolean;
+  error?: string;
+};
+
+type AccountDeletionResponse = {
+  message?: string;
+  redirectTo?: string;
+  error?: string;
 };
 
 const EMPTY_KEY_STATE: OpenAiKeyState = {
@@ -26,15 +57,21 @@ export function ProfileLightbox({
   displayName,
   email,
   onClose,
+  uid,
 }: ProfileLightboxProps) {
+  const router = useRouter();
+  const { activeProjectId, loading: projectsLoading, projects } = useUserProjects(uid);
   const [activeTab, setActiveTab] = useState<ProfileTab>("details");
   const [keyState, setKeyState] = useState<OpenAiKeyState>(EMPTY_KEY_STATE);
   const [loadingKeyState, setLoadingKeyState] = useState(true);
   const [keyInput, setKeyInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [apiKeyFeedback, setApiKeyFeedback] = useState<FeedbackState>(null);
+  const [securityPassword, setSecurityPassword] = useState("");
+  const [securityFeedback, setSecurityFeedback] = useState<FeedbackState>(null);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,9 +103,13 @@ export function ProfileLightbox({
           return;
         }
 
-        setError(
-          nextError instanceof Error ? nextError.message : "Unable to load API key settings."
-        );
+        setApiKeyFeedback({
+          message:
+            nextError instanceof Error
+              ? nextError.message
+              : "Unable to load API key settings.",
+          tone: "error",
+        });
       } finally {
         if (!cancelled) {
           setLoadingKeyState(false);
@@ -87,13 +128,15 @@ export function ProfileLightbox({
     const apiKey = keyInput.trim();
 
     if (!apiKey) {
-      setError("Paste an OpenAI API key first.");
+      setApiKeyFeedback({
+        message: "Paste an OpenAI API key first.",
+        tone: "error",
+      });
       return;
     }
 
     setSaving(true);
-    setError(null);
-    setSuccessMessage(null);
+    setApiKeyFeedback(null);
 
     try {
       const response = await fetch("/api/profile/openai-key", {
@@ -117,9 +160,16 @@ export function ProfileLightbox({
         updatedAt: payload?.updatedAt ?? null,
       });
       setKeyInput("");
-      setSuccessMessage("OpenAI API key saved.");
+      setApiKeyFeedback({
+        message: "OpenAI API key saved.",
+        tone: "success",
+      });
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Unable to save this API key.");
+      setApiKeyFeedback({
+        message:
+          nextError instanceof Error ? nextError.message : "Unable to save this API key.",
+        tone: "error",
+      });
     } finally {
       setSaving(false);
     }
@@ -127,8 +177,7 @@ export function ProfileLightbox({
 
   async function handleDeleteOpenAiKey() {
     setDeleting(true);
-    setError(null);
-    setSuccessMessage(null);
+    setApiKeyFeedback(null);
 
     try {
       const response = await fetch("/api/profile/openai-key", {
@@ -148,11 +197,136 @@ export function ProfileLightbox({
         updatedAt: payload?.updatedAt ?? null,
       });
       setKeyInput("");
-      setSuccessMessage("OpenAI API key removed.");
+      setApiKeyFeedback({
+        message: "OpenAI API key removed.",
+        tone: "success",
+      });
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Unable to remove this API key.");
+      setApiKeyFeedback({
+        message:
+          nextError instanceof Error ? nextError.message : "Unable to remove this API key.",
+        tone: "error",
+      });
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleDeleteProject(project: UserProject) {
+    const trimmedPassword = securityPassword.trim();
+
+    if (!trimmedPassword) {
+      setSecurityFeedback({
+        message: "Enter your current password before deleting a project.",
+        tone: "error",
+      });
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      `Delete project "${project.title}" permanently? This removes every scoped record and uploaded image in that project.`
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setDeletingProjectId(project.id);
+    setSecurityFeedback(null);
+
+    try {
+      const response = await fetch("/api/profile/security/project", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          password: trimmedPassword,
+          projectId: project.id,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as ProjectDeletionResponse | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "Unable to delete this project.");
+      }
+
+      emitProjectsChanged();
+      setSecurityPassword("");
+
+      if (payload?.wasActiveProject && payload.redirectTo) {
+        clearRememberedAppRoute();
+        onClose();
+        router.push(payload.redirectTo);
+        router.refresh();
+        return;
+      }
+
+      setSecurityFeedback({
+        message: payload?.message || `Deleted ${project.title}.`,
+        tone: "success",
+      });
+    } catch (nextError) {
+      setSecurityFeedback({
+        message:
+          nextError instanceof Error ? nextError.message : "Unable to delete this project.",
+        tone: "error",
+      });
+    } finally {
+      setDeletingProjectId(null);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    const trimmedPassword = securityPassword.trim();
+
+    if (!trimmedPassword) {
+      setSecurityFeedback({
+        message: "Enter your current password before deleting your account.",
+        tone: "error",
+      });
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      "Delete this account permanently? This removes your auth login, profile, every project, all scoped records, and all uploaded files."
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setDeletingAccount(true);
+    setSecurityFeedback(null);
+
+    try {
+      const response = await fetch("/api/profile/security/account", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          password: trimmedPassword,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as AccountDeletionResponse | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "Unable to delete this account.");
+      }
+
+      clearRememberedAppRoute();
+      emitProjectsChanged();
+      onClose();
+      await signOutCurrentUser().catch(() => undefined);
+      window.location.assign(payload?.redirectTo || "/auth?mode=sign-up");
+    } catch (nextError) {
+      setSecurityFeedback({
+        message:
+          nextError instanceof Error ? nextError.message : "Unable to delete this account.",
+        tone: "error",
+      });
+      setDeletingAccount(false);
     }
   }
 
@@ -180,6 +354,11 @@ export function ProfileLightbox({
               label="API keys"
               onClick={() => setActiveTab("api_keys")}
             />
+            <TabButton
+              active={activeTab === "security"}
+              label="Security"
+              onClick={() => setActiveTab("security")}
+            />
           </nav>
         </aside>
 
@@ -187,10 +366,10 @@ export function ProfileLightbox({
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                {activeTab === "details" ? "Details" : "API keys"}
+                {getTabEyebrow(activeTab)}
               </p>
               <h3 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-                {activeTab === "details" ? "Profile details" : "Provider keys"}
+                {getTabTitle(activeTab)}
               </h3>
             </div>
 
@@ -207,20 +386,16 @@ export function ProfileLightbox({
           <div className="mt-6">
             {activeTab === "details" ? (
               <DetailsTab displayName={displayName} email={email} />
-            ) : (
+            ) : activeTab === "api_keys" ? (
               <ApiKeysTab
                 deleting={deleting}
-                error={error}
+                feedback={apiKeyFeedback}
                 keyInput={keyInput}
                 keyState={keyState}
                 loadingKeyState={loadingKeyState}
                 onChangeKeyInput={(value) => {
-                  if (error) {
-                    setError(null);
-                  }
-
-                  if (successMessage) {
-                    setSuccessMessage(null);
+                  if (apiKeyFeedback) {
+                    setApiKeyFeedback(null);
                   }
 
                   setKeyInput(value);
@@ -228,7 +403,25 @@ export function ProfileLightbox({
                 onDelete={handleDeleteOpenAiKey}
                 onSave={handleSaveOpenAiKey}
                 saving={saving}
-                successMessage={successMessage}
+              />
+            ) : (
+              <SecurityTab
+                activeProjectId={activeProjectId}
+                deletingAccount={deletingAccount}
+                deletingProjectId={deletingProjectId}
+                feedback={securityFeedback}
+                onChangePassword={(value) => {
+                  if (securityFeedback) {
+                    setSecurityFeedback(null);
+                  }
+
+                  setSecurityPassword(value);
+                }}
+                onDeleteAccount={handleDeleteAccount}
+                onDeleteProject={handleDeleteProject}
+                password={securityPassword}
+                projects={projects}
+                projectsLoading={projectsLoading}
               />
             )}
           </div>
@@ -280,7 +473,7 @@ function DetailsTab({
 
 function ApiKeysTab({
   deleting,
-  error,
+  feedback,
   keyInput,
   keyState,
   loadingKeyState,
@@ -288,10 +481,9 @@ function ApiKeysTab({
   onDelete,
   onSave,
   saving,
-  successMessage,
 }: {
   deleting: boolean;
-  error: string | null;
+  feedback: FeedbackState;
   keyInput: string;
   keyState: OpenAiKeyState;
   loadingKeyState: boolean;
@@ -299,7 +491,6 @@ function ApiKeysTab({
   onDelete: () => Promise<void>;
   onSave: () => Promise<void>;
   saving: boolean;
-  successMessage: string | null;
 }) {
   return (
     <div className="space-y-5">
@@ -333,11 +524,7 @@ function ApiKeysTab({
         </span>
       </label>
 
-      {error ? (
-        <FeedbackCard tone="error">{error}</FeedbackCard>
-      ) : successMessage ? (
-        <FeedbackCard tone="success">{successMessage}</FeedbackCard>
-      ) : null}
+      {feedback ? <FeedbackCard tone={feedback.tone}>{feedback.message}</FeedbackCard> : null}
 
       <div className="flex flex-wrap gap-3">
         <button
@@ -350,6 +537,173 @@ function ApiKeysTab({
         </button>
       </div>
     </div>
+  );
+}
+
+function SecurityTab({
+  activeProjectId,
+  deletingAccount,
+  deletingProjectId,
+  feedback,
+  onChangePassword,
+  onDeleteAccount,
+  onDeleteProject,
+  password,
+  projects,
+  projectsLoading,
+}: {
+  activeProjectId: string | null;
+  deletingAccount: boolean;
+  deletingProjectId: string | null;
+  feedback: FeedbackState;
+  onChangePassword: (value: string) => void;
+  onDeleteAccount: () => Promise<void>;
+  onDeleteProject: (project: UserProject) => Promise<void>;
+  password: string;
+  projects: UserProject[];
+  projectsLoading: boolean;
+}) {
+  const hasPassword = !!password.trim();
+  const actionsDisabled = deletingAccount || deletingProjectId !== null;
+
+  return (
+    <div className="space-y-5">
+      <section className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5 text-sm leading-6 text-zinc-600">
+        Enter your current password to unlock destructive actions. Project deletion removes every
+        scoped record and uploaded image in that project. Account deletion removes the auth user,
+        profile row, all projects, all project data, and all uploaded files for this account.
+      </section>
+
+      <label className="block">
+        <span className="mb-2 block text-sm font-medium text-zinc-700">
+          Current password
+        </span>
+        <input
+          type="password"
+          value={password}
+          onChange={(event) => onChangePassword(event.target.value)}
+          autoComplete="current-password"
+          placeholder="Re-enter your password to confirm destructive actions"
+          className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400"
+        />
+        <span className="mt-2 block text-xs text-zinc-500">
+          This password is checked on the server before any delete runs.
+        </span>
+      </label>
+
+      {feedback ? <FeedbackCard tone={feedback.tone}>{feedback.message}</FeedbackCard> : null}
+
+      <section className="rounded-3xl border border-zinc-200 bg-white p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+              Projects
+            </p>
+            <h4 className="mt-3 text-lg font-semibold tracking-tight text-zinc-950">
+              Delete a project
+            </h4>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              Deleting a project removes its books, chapters, scenes, story-bible records, AI
+              sessions, attachments, and uploaded entity images.
+            </p>
+          </div>
+          <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600">
+            {projects.length} project{projects.length === 1 ? "" : "s"}
+          </span>
+        </div>
+
+        {projectsLoading ? (
+          <div className="mt-5 rounded-2xl bg-zinc-50 px-4 py-4 text-sm text-zinc-600">
+            Loading projects...
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="mt-5 rounded-2xl bg-zinc-50 px-4 py-4 text-sm text-zinc-600">
+            No projects remain on this account.
+          </div>
+        ) : (
+          <div className="mt-5 space-y-3">
+            {projects.map((project) => (
+              <ProjectDeleteCard
+                key={project.id}
+                deleting={deletingProjectId === project.id}
+                disabled={!hasPassword || actionsDisabled}
+                isActive={project.id === activeProjectId}
+                onDelete={onDeleteProject}
+                project={project}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-3xl border border-red-200 bg-red-50 p-5">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-red-700">
+          Account
+        </p>
+        <h4 className="mt-3 text-lg font-semibold tracking-tight text-red-950">
+          Delete this account
+        </h4>
+        <p className="mt-2 text-sm leading-6 text-red-900/80">
+          This is permanent. Your auth login, profile row, every project, every scoped entity row,
+          and every uploaded file tied to this account will be removed.
+        </p>
+
+        <div className="mt-5">
+          <button
+            type="button"
+            onClick={() => void onDeleteAccount()}
+            disabled={!hasPassword || actionsDisabled}
+            className="inline-flex h-11 items-center justify-center rounded-full bg-red-700 px-4 text-sm font-medium text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-red-200 disabled:text-red-50"
+          >
+            {deletingAccount ? "Deleting account..." : "Delete account"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ProjectDeleteCard({
+  deleting,
+  disabled,
+  isActive,
+  onDelete,
+  project,
+}: {
+  deleting: boolean;
+  disabled: boolean;
+  isActive: boolean;
+  onDelete: (project: UserProject) => Promise<void>;
+  project: UserProject;
+}) {
+  return (
+    <section className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-semibold text-zinc-950">{project.title}</p>
+            {isActive ? (
+              <span className="rounded-full bg-zinc-950 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-white">
+                Active
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">{project.id}</p>
+          <p className="mt-2 text-sm leading-6 text-zinc-600">
+            {project.summary || "No summary saved for this project."}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => void onDelete(project)}
+          disabled={disabled}
+          className="inline-flex h-10 items-center justify-center rounded-full border border-red-200 px-4 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:text-zinc-400"
+        >
+          {deleting ? "Deleting..." : "Delete"}
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -476,4 +830,26 @@ function SpinnerIcon() {
       <path d="M21 12a9 9 0 1 1-9-9" />
     </svg>
   );
+}
+
+function getTabEyebrow(activeTab: ProfileTab) {
+  switch (activeTab) {
+    case "api_keys":
+      return "API keys";
+    case "security":
+      return "Security";
+    default:
+      return "Details";
+  }
+}
+
+function getTabTitle(activeTab: ProfileTab) {
+  switch (activeTab) {
+    case "api_keys":
+      return "Provider keys";
+    case "security":
+      return "Security and deletion";
+    default:
+      return "Profile details";
+  }
 }

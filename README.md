@@ -11,7 +11,7 @@ The current repo already has:
 - Supabase Auth with email/password flows
 - dedicated email-verification and post-verification screens for signup confirmation
 - Supabase-backed user-owned projects plus active project switching
-- profile menu with a profile lightbox and logout action
+- profile menu with a profile lightbox, API-key management, password-confirmed project deletion, password-confirmed full account deletion, and logout action
 - post-sign-in routing that sends users without projects to `/projects/new` and otherwise resumes the last remembered in-app route for the active project
 - Supabase-backed Books pages
 - Supabase-backed Chapters pages
@@ -43,7 +43,7 @@ The current repo already has:
 - a Timeline workspace route with a visual center-line chronology, quick navigation, filters, and inline authoring
 - a developer seeding flow for a default story-bible project
 
-Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions currently have list, create, detail, and edit flows. `/timeline` remains the sole top-level chronology surface for browsing and creating timeline records. The workspace adds a visual center-line chronology, quick navigation, filters, derived insertion notches, compressed time-jump markers, inline create/edit entry points, and a toolbar brain-dump lightbox on top of `timeline_events`, while Timeline Events supports picker-style linking for the main connected slices. Linked entity detail pages now also support private Supabase Storage image uploads backed by scoped `attachments` rows. AI Sessions now also has a first-pass brain-dump flow that uses the authenticated user's saved OpenAI key and stores reviewable proposals for characters, timeline events, chapter outlines, and scenes on the scoped `ai_sessions` row. Dedicated slice delete flows, richer cross-entity linking, deeper timeline continuity tooling, broader non-image attachment workflows, automatic canon import from AI output, and broader AI tooling are still future work.
+Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions currently have list, create, detail, and edit flows. `/timeline` remains the sole top-level chronology surface for browsing and creating timeline records. The workspace adds a visual center-line chronology, quick navigation, filters, derived insertion notches, compressed time-jump markers, inline create/edit entry points, and a toolbar brain-dump lightbox on top of `timeline_events`, while Timeline Events supports picker-style linking for the main connected slices. Linked entity detail pages now also support private Supabase Storage image uploads backed by scoped `attachments` rows. The profile lightbox now also includes a Security tab with password-confirmed project deletion that clears scoped records and uploaded files, plus full account deletion that removes the user's Supabase auth login, profile, projects, scoped data, and uploads before sending them back to sign-up. AI Sessions now also has a first-pass brain-dump flow that uses the authenticated user's saved OpenAI key and stores reviewable proposals for characters, timeline events, chapter outlines, and scenes on the scoped `ai_sessions` row. Dedicated slice delete flows, richer cross-entity linking, deeper timeline continuity tooling, broader non-image attachment workflows, automatic canon import from AI output, and broader AI tooling are still future work.
 
 ## Local Development
 
@@ -57,6 +57,7 @@ Current env requirements:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` for full account deletion from Supabase Auth
 - `PROFILE_SECRETS_ENCRYPTION_KEY` for server-side encryption of user-saved API keys
 
 ## Architecture Summary

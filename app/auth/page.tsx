@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { AuthApiError } from "@supabase/supabase-js";
 
 import { PageShell } from "@/components/layout/page-shell";
@@ -34,6 +34,20 @@ export default function AuthPage() {
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<Notice>(defaultNotice);
   const { user: currentUser, loading: authReadyLoading } = useAuthUser();
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const nextMode =
+      new URLSearchParams(window.location.search).get("mode") === "sign-up"
+        ? "sign-up"
+        : "sign-in";
+
+    setMode(nextMode);
+    setNotice(defaultNotice);
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
