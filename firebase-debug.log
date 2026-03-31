@@ -1,0 +1,48 @@
+[debug] [2026-03-31T02:27:26.190Z] ----------------------------------------------------------------------
+[debug] [2026-03-31T02:27:26.200Z] Command:       C:\nvm4w\nodejs\node.exe C:\nvm4w\nodejs\node_modules\firebase-tools\lib\bin\firebase.js apphosting:secrets:grantaccess supabase-service-role-key --project bookwritingsite --location us-east4 --backend book-writing-site
+[debug] [2026-03-31T02:27:26.201Z] CLI Version:   15.3.1
+[debug] [2026-03-31T02:27:26.202Z] Platform:      win32
+[debug] [2026-03-31T02:27:26.203Z] Node Version:  v20.18.0
+[debug] [2026-03-31T02:27:26.203Z] Time:          Mon Mar 30 2026 22:27:26 GMT-0400 (Eastern Daylight Time)
+[debug] [2026-03-31T02:27:26.204Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-31T02:27:26.453Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-31T02:27:26.460Z] > authorizing via signed-in user (velocityaisolutions@gmail.com)
+[debug] [2026-03-31T02:27:26.465Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-31T02:27:26.466Z] > authorizing via signed-in user (velocityaisolutions@gmail.com)
+[debug] [2026-03-31T02:27:26.467Z] [iam] checking project bookwritingsite for permissions ["firebase.projects.get","secretmanager.secrets.create","secretmanager.secrets.get","secretmanager.secrets.getIamPolicy","secretmanager.secrets.setIamPolicy","secretmanager.secrets.update","secretmanager.versions.add"]
+[debug] [2026-03-31T02:27:26.473Z] Checked if tokens are valid: true, expires at: 1774926619782
+[debug] [2026-03-31T02:27:26.474Z] Checked if tokens are valid: true, expires at: 1774926619782
+[debug] [2026-03-31T02:27:26.478Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/bookwritingsite:testIamPermissions [none]
+[debug] [2026-03-31T02:27:26.479Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/bookwritingsite:testIamPermissions x-goog-quota-user=projects/bookwritingsite
+[debug] [2026-03-31T02:27:26.479Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/bookwritingsite:testIamPermissions {"permissions":["firebase.projects.get","secretmanager.secrets.create","secretmanager.secrets.get","secretmanager.secrets.getIamPolicy","secretmanager.secrets.setIamPolicy","secretmanager.secrets.update","secretmanager.versions.add"]}
+[debug] [2026-03-31T02:27:27.150Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/bookwritingsite:testIamPermissions 200
+[debug] [2026-03-31T02:27:27.151Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/bookwritingsite:testIamPermissions {"permissions":["firebase.projects.get","secretmanager.secrets.create","secretmanager.secrets.get","secretmanager.secrets.getIamPolicy","secretmanager.secrets.setIamPolicy","secretmanager.secrets.update","secretmanager.versions.add"]}
+[debug] [2026-03-31T02:27:27.155Z] Checked if tokens are valid: true, expires at: 1774926619782
+[debug] [2026-03-31T02:27:27.156Z] Checked if tokens are valid: true, expires at: 1774926619782
+[debug] [2026-03-31T02:27:27.156Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/bookwritingsite [none]
+[debug] [2026-03-31T02:27:27.284Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/bookwritingsite 200
+[debug] [2026-03-31T02:27:27.284Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/bookwritingsite {"projectNumber":"503269619248","projectId":"bookwritingsite","lifecycleState":"ACTIVE","name":"BookWritingSite","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-03-15T07:12:40.850921Z"}
+[debug] [2026-03-31T02:27:27.285Z] Checked if tokens are valid: true, expires at: 1774926619782
+[debug] [2026-03-31T02:27:27.286Z] Checked if tokens are valid: true, expires at: 1774926619782
+[debug] [2026-03-31T02:27:27.287Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/bookwritingsite/secrets/supabase-service-role-key [none]
+[debug] [2026-03-31T02:27:27.616Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/bookwritingsite/secrets/supabase-service-role-key 200
+[debug] [2026-03-31T02:27:27.617Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/bookwritingsite/secrets/supabase-service-role-key {"name":"projects/503269619248/secrets/supabase-service-role-key","replication":{"userManaged":{"replicas":[{"location":"us-east4"}]}},"createTime":"2026-03-31T02:11:03.494132Z","labels":{"firebase-managed":"apphosting"},"etag":"\"164e487ab87aaa\""}
+[debug] [2026-03-31T02:27:27.619Z] Checked if tokens are valid: true, expires at: 1774926619782
+[debug] [2026-03-31T02:27:27.619Z] Checked if tokens are valid: true, expires at: 1774926619782
+[debug] [2026-03-31T02:27:27.620Z] >>> [apiv2][query] GET https://firebaseapphosting.googleapis.com/v1beta/projects/bookwritingsite/locations/us-east4/backends/book-writing-site [none]
+[debug] [2026-03-31T02:27:28.009Z] <<< [apiv2][status] GET https://firebaseapphosting.googleapis.com/v1beta/projects/bookwritingsite/locations/us-east4/backends/book-writing-site 200
+[debug] [2026-03-31T02:27:28.010Z] <<< [apiv2][body] GET https://firebaseapphosting.googleapis.com/v1beta/projects/bookwritingsite/locations/us-east4/backends/book-writing-site {"name":"projects/bookwritingsite/locations/us-east4/backends/book-writing-site","createTime":"2026-03-15T07:42:30.712842231Z","updateTime":"2026-03-30T19:10:26.818760Z","uri":"book-writing-site--bookwritingsite.us-east4.hosted.app","managedResources":[{"runService":{"service":"projects/503269619248/locations/us-east4/services/book-writing-site"}}],"codebase":{"repository":"projects/bookwritingsite/locations/us-east4/connections/apphosting-github-conn-e0c2idc/gitRepositoryLinks/DBLooper92-book-writing-site","rootDirectory":"/"},"uid":"0a84b0dc-37ab-445a-8bb8-b88d4486fe07","etag":"0VGWAOm0Pdebtg_iT4DT_mz2Z1VVeGvtLmLcl-X2Pcc","reconciling":false,"servingLocality":"GLOBAL_ACCESS","serviceAccount":"firebase-app-hosting-compute@bookwritingsite.iam.gserviceaccount.com","appId":"1:503269619248:web:d017e3b3fdd954a3129ff5"}
+[debug] [2026-03-31T02:27:28.012Z] Checked if tokens are valid: true, expires at: 1774926619782
+[debug] [2026-03-31T02:27:28.013Z] Checked if tokens are valid: true, expires at: 1774926619782
+[debug] [2026-03-31T02:27:28.014Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/bookwritingsite/secrets/supabase-service-role-key:getIamPolicy [none]
+[debug] [2026-03-31T02:27:28.384Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/bookwritingsite/secrets/supabase-service-role-key:getIamPolicy 200
+[debug] [2026-03-31T02:27:28.384Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/bookwritingsite/secrets/supabase-service-role-key:getIamPolicy {"etag":"ACAB"}
+[debug] [2026-03-31T02:27:28.386Z] Checked if tokens are valid: true, expires at: 1774926619782
+[debug] [2026-03-31T02:27:28.386Z] Checked if tokens are valid: true, expires at: 1774926619782
+[debug] [2026-03-31T02:27:28.387Z] >>> [apiv2][query] POST https://secretmanager.googleapis.com/v1/projects/bookwritingsite/secrets/supabase-service-role-key:setIamPolicy [none]
+[debug] [2026-03-31T02:27:28.388Z] >>> [apiv2][body] POST https://secretmanager.googleapis.com/v1/projects/bookwritingsite/secrets/supabase-service-role-key:setIamPolicy {"policy":{"bindings":[{"role":"roles/secretmanager.secretAccessor","members":["serviceAccount:firebase-app-hosting-compute@bookwritingsite.iam.gserviceaccount.com"]},{"role":"roles/secretmanager.viewer","members":["serviceAccount:firebase-app-hosting-compute@bookwritingsite.iam.gserviceaccount.com"]},{"role":"roles/secretmanager.secretVersionManager","members":["serviceAccount:service-503269619248@gcp-sa-firebaseapphosting.iam.gserviceaccount.com"]}]},"updateMask":"bindings"}
+[debug] [2026-03-31T02:27:28.972Z] <<< [apiv2][status] POST https://secretmanager.googleapis.com/v1/projects/bookwritingsite/secrets/supabase-service-role-key:setIamPolicy 200
+[debug] [2026-03-31T02:27:28.973Z] <<< [apiv2][body] POST https://secretmanager.googleapis.com/v1/projects/bookwritingsite/secrets/supabase-service-role-key:setIamPolicy {"version":1,"etag":"BwZOSLWEUJ4=","bindings":[{"role":"roles/secretmanager.secretAccessor","members":["serviceAccount:firebase-app-hosting-compute@bookwritingsite.iam.gserviceaccount.com"]},{"role":"roles/secretmanager.secretVersionManager","members":["serviceAccount:service-503269619248@gcp-sa-firebaseapphosting.iam.gserviceaccount.com"]},{"role":"roles/secretmanager.viewer","members":["serviceAccount:firebase-app-hosting-compute@bookwritingsite.iam.gserviceaccount.com"]}]}
+[info] +  Successfully set IAM bindings on secret supabase-service-role-key.
+ 
