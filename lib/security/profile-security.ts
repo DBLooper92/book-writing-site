@@ -1,7 +1,6 @@
 import "server-only";
 
 import {
-  createClient,
   type SupabaseClient,
   type User,
 } from "@supabase/supabase-js";
@@ -214,29 +213,29 @@ async function verifyCurrentPasswordForUser(user: User, password: string) {
     );
   }
 
-  const verifier = createPasswordVerificationClient();
-  const { data, error } = await verifier.auth.signInWithPassword({
-    email: user.email,
-    password: normalizedPassword,
+  const { supabasePublishableKey, supabaseUrl } = getSupabaseServerConfig();
+  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: {
+      apikey: supabasePublishableKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email: user.email,
+      password: normalizedPassword,
+    }),
   });
+  const payload = (await response.json().catch(() => null)) as
+    | {
+        user?: { id?: string | null } | null;
+        error_description?: string;
+        msg?: string;
+      }
+    | null;
 
-  await verifier.auth.signOut().catch(() => undefined);
-
-  if (error || data.user?.id !== user.id) {
+  if (!response.ok || payload?.user?.id !== user.id) {
     throw new ProfileSecurityError("Current password is incorrect.", 401);
   }
-}
-
-function createPasswordVerificationClient() {
-  const { supabasePublishableKey, supabaseUrl } = getSupabaseServerConfig();
-
-  return createClient<Database>(supabaseUrl, supabasePublishableKey, {
-    auth: {
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-      persistSession: false,
-    },
-  });
 }
 
 async function listAttachmentStorageRecords({

@@ -19,6 +19,7 @@ Implemented now.
 - header project menu option that opens the project create screen
 - header profile icon with a small account menu that can open the profile lightbox or log the user out
 - project deletion now removes the `projects` row, lets database cascades clear the scoped slice rows, removes uploaded files tied to that project, and switches `profiles.active_project_id` when the deleted project was active
+- project deletion preserves the current signed-in session; only full account deletion signs the user out
 
 ## Important Rules
 
