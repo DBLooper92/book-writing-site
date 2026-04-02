@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import {
   AI_SESSION_STATUS_OPTIONS,
@@ -27,6 +27,17 @@ export function AiSessionForm({
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isWorkflowManagedSessionType =
+    values.sessionType === "brain_dump" || values.sessionType === "manuscript_import";
+  const sessionTypeOptions = useMemo(
+    () =>
+      AI_SESSION_TYPE_OPTIONS.filter((option) =>
+        isWorkflowManagedSessionType
+          ? option.value === values.sessionType
+          : option.value !== "brain_dump" && option.value !== "manuscript_import"
+      ),
+    [isWorkflowManagedSessionType, values.sessionType]
+  );
 
   useEffect(() => {
     if (initialValues) {
@@ -76,7 +87,13 @@ export function AiSessionForm({
           label="Session type"
           value={values.sessionType}
           onChange={(value) => updateField("sessionType", value)}
-          options={AI_SESSION_TYPE_OPTIONS}
+          options={sessionTypeOptions}
+          disabled={isWorkflowManagedSessionType}
+          hint={
+            isWorkflowManagedSessionType
+              ? "This workflow type is managed from its dedicated AI Sessions page."
+              : "Brain dump and manuscript import use dedicated workflow pages instead of the generic metadata form."
+          }
         />
         <Field
           label="Provider"
@@ -195,11 +212,15 @@ function SelectField<Value extends string>({
   value,
   onChange,
   options,
+  disabled = false,
+  hint,
 }: {
   label: string;
   value: Value;
   onChange: (value: Value) => void;
   options: ReadonlyArray<{ value: Value; label: string }>;
+  disabled?: boolean;
+  hint?: string;
 }) {
   return (
     <label className="block">
@@ -207,7 +228,8 @@ function SelectField<Value extends string>({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as Value)}
-        className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400"
+        disabled={disabled}
+        className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -215,6 +237,7 @@ function SelectField<Value extends string>({
           </option>
         ))}
       </select>
+      {hint ? <span className="mt-2 block text-xs text-zinc-500">{hint}</span> : null}
     </label>
   );
 }

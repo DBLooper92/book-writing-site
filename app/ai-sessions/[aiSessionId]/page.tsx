@@ -6,13 +6,14 @@ import type { ReactNode } from "react";
 
 import { AiSessionBrainDumpDetail } from "@/components/ai-sessions/ai-session-brain-dump-detail";
 import { AiSessionDetailSection } from "@/components/ai-sessions/ai-session-detail-section";
+import { AiSessionManuscriptImportDetail } from "@/components/ai-sessions/ai-session-manuscript-import-detail";
 import { PageShell } from "@/components/layout/page-shell";
 import { useAiSession } from "@/hooks/use-ai-session";
 
 export default function AiSessionDetailPage() {
   const params = useParams<{ aiSessionId: string }>();
   const aiSessionId = typeof params.aiSessionId === "string" ? params.aiSessionId : null;
-  const { aiSession, loading, error, user, activeProjectId, activeProject } =
+  const { aiSession, loading, error, user, uid, activeProjectId, activeProject } =
     useAiSession(aiSessionId);
 
   return (
@@ -112,6 +113,13 @@ export default function AiSessionDetailPage() {
 
           {aiSession.sessionType === "brain_dump" || aiSession.sourceText ? (
             <AiSessionBrainDumpDetail aiSession={aiSession} />
+          ) : null}
+          {aiSession.sessionType === "manuscript_import" && uid && activeProjectId ? (
+            <AiSessionManuscriptImportDetail
+              aiSession={aiSession}
+              uid={uid}
+              projectId={activeProjectId}
+            />
           ) : null}
 
           <AiSessionDetailSection title="Linked records">

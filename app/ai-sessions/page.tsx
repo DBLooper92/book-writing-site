@@ -41,6 +41,12 @@ export default function AiSessionsPage() {
               Brain dump
             </Link>
             <Link
+              href="/ai-sessions/manuscript-import"
+              className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+            >
+              Manuscript import
+            </Link>
+            <Link
               href="/projects"
               className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
             >
@@ -81,6 +87,10 @@ export default function AiSessionsPage() {
           No AI sessions exist in {activeProject.title} yet.{" "}
           <Link href="/ai-sessions/brain-dump" className="font-medium underline">
             Start with a brain dump
+          </Link>{" "}
+          or{" "}
+          <Link href="/ai-sessions/manuscript-import" className="font-medium underline">
+            import an existing manuscript
           </Link>{" "}
           or{" "}
           <Link href="/ai-sessions/new" className="font-medium underline">

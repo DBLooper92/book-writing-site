@@ -3,6 +3,10 @@ import {
   normalizeBrainDumpExtractionResult,
   type BrainDumpExtractionResult,
 } from "@/types/ai-brain-dump";
+import {
+  normalizeManuscriptImportWorkflowState,
+  type ManuscriptImportWorkflowState,
+} from "@/types/ai-manuscript-import";
 import type { Json } from "@/types/database";
 
 export const AI_SESSION_STATUS_VALUES = [
@@ -13,6 +17,7 @@ export const AI_SESSION_STATUS_VALUES = [
 ] as const;
 export const AI_SESSION_TYPE_VALUES = [
   "brain_dump",
+  "manuscript_import",
   "brainstorm",
   "summary",
   "editing",
@@ -71,6 +76,7 @@ export type AiSession = {
   extractionError: string;
   extractionModel: string;
   extractionResult: BrainDumpExtractionResult | null;
+  workflowState: ManuscriptImportWorkflowState | null;
   linkedEntityTypes: string[];
   linkedEntityIds: string[];
   messagesCount: number | null;
@@ -133,6 +139,7 @@ export const AI_SESSION_TYPE_OPTIONS: ReadonlyArray<{
   label: string;
 }> = [
   { value: "brain_dump", label: "Brain dump" },
+  { value: "manuscript_import", label: "Manuscript import" },
   { value: "brainstorm", label: "Brainstorm" },
   { value: "summary", label: "Summary" },
   { value: "editing", label: "Editing" },
@@ -233,6 +240,7 @@ export function buildAiSessionDocument({
     extractionError: "",
     extractionModel: "",
     extractionResult: null,
+    workflowState: null,
     linkedEntityTypes: values.linkedEntityTypes,
     linkedEntityIds: values.linkedEntityIds,
     messagesCount: values.messagesCount,
@@ -344,6 +352,10 @@ export function buildAiSessionIdFromTitle(value: string) {
 
 export function normalizeAiSessionExtractionResult(value: Json | null | undefined) {
   return normalizeBrainDumpExtractionResult(value);
+}
+
+export function normalizeAiSessionWorkflowState(value: Json | null | undefined) {
+  return normalizeManuscriptImportWorkflowState(value);
 }
 
 function isAllowedValue<const Values extends readonly string[]>(

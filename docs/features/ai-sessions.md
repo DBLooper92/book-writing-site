@@ -8,21 +8,29 @@ Implemented now as the latest full entity slice.
 
 - `types/ai-session.ts`
 - `types/ai-brain-dump.ts`
+- `types/ai-manuscript-import.ts`
 - `lib/ai/brain-dump.ts`
+- `lib/ai/manuscript-import.ts`
+- `lib/ai/manuscript-import-workflow.ts`
+- `lib/ai/manuscript-import-matching.ts`
 - `lib/data/ai-sessions.ts`
 - `hooks/use-ai-sessions.ts`
 - `hooks/use-ai-session.ts`
 - `components/ai-sessions/ai-session-form.tsx`
 - `components/ai-sessions/brain-dump-form.tsx`
+- `components/ai-sessions/manuscript-import-form.tsx`
 - `components/ai-sessions/ai-session-card.tsx`
 - `components/ai-sessions/ai-session-brain-dump-detail.tsx`
+- `components/ai-sessions/ai-session-manuscript-import-detail.tsx`
 - `components/ai-sessions/ai-session-detail-section.tsx`
 - `app/ai-sessions/page.tsx`
 - `app/ai-sessions/brain-dump/page.tsx`
+- `app/ai-sessions/manuscript-import/page.tsx`
 - `app/ai-sessions/new/page.tsx`
 - `app/ai-sessions/[aiSessionId]/page.tsx`
 - `app/ai-sessions/[aiSessionId]/edit/page.tsx`
 - `app/api/ai-sessions/brain-dump/route.ts`
+- `app/api/ai-sessions/manuscript-import/route.ts`
 
 ## Important Rules
 
@@ -31,6 +39,7 @@ Implemented now as the latest full entity slice.
 - the slice follows the same list/create/detail/edit pattern as the existing entity slices
 - metadata create/edit stays intentionally focused on summarized session fields, not full transcript storage
 - brain-dump extraction stores source text, AI guidance, extraction status, and structured proposal output on the same scoped `ai_sessions` row
+- manuscript import stores upload, parse, mapping, processing, and proposal-review state on `ai_sessions.workflow_state` instead of inventing a separate import table
 - the extraction route now reads structured output more defensively from Responses API payloads, including nested response content, and now returns clearer extraction errors when OpenAI stops before finishing the schema output
 - failed brain-dump submissions now also return structured debug metadata to the form and server console, including timeout/config details, the failed `aiSessionId`, response summary, and a truncated raw provider-response preview when one exists
 - extracted proposals now persist review scaffolding on the same `ai_sessions` row, including review status, suggested action, matched-record placeholder data, candidate-match slots, and timeline placement suggestion placeholders
@@ -56,6 +65,8 @@ Implemented now as the latest full entity slice.
 - chapter and scene apply routes now also perform conservative reverse-link cleanup so safe manuscript links stay bidirectional when a reviewed proposal is applied
 - all proposal review panels now let the author explicitly choose one of the current candidate matches as the saved target record before `update` or `merge`
 - all proposal apply routes now block repeat applies by default, require the saved review status to be `reviewed`, and only run `update`/`merge` actions when a saved matched record is present
+- manuscript import now supports TXT and DOCX file upload, per-file parse status, chapter-first chunk planning with oversized-chapter sub-chunking fallback, required file-to-book mapping, resumable sequential per-book processing, and explicit review/apply controls for imported character, location, plot-thread, timeline-event, chapter, and scene proposals
+- manuscript import still keeps canon writes explicit: uploaded source files and extracted proposals do not create or update canon until the author applies a reviewed proposal
 - brain-dump output is reviewable planning structure only, not automatic canon creation
 - the server route requires a server-side encryption key so user-saved API keys can be encrypted at rest
 - the brain-dump form can be reached from both the dedicated AI Sessions route and the Timeline workspace lightbox
@@ -64,15 +75,17 @@ Implemented now as the latest full entity slice.
 
 ## Current Role In The Architecture
 
-AI Sessions turns tracked brainstorming, summarization, editing, drafting, and staged brain-dump extraction work into a real project-scoped slice without letting AI chat state become the source of truth for canon. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/ai-sessions.ts`, and the dedicated brain-dump route calls OpenAI with the authenticated user's saved key to turn long-form text into reviewable character, timeline event, chapter outline, and scene proposals stored back on the same scoped row. That extraction route now also handles structured Responses API payloads more defensively instead of assuming top-level `output_text`, so incomplete or nested schema responses fail more clearly, and failed extractions now return inspectable timeout/provider debug details to both the server console and the brain-dump form. Those proposals now also carry review metadata, deterministic candidate matches against the project's existing characters, timeline events, chapters, and scenes, same-dump duplicate signals that can drive conservative `merge` suggestions, session-level linked IDs for strong matched records, an on-demand targeted timeline-context layer for chronology review, persisted author-editable timeline review state, a real timeline-proposal apply path into scoped `timeline_events` rows, persisted author-editable character review state, a real character-proposal apply path into scoped `characters` rows, persisted author-editable chapter review state, a real chapter-proposal apply path into scoped `chapters` rows, persisted author-editable scene review state, a real scene-proposal apply path into scoped `scenes` rows, an on-demand targeted character-context layer for character-sheet review, an on-demand targeted chapter-context layer for manuscript review, and an on-demand targeted scene-context layer for manuscript-plus-chronology review. The current chapter and scene apply routes also do conservative reverse-link repair so safe existing chapter/scene relationships stay bidirectional after the author applies a proposal, the character apply route now repairs safe reverse scene and chapter character links for approved related-scene matches, and the review/apply layer now lets the author pick one of the saved candidate matches as the explicit target before `update` or `merge` while also requiring an explicitly saved `reviewed` status before any canon write.
+AI Sessions turns tracked brainstorming, summarization, editing, drafting, brain-dump extraction, and manuscript import into a real project-scoped slice without letting AI chat state become the source of truth for canon. The active runtime now uses Supabase fetch/refetch reads and writes through `lib/data/ai-sessions.ts`, and the dedicated brain-dump route calls OpenAI with the authenticated user's saved key to turn long-form text into reviewable character, timeline event, chapter outline, and scene proposals stored back on the same scoped row. The manuscript-import path extends that pattern to uploaded source files: it creates one import workspace AI session, stores manuscript files privately through `attachments`, parses them into chapter-first resumable chunk manifests, requires explicit book mapping before extraction, runs sequential per-book chunk extraction through the same saved key, and persists proposal bundles for characters, locations, plot threads, timeline events, chapters, and scenes on `workflow_state` for later review. Brain dump still has the deeper targeted-context layer today; manuscript import is a first-pass review workspace focused on end-to-end ingest, matching, review, and apply rather than deeper context panels or background processing.
 
 ## What Remains Later
 
 - delete flow
-- cross-slice polish beyond the current timeline, character, chapter, and scene proposal controls, including target search beyond the current saved candidate lists and cleanup on edge-case review/apply flows
+- cross-slice polish beyond the current review panels, including target search beyond the current saved candidate lists and cleanup on edge-case review/apply flows
 - deeper targeted contradiction checks and placement reasoning beyond the current first-pass timeline, character, chapter, and scene proposal context
 - deeper contradiction review and richer placement heuristics beyond the current first-pass targeted timeline guidance
-- chunking and consolidation for very large dumps so long-form projects do not require one giant prompt
+- richer manuscript-import review context, including targeted context panels for imported proposal groups where that proves worth the added complexity
+- background processing and richer operational telemetry for manuscript imports
+- broader manuscript file support beyond the current TXT and DOCX workflow
 - richer provider integration and operational metadata beyond the current brain-dump path
 - optional transcript or message-level tracking beyond the current summary fields and stored source text
 - linked navigation and validation against referenced project records

@@ -180,3 +180,9 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: Profile security deletion pass
 - Decision: Destructive project and account deletion must run through password-confirmed server routes that clean up uploaded storage objects before deleting the owning project rows or Supabase auth user.
 - Why it stays in force: This keeps delete authority off the client, preserves the rule that scoped storage should disappear with its owning scope, and makes project/account deletion explicit without pretending slice-level delete flows already exist.
+
+### D-029
+
+- Origin: First manuscript-import workflow pass
+- Decision: Existing-book import should reuse scoped `attachments` for stored source files and `ai_sessions.workflow_state` for upload, chunking, mapping, extraction, and review/apply state instead of creating a separate manuscript-import slice or auto-writing canon during parsing/extraction.
+- Why it stays in force: This keeps imported source material inside the existing project-scoped storage model, preserves `ai_sessions` as the review-first AI workflow workspace, avoids duplicating persistence architecture just for one AI workflow, and maintains the rule that schema-backed canon changes happen only through explicit author-approved apply actions.

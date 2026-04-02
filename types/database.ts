@@ -1643,6 +1643,7 @@ export type Database = {
           extraction_error: string;
           extraction_model: string;
           extraction_result: Json | null;
+          workflow_state: Json | null;
           linked_entity_types: string[];
           linked_entity_ids: string[];
           messages_count: number | null;
@@ -1674,6 +1675,7 @@ export type Database = {
           extraction_error?: string;
           extraction_model?: string;
           extraction_result?: Json | null;
+          workflow_state?: Json | null;
           linked_entity_types?: string[];
           linked_entity_ids?: string[];
           messages_count?: number | null;
@@ -1705,6 +1707,7 @@ export type Database = {
           extraction_error?: string;
           extraction_model?: string;
           extraction_result?: Json | null;
+          workflow_state?: Json | null;
           linked_entity_types?: string[];
           linked_entity_ids?: string[];
           messages_count?: number | null;

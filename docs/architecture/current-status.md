@@ -338,6 +338,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - edit page
 - reusable form, card, and detail-section components
 - private `entity-images` Supabase Storage bucket plus scoped storage metadata on `attachments`
+- private `project-documents` Supabase Storage bucket plus scoped document metadata on `attachments`
 - shared image-gallery uploader on linked Books, Chapters, Scenes, Characters, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Notes, Retcons, and Timeline Event detail pages
 - direct delete action for uploaded entity images from that shared gallery
 
@@ -349,13 +350,17 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - list page
 - create page
 - dedicated `/ai-sessions/brain-dump` route for long-form text extraction
+- dedicated `/ai-sessions/manuscript-import` route for upload-driven manuscript extraction
 - authenticated `/api/ai-sessions/brain-dump` server action that calls OpenAI Responses API with structured output and writes back to the scoped `ai_sessions` row
+- authenticated manuscript-import setup, prepare, book-mapping, process, proposal-review, and proposal-apply routes
 - authenticated `/api/profile/openai-key` server action for saving, masking, and deleting the signed-in user's OpenAI key on the profile row
 - detail page
 - edit page
 - reusable form, card, and detail-section components
 - persisted brain-dump source text, author guidance, extraction status, extraction error, extraction model, and structured proposal output on `ai_sessions`
+- persisted manuscript-import workflow state on `ai_sessions.workflow_state`, including uploaded files, chapter-first per-book chunk manifests, mapping state, proposal bundles, and resumable processing state
 - detail-page rendering for reviewable character, timeline event, chapter outline, and scene proposals generated from brain-dump text
+- detail-page rendering for manuscript-import file status, book mapping, extraction progress, and review/apply controls across character, location, plot-thread, timeline-event, chapter, and scene proposals
 - the brain-dump extraction route now tolerates Responses API structured output arriving through nested response content instead of only top-level `output_text`, and it now surfaces clearer failures when OpenAI stops early before finishing structured JSON
 - failed brain-dump submissions now also log structured timeout/provider debug metadata on the server and return on-screen technical details in the form, including the failed `aiSessionId`, response summary, and a truncated raw provider-response preview when one exists
 - proposal-level brain-dump review scaffolding persisted on `ai_sessions.extraction_result`, including review status, suggested action, matched-record placeholder data, candidate-match slots, and timeline placement suggestion placeholders
@@ -380,6 +385,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - chapter and scene brain-dump apply routes now also repair reverse manuscript links conservatively, syncing matched scene rows back to the applied chapter and syncing applied scenes back into their linked chapter's `scene_ids` when the existing scoped linkage is safe to preserve
 - proposal review panels can now explicitly promote a candidate match into the saved `matchedRecord`, so authors can choose the exact existing target before `update` or `merge`
 - brain-dump apply routes now reject repeat applies by default, require the proposal to be explicitly saved as `reviewed` before any canon write, and still require a saved `matchedRecord` before any `update` or `merge` write runs
+- manuscript import now also supports scoped TXT and DOCX uploads through `attachments`, file parsing into chapter-first per-book chunk plans with oversized-chapter sub-chunks, required book mapping before extraction, sequential per-book chunk processing through the signed-in user's saved OpenAI key, proposal consolidation across imported chunks, deterministic candidate matching for imported locations and plot threads in addition to the core manuscript slices, and explicit review/apply routes for imported character, location, plot-thread, timeline-event, chapter, and scene proposals
 - profile lightbox with Details, API keys, and Security tabs so each user can manage the key used by brain-dump extraction, delete individual projects, or permanently delete the whole account after re-entering the current password
 
 ## Partially Implemented
@@ -394,7 +400,7 @@ Books, Chapters, Scenes, Characters, Relationships, Factions, Cultures, Religion
 
 ### Workflow Depth
 
-Attachments now supports private image upload and delete workflow for linked entity detail pages through scoped `attachments` rows plus Supabase Storage, while the standalone manual attachment form remains intentionally metadata-first for broader file-reference use. AI Sessions now goes one step further with a provider-backed brain-dump extraction flow, persisted proposal-review scaffolding, a cheap deterministic matching pass against existing characters, timeline events, chapters, and scenes, same-dump duplicate detection for those extracted proposal groups, session-level linked-record IDs derived from strong cheap matches, on-demand targeted-context endpoints for timeline, character, chapter, and scene proposal review, and explicit author-driven apply paths that can write reviewed timeline, character, chapter, and scene proposals into real scoped canon rows. Timeline context now derives first-pass placement guidance plus continuity warnings grounded in both the loaded summaries and the anchor event's existing linked records, character context now loads matched character-sheet summaries, linked event context, and related-scene continuity warnings, chapter context now loads matched chapter summaries, point-of-view context, and linked scene context, the current chapter/scene apply routes repair safe reverse manuscript links so `chapters.scene_ids` and `scenes.chapter_id` stay aligned more often after author-approved applies, the character apply route now repairs safe reverse scene and chapter character links, and the review/apply layer now lets authors explicitly pick the target match while requiring a saved `reviewed` state before any canon write. Broader contradiction review beyond the current targeted checks, richer search beyond the current candidate lists, broader non-image file workflows, and broader AI workflows are still future work.
+Attachments now supports private image upload and delete workflow for linked entity detail pages plus private document upload for manuscript-import AI sessions through scoped `attachments` rows and Supabase Storage, while the standalone manual attachment form remains intentionally metadata-first for broader file-reference use. AI Sessions now goes one step further with a provider-backed brain-dump extraction flow and a first-pass manuscript-import workflow. The manuscript-import path now stores uploaded TXT and DOCX files privately, parses them into chapter-first per-book chunk plans with sub-chunks only when a chapter is too large, requires explicit book mapping before extraction, processes chunks sequentially through the signed-in user's saved OpenAI key, persists proposal bundles for characters, locations, plot threads, timeline events, chapters, and scenes on `workflow_state`, and lets the author explicitly review and apply those imported proposals into scoped canon rows. The current review/apply layer still remains first-pass: manuscript import does not yet add the deeper targeted-context panels used by the core brain-dump flow, processing is resumable but not background queued, and richer contradiction analysis, broader file formats, and richer target search remain future work.
 
 ### Cross-Entity Linking
 

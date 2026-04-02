@@ -52,9 +52,9 @@ Reason: this chronology layer is now implemented and powers the working timeline
 
 ### Near-Term Reference Tier
 
-- `attachments` and `ai_sessions` are now implemented
+- `attachments` and `ai_sessions` are now implemented, and the current high-value work is workflow polish on top of them
 
-Reason: File metadata and tracked AI workflow records now exist as real slices, so the next gains come from making them more connected and operationally useful.
+Reason: File metadata and tracked AI workflow records now exist as real slices, and the repo now also has a first-pass manuscript-import workflow built on those two slices. The next gains come from making that upload/process/review/apply path more stable and more operationally useful, not from adding a brand-new collection.
 
 ### Deeper Reference Tier
 
@@ -66,4 +66,4 @@ Reason: File metadata and tracked AI workflow records now exist as real slices, 
 
 ## Practical Rule
 
-Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Chapters, Scenes, Characters, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions are already in place; the next biggest value comes from stronger chronology integrity, lighter timeline reference loading, broader high-value linking across the slices that already exist, and richer operational workflows built on top of that structure.
+Build slices in the order that increases practical writing value and future cross-link usefulness, not just in alphabetical order. Books, Chapters, Scenes, Characters, Factions, Cultures, Religions, Governments, Organizations, Plot Threads, Outlines, Glossary Terms, Eras, Themes, Languages, Species, Items, Technologies, Locations, Timeline Events, Notes, Retcons, Attachments, and AI Sessions are already in place; the next biggest value comes from workflow polish on the structures that now exist, especially chronology integrity, lighter timeline reference loading, broader high-value linking across the current slices, and stronger operational workflows such as manuscript import built on top of `attachments` plus `ai_sessions`.

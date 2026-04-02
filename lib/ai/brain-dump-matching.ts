@@ -36,7 +36,14 @@ const MATCH_STOPWORDS = new Set([
   "without",
 ]);
 
-type BrainDumpMatchEntityType = "characters" | "timeline_events" | "chapters" | "scenes";
+type BrainDumpMatchEntityType =
+  | "books"
+  | "characters"
+  | "locations"
+  | "plot_threads"
+  | "timeline_events"
+  | "chapters"
+  | "scenes";
 
 export type BrainDumpMatchRecord = {
   entityType: BrainDumpMatchEntityType;

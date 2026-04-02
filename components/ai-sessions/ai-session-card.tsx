@@ -29,6 +29,9 @@ export function AiSessionCard({ aiSession }: AiSessionCardProps) {
           {aiSession.sessionType === "brain_dump" ? (
             <Badge>{formatEnumLabel(aiSession.extractionStatus)}</Badge>
           ) : null}
+          {aiSession.sessionType === "manuscript_import" && aiSession.workflowState ? (
+            <Badge>{formatEnumLabel(aiSession.workflowState.stage)}</Badge>
+          ) : null}
         </div>
       </div>
 
@@ -37,6 +40,12 @@ export function AiSessionCard({ aiSession }: AiSessionCardProps) {
         <span>Messages: {aiSession.messagesCount ?? "Unknown"}</span>
         {aiSession.sessionType === "brain_dump" && aiSession.outputSummary ? (
           <span>{aiSession.outputSummary}</span>
+        ) : null}
+        {aiSession.sessionType === "manuscript_import" && aiSession.workflowState ? (
+          <span>
+            {aiSession.workflowState.books.length} book
+            {aiSession.workflowState.books.length === 1 ? "" : "s"}
+          </span>
         ) : null}
       </div>
     </article>
