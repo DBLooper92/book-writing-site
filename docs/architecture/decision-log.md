@@ -186,3 +186,9 @@ Backfilled entries below reflect decisions already visible in the current repo a
 - Origin: First manuscript-import workflow pass
 - Decision: Existing-book import should reuse scoped `attachments` for stored source files and `ai_sessions.workflow_state` for upload, chunking, mapping, extraction, and review/apply state instead of creating a separate manuscript-import slice or auto-writing canon during parsing/extraction.
 - Why it stays in force: This keeps imported source material inside the existing project-scoped storage model, preserves `ai_sessions` as the review-first AI workflow workspace, avoids duplicating persistence architecture just for one AI workflow, and maintains the rule that schema-backed canon changes happen only through explicit author-approved apply actions.
+
+### D-030
+
+- Origin: AI access policy split
+- Decision: Per-user AI access should be split on `profiles` into creative and organizational capability toggles, with brain dump treated as creative and manuscript import treated as organizational.
+- Why it stays in force: This keeps AI access aligned with author intent instead of forcing one all-or-nothing preference, preserves account-level ownership for provider-adjacent settings, and lets the UI expose locked AI surfaces without pretending disabled workflows are unavailable or unclassified.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { buildBrainDumpMatchCandidates, type BrainDumpMatchRecord } from "@/lib/ai/brain-dump-matching";
+import { enforceProfileAiCapability } from "@/lib/server/profile-ai-capabilities";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
   normalizeBrainDumpExtractionResult,
@@ -47,6 +48,16 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (authError || !user) {
     return NextResponse.json({ error: "Sign in before applying a character proposal." }, { status: 401 });
+  }
+
+  const capabilityErrorResponse = await enforceProfileAiCapability(
+    supabase,
+    user.id,
+    "creative"
+  );
+
+  if (capabilityErrorResponse) {
+    return capabilityErrorResponse;
   }
 
   let input: ApplyInput;

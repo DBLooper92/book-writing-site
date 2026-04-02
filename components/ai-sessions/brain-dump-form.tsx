@@ -7,6 +7,8 @@ import { BRAIN_DUMP_MAX_CHARACTERS } from "@/lib/ai/brain-dump";
 import type { BrainDumpFailureDebugInfo } from "@/types/ai-brain-dump-debug";
 
 type BrainDumpFormProps = {
+  disabled?: boolean;
+  disabledReason?: string;
   projectId: string;
   onSuccess: (aiSessionId: string) => void;
 };
@@ -25,7 +27,12 @@ const EMPTY_VALUES: BrainDumpFormValues = {
   sourceText: "",
 };
 
-export function BrainDumpForm({ projectId, onSuccess }: BrainDumpFormProps) {
+export function BrainDumpForm({
+  disabled = false,
+  disabledReason = "",
+  projectId,
+  onSuccess,
+}: BrainDumpFormProps) {
   const [values, setValues] = useState<BrainDumpFormValues>(EMPTY_VALUES);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +41,10 @@ export function BrainDumpForm({ projectId, onSuccess }: BrainDumpFormProps) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (disabled) {
+      return;
+    }
 
     const title = values.title.trim();
     const sourceText = values.sourceText.trim();
@@ -102,75 +113,87 @@ export function BrainDumpForm({ projectId, onSuccess }: BrainDumpFormProps) {
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
-      <section className="grid gap-4 lg:grid-cols-2">
-        <Field
-          label="Session title"
-          value={values.title}
-          onChange={(value) => updateField("title", value)}
-          placeholder="Book one planning brain dump"
-          required
-        />
-        <Field
-          label="Purpose"
-          value={values.purpose}
-          onChange={(value) => updateField("purpose", value)}
-          placeholder="Pull out usable chapters, scenes, and timeline beats."
-        />
-      </section>
-
-      <TextareaField
-        label="AI guidance"
-        value={values.guidance}
-        onChange={(value) => updateField("guidance", value)}
-        placeholder="Optional: emphasize character arcs, be conservative with chronology, keep duplicate scenes merged."
-        rows={4}
-        hint="Optional. Use this to tell the AI what to prioritize while extracting structure."
-      />
-
-      <div className="space-y-2">
-        <TextareaField
-          label="Brain dump text"
-          value={values.sourceText}
-          onChange={(value) => updateField("sourceText", value)}
-          placeholder="Paste raw planning text, messy notes, partial prose, or a long exploratory dump here."
-          rows={18}
-          required
-          hint="This produces reviewable proposals only. It does not automatically create canon rows."
-        />
-        <div className={`text-xs ${sourceLengthTone}`}>
-          {sourceLength.toLocaleString()} / {BRAIN_DUMP_MAX_CHARACTERS.toLocaleString()} characters
-        </div>
-      </div>
-
-      {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <p>{error}</p>
-          {failedAiSessionId ? (
-            <p className="mt-2 text-xs text-red-700/80">
-              Failed session saved as{" "}
-              <Link href={`/ai-sessions/${failedAiSessionId}`} className="font-medium underline">
-                {failedAiSessionId}
-              </Link>
-              .
-            </p>
-          ) : null}
+      {disabled && disabledReason ? (
+        <div className="rounded-2xl border border-zinc-300 bg-zinc-100 px-4 py-3 text-sm text-zinc-600">
+          {disabledReason}
         </div>
       ) : null}
 
-      {debugInfo ? (
-        <BrainDumpDebugPanel
-          debugInfo={debugInfo}
-          failedAiSessionId={failedAiSessionId ?? debugInfo.aiSessionId}
-        />
-      ) : null}
-
-      <button
-        type="submit"
-        disabled={submitting || sourceLength > BRAIN_DUMP_MAX_CHARACTERS}
-        className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+      <fieldset
+        disabled={disabled}
+        className={`space-y-6 border-0 p-0 ${disabled ? "opacity-50" : ""}`}
       >
-        {submitting ? "Processing brain dump..." : "Run brain dump extraction"}
-      </button>
+        <section className="grid gap-4 lg:grid-cols-2">
+          <Field
+            label="Session title"
+            value={values.title}
+            onChange={(value) => updateField("title", value)}
+            placeholder="Book one planning brain dump"
+            required
+          />
+          <Field
+            label="Purpose"
+            value={values.purpose}
+            onChange={(value) => updateField("purpose", value)}
+            placeholder="Pull out usable chapters, scenes, and timeline beats."
+          />
+        </section>
+
+        <TextareaField
+          label="AI guidance"
+          value={values.guidance}
+          onChange={(value) => updateField("guidance", value)}
+          placeholder="Optional: emphasize character arcs, be conservative with chronology, keep duplicate scenes merged."
+          rows={4}
+          hint="Optional. Use this to tell the AI what to prioritize while extracting structure."
+        />
+
+        <div className="space-y-2">
+          <TextareaField
+            label="Brain dump text"
+            value={values.sourceText}
+            onChange={(value) => updateField("sourceText", value)}
+            placeholder="Paste raw planning text, messy notes, partial prose, or a long exploratory dump here."
+            rows={18}
+            required
+            hint="This produces reviewable proposals only. It does not automatically create canon rows."
+          />
+          <div className={`text-xs ${sourceLengthTone}`}>
+            {sourceLength.toLocaleString()} /{" "}
+            {BRAIN_DUMP_MAX_CHARACTERS.toLocaleString()} characters
+          </div>
+        </div>
+
+        {error ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p>{error}</p>
+            {failedAiSessionId ? (
+              <p className="mt-2 text-xs text-red-700/80">
+                Failed session saved as{" "}
+                <Link href={`/ai-sessions/${failedAiSessionId}`} className="font-medium underline">
+                  {failedAiSessionId}
+                </Link>
+                .
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {debugInfo ? (
+          <BrainDumpDebugPanel
+            debugInfo={debugInfo}
+            failedAiSessionId={failedAiSessionId ?? debugInfo.aiSessionId}
+          />
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={submitting || sourceLength > BRAIN_DUMP_MAX_CHARACTERS}
+          className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+        >
+          {submitting ? "Processing brain dump..." : "Run brain dump extraction"}
+        </button>
+      </fieldset>
     </form>
   );
 

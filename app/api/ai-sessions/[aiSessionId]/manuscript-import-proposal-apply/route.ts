@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { buildBrainDumpMatchCandidates, type BrainDumpMatchRecord } from "@/lib/ai/brain-dump-matching";
 import { markManuscriptImportProposalApplied } from "@/lib/ai/manuscript-import-workflow";
+import { enforceProfileAiCapability } from "@/lib/server/profile-ai-capabilities";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   ManuscriptImportCharacterProposal,
@@ -104,6 +105,16 @@ export async function POST(request: Request, context: RouteContext) {
       { error: "Sign in before applying a manuscript import proposal." },
       { status: 401 }
     );
+  }
+
+  const capabilityErrorResponse = await enforceProfileAiCapability(
+    supabase,
+    user.id,
+    "organizational"
+  );
+
+  if (capabilityErrorResponse) {
+    return capabilityErrorResponse;
   }
 
   let input: ApplyInput;

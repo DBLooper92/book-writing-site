@@ -5,11 +5,21 @@ import type { ReactNode } from "react";
 
 import { AiSessionCard } from "@/components/ai-sessions/ai-session-card";
 import { PageShell } from "@/components/layout/page-shell";
+import { useAiCapabilities } from "@/components/providers/ai-capabilities-provider";
 import { useAiSessions } from "@/hooks/use-ai-sessions";
+import {
+  getAiCapabilityDisabledMessage,
+  isAiCapabilityEnabled,
+} from "@/lib/ai/capabilities";
 
 export default function AiSessionsPage() {
+  const { loading: aiCapabilitiesLoading, settings: aiCapabilities } = useAiCapabilities();
   const { aiSessions, loading, error, user, activeProjectId, activeProject } =
     useAiSessions();
+  const creativeDisabled =
+    !aiCapabilitiesLoading && !isAiCapabilityEnabled(aiCapabilities, "creative");
+  const organizationalDisabled =
+    !aiCapabilitiesLoading && !isAiCapabilityEnabled(aiCapabilities, "organizational");
 
   return (
     <PageShell
@@ -34,18 +44,20 @@ export default function AiSessionsPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link
+            <FeatureActionButton
+              disabled={creativeDisabled}
+              disabledMessage={getAiCapabilityDisabledMessage("creative")}
               href="/ai-sessions/brain-dump"
-              className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-            >
-              Brain dump
-            </Link>
-            <Link
+              label="Brain dump"
+              tone="outline"
+            />
+            <FeatureActionButton
+              disabled={organizationalDisabled}
+              disabledMessage={getAiCapabilityDisabledMessage("organizational")}
               href="/ai-sessions/manuscript-import"
-              className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-            >
-              Manuscript import
-            </Link>
+              label="Manuscript import"
+              tone="outline"
+            />
             <Link
               href="/projects"
               className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
@@ -85,13 +97,19 @@ export default function AiSessionsPage() {
       ) : aiSessions.length === 0 ? (
         <StateCard tone="neutral">
           No AI sessions exist in {activeProject.title} yet.{" "}
-          <Link href="/ai-sessions/brain-dump" className="font-medium underline">
-            Start with a brain dump
-          </Link>{" "}
+          <FeatureInlineAction
+            disabled={creativeDisabled}
+            disabledMessage={getAiCapabilityDisabledMessage("creative")}
+            href="/ai-sessions/brain-dump"
+            label="Start with a brain dump"
+          />{" "}
           or{" "}
-          <Link href="/ai-sessions/manuscript-import" className="font-medium underline">
-            import an existing manuscript
-          </Link>{" "}
+          <FeatureInlineAction
+            disabled={organizationalDisabled}
+            disabledMessage={getAiCapabilityDisabledMessage("organizational")}
+            href="/ai-sessions/manuscript-import"
+            label="import an existing manuscript"
+          />{" "}
           or{" "}
           <Link href="/ai-sessions/new" className="font-medium underline">
             create the first AI session
@@ -106,6 +124,68 @@ export default function AiSessionsPage() {
         </section>
       )}
     </PageShell>
+  );
+}
+
+function FeatureActionButton({
+  disabled,
+  disabledMessage,
+  href,
+  label,
+  tone,
+}: {
+  disabled: boolean;
+  disabledMessage: string;
+  href: string;
+  label: string;
+  tone: "outline" | "solid";
+}) {
+  const className =
+    tone === "solid"
+      ? "inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+      : "inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50";
+
+  if (disabled) {
+    return (
+      <span
+        className="inline-flex h-11 cursor-not-allowed items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 px-4 text-sm font-medium text-zinc-400"
+        title={disabledMessage}
+      >
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <Link href={href} className={className}>
+      {label}
+    </Link>
+  );
+}
+
+function FeatureInlineAction({
+  disabled,
+  disabledMessage,
+  href,
+  label,
+}: {
+  disabled: boolean;
+  disabledMessage: string;
+  href: string;
+  label: string;
+}) {
+  if (disabled) {
+    return (
+      <span className="font-medium text-zinc-400" title={disabledMessage}>
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <Link href={href} className="font-medium underline">
+      {label}
+    </Link>
   );
 }
 

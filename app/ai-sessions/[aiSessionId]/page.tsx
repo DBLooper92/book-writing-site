@@ -8,13 +8,30 @@ import { AiSessionBrainDumpDetail } from "@/components/ai-sessions/ai-session-br
 import { AiSessionDetailSection } from "@/components/ai-sessions/ai-session-detail-section";
 import { AiSessionManuscriptImportDetail } from "@/components/ai-sessions/ai-session-manuscript-import-detail";
 import { PageShell } from "@/components/layout/page-shell";
+import { useAiCapabilities } from "@/components/providers/ai-capabilities-provider";
 import { useAiSession } from "@/hooks/use-ai-session";
+import {
+  getAiCapabilityDisabledMessage,
+  getAiCapabilityForSessionType,
+  isAiCapabilityEnabled,
+} from "@/lib/ai/capabilities";
 
 export default function AiSessionDetailPage() {
   const params = useParams<{ aiSessionId: string }>();
   const aiSessionId = typeof params.aiSessionId === "string" ? params.aiSessionId : null;
+  const { loading: aiCapabilitiesLoading, settings: aiCapabilities } = useAiCapabilities();
   const { aiSession, loading, error, user, uid, activeProjectId, activeProject } =
     useAiSession(aiSessionId);
+  const lockedCapability = aiSession
+    ? getAiCapabilityForSessionType(aiSession.sessionType)
+    : null;
+  const capabilityDisabled =
+    !!lockedCapability &&
+    !aiCapabilitiesLoading &&
+    !isAiCapabilityEnabled(aiCapabilities, lockedCapability);
+  const capabilityDisabledMessage = lockedCapability
+    ? getAiCapabilityDisabledMessage(lockedCapability)
+    : null;
 
   return (
     <PageShell
@@ -82,6 +99,13 @@ export default function AiSessionDetailPage() {
         </StateCard>
       ) : (
         <>
+          {capabilityDisabled && capabilityDisabledMessage ? (
+            <StateCard tone="neutral">
+              {capabilityDisabledMessage} This session remains visible, but its workflow controls
+              are locked until that capability is turned back on.
+            </StateCard>
+          ) : null}
+
           <AiSessionDetailSection title="Summary">
             <div className="space-y-3 text-sm leading-6 text-zinc-700">
               <p>{aiSession.summary || "No summary yet."}</p>
@@ -112,11 +136,17 @@ export default function AiSessionDetailPage() {
           </AiSessionDetailSection>
 
           {aiSession.sessionType === "brain_dump" || aiSession.sourceText ? (
-            <AiSessionBrainDumpDetail aiSession={aiSession} />
+            <AiSessionBrainDumpDetail
+              aiSession={aiSession}
+              disabled={capabilityDisabled}
+              disabledReason={capabilityDisabledMessage}
+            />
           ) : null}
           {aiSession.sessionType === "manuscript_import" && uid && activeProjectId ? (
             <AiSessionManuscriptImportDetail
               aiSession={aiSession}
+              disabled={capabilityDisabled}
+              disabledReason={capabilityDisabledMessage}
               uid={uid}
               projectId={activeProjectId}
             />

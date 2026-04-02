@@ -6,6 +6,7 @@ import {
   BRAIN_DUMP_TIMELINE_PLACEMENT_VALUES,
   selectBrainDumpMatchedRecord,
 } from "@/types/ai-brain-dump";
+import { enforceProfileAiCapability } from "@/lib/server/profile-ai-capabilities";
 import { normalizeManuscriptImportWorkflowState } from "@/types/ai-manuscript-import";
 import type { Json } from "@/types/database";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -38,6 +39,16 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   if (authError || !user) {
     return NextResponse.json({ error: "Sign in before updating proposal review." }, { status: 401 });
+  }
+
+  const capabilityErrorResponse = await enforceProfileAiCapability(
+    supabase,
+    user.id,
+    "organizational"
+  );
+
+  if (capabilityErrorResponse) {
+    return capabilityErrorResponse;
   }
 
   let input: ReviewInput;

@@ -16,6 +16,7 @@ import {
   validateBrainDumpRequestInput,
 } from "@/lib/ai/brain-dump";
 import { decryptProfileSecret } from "@/lib/security/profile-secrets";
+import { enforceProfileAiCapability } from "@/lib/server/profile-ai-capabilities";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   BrainDumpFailureDebugInfo,
@@ -61,6 +62,16 @@ export async function POST(request: Request) {
 
   if (authError || !user) {
     return NextResponse.json({ error: "Sign in before using brain dump extraction." }, { status: 401 });
+  }
+
+  const capabilityErrorResponse = await enforceProfileAiCapability(
+    supabase,
+    user.id,
+    "creative"
+  );
+
+  if (capabilityErrorResponse) {
+    return capabilityErrorResponse;
   }
 
   const body = await request.json().catch(() => null);

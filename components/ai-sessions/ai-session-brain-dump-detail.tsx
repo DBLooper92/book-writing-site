@@ -28,9 +28,15 @@ import {
 
 type AiSessionBrainDumpDetailProps = {
   aiSession: AiSession;
+  disabled?: boolean;
+  disabledReason?: string | null;
 };
 
-export function AiSessionBrainDumpDetail({ aiSession }: AiSessionBrainDumpDetailProps) {
+export function AiSessionBrainDumpDetail({
+  aiSession,
+  disabled = false,
+  disabledReason = null,
+}: AiSessionBrainDumpDetailProps) {
   const [extractionResult, setExtractionResult] = useState(aiSession.extractionResult);
 
   return (
@@ -83,207 +89,231 @@ export function AiSessionBrainDumpDetail({ aiSession }: AiSessionBrainDumpDetail
             </div>
           </AiSessionDetailSection>
 
-          <ProposalSection
-            title="Character proposals"
-            emptyMessage="No character proposals were extracted."
-            items={extractionResult.characters.map((proposal, proposalIndex) => ({
-              title: proposal.name,
-              badges: buildProposalBadges(proposal.review),
-              fields: [
-                { label: "Summary", value: proposal.summary },
-                {
-                  label: "Type",
-                  value: compactList([proposal.characterType, proposal.importanceLevel]),
-                },
-                { label: "Matched record", value: formatMatchedRecord(proposal.review.matchedRecord) },
-                {
-                  label: "Candidate matches",
-                  value: formatMatchCandidates(proposal.review.matchCandidates),
-                },
-                {
-                  label: "Possible duplicate proposals",
-                  value: formatDuplicateCandidates(proposal.review.duplicateCandidates),
-                },
-                { label: "Traits", value: compactList(proposal.traits) },
-                { label: "Motivations", value: compactList(proposal.motivations) },
-                { label: "Related scenes", value: compactList(proposal.relatedSceneTitles) },
-                { label: "Evidence", value: proposal.evidence },
-                { label: "Confidence", value: formatEnumLabel(proposal.confidence) },
-              ],
-              extra: (
-                <div className="space-y-4">
-                  <CharacterProposalReviewPanel
-                    aiSessionId={aiSession.id}
-                    proposalIndex={proposalIndex}
-                    review={proposal.review}
-                    onUpdatedProposal={(updatedProposal) => {
-                      setExtractionResult((current) =>
-                        replaceCharacterProposal(current, proposalIndex, updatedProposal)
-                      );
-                    }}
-                  />
-                  <CharacterProposalContextPanel
-                    aiSessionId={aiSession.id}
-                    proposalIndex={proposalIndex}
-                  />
-                </div>
-              ),
-            }))}
-          />
+          {disabled && disabledReason ? (
+            <div className="rounded-2xl border border-zinc-300 bg-zinc-100 px-4 py-3 text-sm text-zinc-600">
+              {disabledReason} Review, context-loading, and apply actions are read-only while this
+              capability is off.
+            </div>
+          ) : null}
 
-          <ProposalSection
-            title="Timeline event proposals"
-            emptyMessage="No timeline event proposals were extracted."
-            items={extractionResult.timelineEvents.map((proposal, proposalIndex) => ({
-              title: proposal.title,
-              badges: buildProposalBadges(proposal.review, proposal.placementSuggestion),
-              fields: [
-                { label: "Summary", value: proposal.summary },
-                {
-                  label: "Placement",
-                  value: compactList([formatEnumLabel(proposal.eventType), proposal.dateLabel]),
-                },
-                {
-                  label: "Suggested placement",
-                  value: formatPlacementSuggestion(proposal.placementSuggestion),
-                },
-                { label: "Matched record", value: formatMatchedRecord(proposal.review.matchedRecord) },
-                {
-                  label: "Candidate matches",
-                  value: formatMatchCandidates(proposal.review.matchCandidates),
-                },
-                {
-                  label: "Possible duplicate proposals",
-                  value: formatDuplicateCandidates(proposal.review.duplicateCandidates),
-                },
-                { label: "Characters", value: compactList(proposal.linkedCharacterNames) },
-                { label: "Locations", value: compactList(proposal.linkedLocationNames) },
-                { label: "Chapters", value: compactList(proposal.linkedChapterTitles) },
-                { label: "Scenes", value: compactList(proposal.linkedSceneTitles) },
-                { label: "Evidence", value: proposal.evidence },
-                { label: "Confidence", value: formatEnumLabel(proposal.confidence) },
-              ],
-              extra: (
-                <div className="space-y-4">
-                  <TimelineProposalReviewPanel
-                    aiSessionId={aiSession.id}
-                    proposalIndex={proposalIndex}
-                    review={proposal.review}
-                    placementSuggestion={proposal.placementSuggestion}
-                    onUpdatedProposal={(updatedProposal) => {
-                      setExtractionResult((current) =>
-                        replaceTimelineProposal(current, proposalIndex, updatedProposal)
-                      );
-                    }}
-                  />
-                  <TimelineProposalContextPanel
-                    aiSessionId={aiSession.id}
-                    proposalIndex={proposalIndex}
-                  />
-                </div>
-              ),
-            }))}
-          />
+          <fieldset
+            disabled={disabled}
+            className={`space-y-6 border-0 p-0 ${disabled ? "opacity-60" : ""}`}
+          >
+            <ProposalSection
+              title="Character proposals"
+              emptyMessage="No character proposals were extracted."
+              items={extractionResult.characters.map((proposal, proposalIndex) => ({
+                title: proposal.name,
+                badges: buildProposalBadges(proposal.review),
+                fields: [
+                  { label: "Summary", value: proposal.summary },
+                  {
+                    label: "Type",
+                    value: compactList([proposal.characterType, proposal.importanceLevel]),
+                  },
+                  {
+                    label: "Matched record",
+                    value: formatMatchedRecord(proposal.review.matchedRecord),
+                  },
+                  {
+                    label: "Candidate matches",
+                    value: formatMatchCandidates(proposal.review.matchCandidates),
+                  },
+                  {
+                    label: "Possible duplicate proposals",
+                    value: formatDuplicateCandidates(proposal.review.duplicateCandidates),
+                  },
+                  { label: "Traits", value: compactList(proposal.traits) },
+                  { label: "Motivations", value: compactList(proposal.motivations) },
+                  { label: "Related scenes", value: compactList(proposal.relatedSceneTitles) },
+                  { label: "Evidence", value: proposal.evidence },
+                  { label: "Confidence", value: formatEnumLabel(proposal.confidence) },
+                ],
+                extra: (
+                  <div className="space-y-4">
+                    <CharacterProposalReviewPanel
+                      aiSessionId={aiSession.id}
+                      proposalIndex={proposalIndex}
+                      review={proposal.review}
+                      onUpdatedProposal={(updatedProposal) => {
+                        setExtractionResult((current) =>
+                          replaceCharacterProposal(current, proposalIndex, updatedProposal)
+                        );
+                      }}
+                    />
+                    <CharacterProposalContextPanel
+                      aiSessionId={aiSession.id}
+                      proposalIndex={proposalIndex}
+                    />
+                  </div>
+                ),
+              }))}
+            />
 
-          <ProposalSection
-            title="Chapter outline proposals"
-            emptyMessage="No chapter outline proposals were extracted."
-            items={extractionResult.chapterOutlines.map((proposal, proposalIndex) => ({
-              title: proposal.title,
-              badges: buildProposalBadges(proposal.review),
-              fields: [
-                { label: "Summary", value: proposal.summary },
-                { label: "Matched record", value: formatMatchedRecord(proposal.review.matchedRecord) },
-                {
-                  label: "Candidate matches",
-                  value: formatMatchCandidates(proposal.review.matchCandidates),
-                },
-                {
-                  label: "Possible duplicate proposals",
-                  value: formatDuplicateCandidates(proposal.review.duplicateCandidates),
-                },
-                { label: "Purpose", value: proposal.purpose },
-                { label: "POV", value: proposal.pointOfViewCharacterName },
-                { label: "Estimated chapter number", value: proposal.estimatedChapterNumber },
-                { label: "Scene titles", value: compactList(proposal.sceneTitles) },
-                { label: "Evidence", value: proposal.evidence },
-                { label: "Confidence", value: formatEnumLabel(proposal.confidence) },
-              ],
-              extra: (
-                <div className="space-y-4">
-                  <ChapterProposalReviewPanel
-                    aiSessionId={aiSession.id}
-                    proposalIndex={proposalIndex}
-                    review={proposal.review}
-                    onUpdatedProposal={(updatedProposal) => {
-                      setExtractionResult((current) =>
-                        replaceChapterProposal(current, proposalIndex, updatedProposal)
-                      );
-                    }}
-                  />
-                  <ChapterProposalContextPanel
-                    aiSessionId={aiSession.id}
-                    proposalIndex={proposalIndex}
-                  />
-                </div>
-              ),
-            }))}
-          />
+            <ProposalSection
+              title="Timeline event proposals"
+              emptyMessage="No timeline event proposals were extracted."
+              items={extractionResult.timelineEvents.map((proposal, proposalIndex) => ({
+                title: proposal.title,
+                badges: buildProposalBadges(proposal.review, proposal.placementSuggestion),
+                fields: [
+                  { label: "Summary", value: proposal.summary },
+                  {
+                    label: "Placement",
+                    value: compactList([formatEnumLabel(proposal.eventType), proposal.dateLabel]),
+                  },
+                  {
+                    label: "Suggested placement",
+                    value: formatPlacementSuggestion(proposal.placementSuggestion),
+                  },
+                  {
+                    label: "Matched record",
+                    value: formatMatchedRecord(proposal.review.matchedRecord),
+                  },
+                  {
+                    label: "Candidate matches",
+                    value: formatMatchCandidates(proposal.review.matchCandidates),
+                  },
+                  {
+                    label: "Possible duplicate proposals",
+                    value: formatDuplicateCandidates(proposal.review.duplicateCandidates),
+                  },
+                  { label: "Characters", value: compactList(proposal.linkedCharacterNames) },
+                  { label: "Locations", value: compactList(proposal.linkedLocationNames) },
+                  { label: "Chapters", value: compactList(proposal.linkedChapterTitles) },
+                  { label: "Scenes", value: compactList(proposal.linkedSceneTitles) },
+                  { label: "Evidence", value: proposal.evidence },
+                  { label: "Confidence", value: formatEnumLabel(proposal.confidence) },
+                ],
+                extra: (
+                  <div className="space-y-4">
+                    <TimelineProposalReviewPanel
+                      aiSessionId={aiSession.id}
+                      proposalIndex={proposalIndex}
+                      review={proposal.review}
+                      placementSuggestion={proposal.placementSuggestion}
+                      onUpdatedProposal={(updatedProposal) => {
+                        setExtractionResult((current) =>
+                          replaceTimelineProposal(current, proposalIndex, updatedProposal)
+                        );
+                      }}
+                    />
+                    <TimelineProposalContextPanel
+                      aiSessionId={aiSession.id}
+                      proposalIndex={proposalIndex}
+                    />
+                  </div>
+                ),
+              }))}
+            />
 
-          <ProposalSection
-            title="Scene proposals"
-            emptyMessage="No scene proposals were extracted."
-            items={extractionResult.scenes.map((proposal, proposalIndex) => ({
-              title: proposal.title,
-              badges: buildProposalBadges(proposal.review),
-              fields: [
-                { label: "Summary", value: proposal.summary },
-                {
-                  label: "Type and POV",
-                  value: compactList([
-                    formatEnumLabel(proposal.sceneType),
-                    proposal.pointOfViewCharacterName,
-                  ]),
-                },
-                { label: "Matched record", value: formatMatchedRecord(proposal.review.matchedRecord) },
-                {
-                  label: "Candidate matches",
-                  value: formatMatchCandidates(proposal.review.matchCandidates),
-                },
-                {
-                  label: "Possible duplicate proposals",
-                  value: formatDuplicateCandidates(proposal.review.duplicateCandidates),
-                },
-                { label: "Goal", value: proposal.goal },
-                { label: "Conflict", value: proposal.conflict },
-                { label: "Outcome", value: proposal.outcome },
-                {
-                  label: "Linked timeline events",
-                  value: compactList(proposal.linkedTimelineEventTitles),
-                },
-                { label: "Evidence", value: proposal.evidence },
-                { label: "Confidence", value: formatEnumLabel(proposal.confidence) },
-              ],
-              extra: (
-                <div className="space-y-4">
-                  <SceneProposalReviewPanel
-                    aiSessionId={aiSession.id}
-                    proposalIndex={proposalIndex}
-                    review={proposal.review}
-                    onUpdatedProposal={(updatedProposal) => {
-                      setExtractionResult((current) =>
-                        replaceSceneProposal(current, proposalIndex, updatedProposal)
-                      );
-                    }}
-                  />
-                  <SceneProposalContextPanel
-                    aiSessionId={aiSession.id}
-                    proposalIndex={proposalIndex}
-                  />
-                </div>
-              ),
-            }))}
-          />
+            <ProposalSection
+              title="Chapter outline proposals"
+              emptyMessage="No chapter outline proposals were extracted."
+              items={extractionResult.chapterOutlines.map((proposal, proposalIndex) => ({
+                title: proposal.title,
+                badges: buildProposalBadges(proposal.review),
+                fields: [
+                  { label: "Summary", value: proposal.summary },
+                  {
+                    label: "Matched record",
+                    value: formatMatchedRecord(proposal.review.matchedRecord),
+                  },
+                  {
+                    label: "Candidate matches",
+                    value: formatMatchCandidates(proposal.review.matchCandidates),
+                  },
+                  {
+                    label: "Possible duplicate proposals",
+                    value: formatDuplicateCandidates(proposal.review.duplicateCandidates),
+                  },
+                  { label: "Purpose", value: proposal.purpose },
+                  { label: "POV", value: proposal.pointOfViewCharacterName },
+                  { label: "Estimated chapter number", value: proposal.estimatedChapterNumber },
+                  { label: "Scene titles", value: compactList(proposal.sceneTitles) },
+                  { label: "Evidence", value: proposal.evidence },
+                  { label: "Confidence", value: formatEnumLabel(proposal.confidence) },
+                ],
+                extra: (
+                  <div className="space-y-4">
+                    <ChapterProposalReviewPanel
+                      aiSessionId={aiSession.id}
+                      proposalIndex={proposalIndex}
+                      review={proposal.review}
+                      onUpdatedProposal={(updatedProposal) => {
+                        setExtractionResult((current) =>
+                          replaceChapterProposal(current, proposalIndex, updatedProposal)
+                        );
+                      }}
+                    />
+                    <ChapterProposalContextPanel
+                      aiSessionId={aiSession.id}
+                      proposalIndex={proposalIndex}
+                    />
+                  </div>
+                ),
+              }))}
+            />
+
+            <ProposalSection
+              title="Scene proposals"
+              emptyMessage="No scene proposals were extracted."
+              items={extractionResult.scenes.map((proposal, proposalIndex) => ({
+                title: proposal.title,
+                badges: buildProposalBadges(proposal.review),
+                fields: [
+                  { label: "Summary", value: proposal.summary },
+                  {
+                    label: "Type and POV",
+                    value: compactList([
+                      formatEnumLabel(proposal.sceneType),
+                      proposal.pointOfViewCharacterName,
+                    ]),
+                  },
+                  {
+                    label: "Matched record",
+                    value: formatMatchedRecord(proposal.review.matchedRecord),
+                  },
+                  {
+                    label: "Candidate matches",
+                    value: formatMatchCandidates(proposal.review.matchCandidates),
+                  },
+                  {
+                    label: "Possible duplicate proposals",
+                    value: formatDuplicateCandidates(proposal.review.duplicateCandidates),
+                  },
+                  { label: "Goal", value: proposal.goal },
+                  { label: "Conflict", value: proposal.conflict },
+                  { label: "Outcome", value: proposal.outcome },
+                  {
+                    label: "Linked timeline events",
+                    value: compactList(proposal.linkedTimelineEventTitles),
+                  },
+                  { label: "Evidence", value: proposal.evidence },
+                  { label: "Confidence", value: formatEnumLabel(proposal.confidence) },
+                ],
+                extra: (
+                  <div className="space-y-4">
+                    <SceneProposalReviewPanel
+                      aiSessionId={aiSession.id}
+                      proposalIndex={proposalIndex}
+                      review={proposal.review}
+                      onUpdatedProposal={(updatedProposal) => {
+                        setExtractionResult((current) =>
+                          replaceSceneProposal(current, proposalIndex, updatedProposal)
+                        );
+                      }}
+                    />
+                    <SceneProposalContextPanel
+                      aiSessionId={aiSession.id}
+                      proposalIndex={proposalIndex}
+                    />
+                  </div>
+                ),
+              }))}
+            />
+          </fieldset>
         </>
       ) : null}
     </>

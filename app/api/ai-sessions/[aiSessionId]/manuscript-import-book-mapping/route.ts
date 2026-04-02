@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { enforceProfileAiCapability } from "@/lib/server/profile-ai-capabilities";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizeManuscriptImportWorkflowState } from "@/types/ai-manuscript-import";
 import { buildBookDocument } from "@/types/book";
@@ -30,6 +31,16 @@ export async function PATCH(request: Request, context: RouteContext) {
       { error: "Sign in before mapping imported books." },
       { status: 401 }
     );
+  }
+
+  const capabilityErrorResponse = await enforceProfileAiCapability(
+    supabase,
+    user.id,
+    "organizational"
+  );
+
+  if (capabilityErrorResponse) {
+    return capabilityErrorResponse;
   }
 
   let input: MappingInput;

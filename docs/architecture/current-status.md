@@ -10,7 +10,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - Tailwind-based UI styling
 - compact fixed header with Project Overview, Timeline, +Create, Project, and account controls aligned top-right
 - shared slice-page shell that now adds a wiki-like left navigation rail across the entity slices plus the dedicated project-overview screen, with top-level text links routing to project overview or slice create pages and the active entry expanding into project-scoped record links
-- profile icon menu in the header with profile-lightbox tabs for details, API keys, password-confirmed project deletion, password-confirmed full account deletion, and logout entry points for authenticated users
+- profile icon menu in the header with profile-lightbox tabs for details, AI access, API keys, password-confirmed project deletion, password-confirmed full account deletion, and logout entry points for authenticated users
 - header hide-on-scroll-down and reveal-on-scroll-up behavior
 - home, auth, auth verification, backend test, and developer setup routes
 - Supabase browser/server clients, Next proxy session refresh, SQL migrations for `profiles`, `projects`, and the current story-bible entity tables, plus a simple non-realtime data layer for the active runtime
@@ -37,6 +37,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - password-confirmed project deletion from the profile security tab, including scoped record cascade through the project-owned tables plus uploaded-file cleanup for that project
 - `profiles.active_project_id` stored on the current Supabase-backed profile row
 - encrypted per-user OpenAI key metadata stored on the current Supabase-backed profile row for AI brain-dump usage
+- profile-backed `ai_creative_enabled` and `ai_organizational_enabled` settings that gate current AI features by capability instead of treating all AI access as one switch
 - last usable in-app route remembered client-side and only resumed when it still matches the same user and active project
 - simple fetch/refetch-oriented project data layer with client-side refresh triggers instead of realtime listeners
 
@@ -111,7 +112,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - chronology sorting that uses date fields for dated events, preserves insertion-hint ordering only for undated event groups, and uses same-date sequence ordering for tied dated placements
 - validation warnings for invalid date ranges and missing linked slice records
 - query-driven timeline create entry points that can prefill shared-year context inside `/timeline`
-- toolbar-level brain-dump lightbox beside the main create button so authors can launch AI extraction without leaving `/timeline`
+- toolbar-level brain-dump lightbox beside the main create button so authors can launch AI extraction without leaving `/timeline`, with that launcher visibly disabled when creative AI access is turned off on the profile
 - inline timeline composer sheet for create-from-notch and edit-in-place flows inside `/timeline`
 - nested inline-create lightboxes from the timeline event editor so linked books, chapters, scenes, characters, locations, eras, themes, plot threads, technologies, religions, cultures, and factions can be created without leaving the workspace sheet
 - nested linked-record detail lightboxes from timeline event linked chips so authors can inspect referenced slice records without leaving the timeline overlay stack
@@ -353,6 +354,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - dedicated `/ai-sessions/manuscript-import` route for upload-driven manuscript extraction
 - authenticated `/api/ai-sessions/brain-dump` server action that calls OpenAI Responses API with structured output and writes back to the scoped `ai_sessions` row
 - authenticated manuscript-import setup, prepare, book-mapping, process, proposal-review, and proposal-apply routes
+- authenticated `/api/profile/ai-capabilities` server action for reading and updating per-user creative-versus-organizational AI access on the profile row
 - authenticated `/api/profile/openai-key` server action for saving, masking, and deleting the signed-in user's OpenAI key on the profile row
 - detail page
 - edit page
@@ -361,6 +363,8 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - persisted manuscript-import workflow state on `ai_sessions.workflow_state`, including uploaded files, chapter-first per-book chunk manifests, mapping state, proposal bundles, and resumable processing state
 - detail-page rendering for reviewable character, timeline event, chapter outline, and scene proposals generated from brain-dump text
 - detail-page rendering for manuscript-import file status, book mapping, extraction progress, and review/apply controls across character, location, plot-thread, timeline-event, chapter, and scene proposals
+- creative AI now gates the brain-dump entry points plus the brain-dump review/context/apply controls, while organizational AI now gates manuscript-import entry points plus the mapping, processing, review, and apply controls
+- disabled AI capabilities stay visible in the UI as greyed, non-interactive controls instead of disappearing entirely, and the matching API routes now also reject direct requests while the capability is off
 - the brain-dump extraction route now tolerates Responses API structured output arriving through nested response content instead of only top-level `output_text`, and it now surfaces clearer failures when OpenAI stops early before finishing structured JSON
 - failed brain-dump submissions now also log structured timeout/provider debug metadata on the server and return on-screen technical details in the form, including the failed `aiSessionId`, response summary, and a truncated raw provider-response preview when one exists
 - proposal-level brain-dump review scaffolding persisted on `ai_sessions.extraction_result`, including review status, suggested action, matched-record placeholder data, candidate-match slots, and timeline placement suggestion placeholders
@@ -386,7 +390,7 @@ This file describes the codebase as it exists now. It should stay honest even wh
 - proposal review panels can now explicitly promote a candidate match into the saved `matchedRecord`, so authors can choose the exact existing target before `update` or `merge`
 - brain-dump apply routes now reject repeat applies by default, require the proposal to be explicitly saved as `reviewed` before any canon write, and still require a saved `matchedRecord` before any `update` or `merge` write runs
 - manuscript import now also supports scoped TXT and DOCX uploads through `attachments`, file parsing into chapter-first per-book chunk plans with oversized-chapter sub-chunks, required book mapping before extraction, sequential per-book chunk processing through the signed-in user's saved OpenAI key, proposal consolidation across imported chunks, deterministic candidate matching for imported locations and plot threads in addition to the core manuscript slices, and explicit review/apply routes for imported character, location, plot-thread, timeline-event, chapter, and scene proposals
-- profile lightbox with Details, API keys, and Security tabs so each user can manage the key used by brain-dump extraction, delete individual projects, or permanently delete the whole account after re-entering the current password
+- profile lightbox with Details, AI access, API keys, and Security tabs so each user can manage creative-versus-organizational AI access, manage the key used by AI workflows, delete individual projects, or permanently delete the whole account after re-entering the current password
 
 ## Partially Implemented
 

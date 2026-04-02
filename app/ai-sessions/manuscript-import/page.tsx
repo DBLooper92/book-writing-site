@@ -6,11 +6,23 @@ import type { ReactNode } from "react";
 
 import { ManuscriptImportForm } from "@/components/ai-sessions/manuscript-import-form";
 import { PageShell } from "@/components/layout/page-shell";
+import { useAiCapabilities } from "@/components/providers/ai-capabilities-provider";
 import { useActiveProject } from "@/hooks/use-active-project";
+import {
+  getAiCapabilityDisabledMessage,
+  isAiCapabilityEnabled,
+} from "@/lib/ai/capabilities";
 
 export default function ManuscriptImportPage() {
   const router = useRouter();
+  const { loading: aiCapabilitiesLoading, settings: aiCapabilities } = useAiCapabilities();
   const { user, uid, activeProjectId, activeProject, loading } = useActiveProject();
+  const creativeDisabled =
+    !aiCapabilitiesLoading && !isAiCapabilityEnabled(aiCapabilities, "creative");
+  const organizationalDisabled =
+    !aiCapabilitiesLoading && !isAiCapabilityEnabled(aiCapabilities, "organizational");
+  const creativeDisabledMessage = getAiCapabilityDisabledMessage("creative");
+  const organizationalDisabledMessage = getAiCapabilityDisabledMessage("organizational");
 
   return (
     <PageShell
@@ -42,12 +54,21 @@ export default function ManuscriptImportPage() {
             >
               Back to AI sessions
             </Link>
-            <Link
-              href="/ai-sessions/brain-dump"
-              className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-            >
-              Brain dump
-            </Link>
+            {creativeDisabled ? (
+              <span
+                className="inline-flex h-11 cursor-not-allowed items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 px-4 text-sm font-medium text-zinc-400"
+                title={creativeDisabledMessage}
+              >
+                Brain dump
+              </span>
+            ) : (
+              <Link
+                href="/ai-sessions/brain-dump"
+                className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+              >
+                Brain dump
+              </Link>
+            )}
           </div>
         </div>
       </section>
@@ -72,8 +93,17 @@ export default function ManuscriptImportPage() {
         </StateCard>
       ) : (
         <>
+          {organizationalDisabled ? (
+            <StateCard tone="neutral">
+              {organizationalDisabledMessage} This workflow stays visible here, but the import
+              form is locked until organizational AI is turned back on.
+            </StateCard>
+          ) : null}
+
           <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
             <ManuscriptImportForm
+              disabled={organizationalDisabled}
+              disabledReason={organizationalDisabledMessage}
               uid={uid}
               projectId={activeProjectId}
               onSuccess={(aiSessionId) => router.push(`/ai-sessions/${aiSessionId}`)}

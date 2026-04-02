@@ -9,6 +9,8 @@ import {
 } from "@/lib/data/attachments";
 
 type ManuscriptImportFormProps = {
+  disabled?: boolean;
+  disabledReason?: string;
   uid: string;
   projectId: string;
   onSuccess: (aiSessionId: string) => void;
@@ -31,6 +33,8 @@ const EMPTY_VALUES: ManuscriptImportFormValues = {
 const MAX_FILES = 10;
 
 export function ManuscriptImportForm({
+  disabled = false,
+  disabledReason = "",
   uid,
   projectId,
   onSuccess,
@@ -52,6 +56,10 @@ export function ManuscriptImportForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (disabled) {
+      return;
+    }
 
     const title = values.title.trim();
 
@@ -169,117 +177,128 @@ export function ManuscriptImportForm({
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
-      <section className="grid gap-4 lg:grid-cols-2">
-        <Field
-          label="Session title"
-          value={values.title}
-          onChange={(value) => updateField("title", value)}
-          placeholder="Book one manuscript import"
-          required
-        />
-        <Field
-          label="Purpose"
-          value={values.purpose}
-          onChange={(value) => updateField("purpose", value)}
-          placeholder="Break existing draft chapters and canon details into reviewable slices."
-        />
-      </section>
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
-        <TextareaField
-          label="AI guidance"
-          value={values.guidance}
-          onChange={(value) => updateField("guidance", value)}
-          placeholder="Optional: be conservative with character merges, keep chapter titles close to the source, prefer evidence-heavy summaries."
-          rows={5}
-          hint="Optional. Use this to bias the extraction while keeping the review gate in place."
-        />
-
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-          <p className="text-sm font-medium text-zinc-900">Import mode</p>
-          <div className="mt-3 space-y-3">
-            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-3">
-              <input
-                type="radio"
-                name="import-mode"
-                checked={values.importMode === "single_book"}
-                onChange={() => updateField("importMode", "single_book")}
-                className="mt-1"
-              />
-              <div>
-                <p className="text-sm font-medium text-zinc-900">Single book</p>
-                <p className="mt-1 text-xs leading-5 text-zinc-500">
-                  One TXT or DOCX file mapped into one book.
-                </p>
-              </div>
-            </label>
-            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-3">
-              <input
-                type="radio"
-                name="import-mode"
-                checked={values.importMode === "series"}
-                onChange={() => updateField("importMode", "series")}
-                className="mt-1"
-              />
-              <div>
-                <p className="text-sm font-medium text-zinc-900">Series</p>
-                <p className="mt-1 text-xs leading-5 text-zinc-500">
-                  Multiple files handled inside one review workspace.
-                </p>
-              </div>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <label className="block">
-        <span className="mb-2 block text-sm font-medium text-zinc-700">
-          Manuscript files *
-        </span>
-        <input
-          type="file"
-          accept=".txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          multiple={isSeries}
-          onChange={handleFilesChange}
-          className="block w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-950"
-        />
-        <span className="mt-2 block text-xs text-zinc-500">
-          V1 supports TXT and DOCX only. Maximum {MAX_FILES} files per import, 25 MB per file.
-        </span>
-      </label>
-
-      {fileSummary.length > 0 ? (
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
-            Selected files
-          </p>
-          <div className="mt-3 grid gap-2">
-            {fileSummary.map((file) => (
-              <div
-                key={file.name}
-                className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 ring-1 ring-zinc-200"
-              >
-                <span className="text-sm text-zinc-900">{file.name}</span>
-                <span className="text-xs text-zinc-500">{file.sizeLabel}</span>
-              </div>
-            ))}
-          </div>
+      {disabled && disabledReason ? (
+        <div className="rounded-2xl border border-zinc-300 bg-zinc-100 px-4 py-3 text-sm text-zinc-600">
+          {disabledReason}
         </div>
       ) : null}
 
-      {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
-
-      <button
-        type="submit"
-        disabled={submitting}
-        className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+      <fieldset
+        disabled={disabled}
+        className={`space-y-6 border-0 p-0 ${disabled ? "opacity-50" : ""}`}
       >
-        {submitting ? "Preparing manuscript import..." : "Create manuscript import"}
-      </button>
+        <section className="grid gap-4 lg:grid-cols-2">
+          <Field
+            label="Session title"
+            value={values.title}
+            onChange={(value) => updateField("title", value)}
+            placeholder="Book one manuscript import"
+            required
+          />
+          <Field
+            label="Purpose"
+            value={values.purpose}
+            onChange={(value) => updateField("purpose", value)}
+            placeholder="Break existing draft chapters and canon details into reviewable slices."
+          />
+        </section>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+          <TextareaField
+            label="AI guidance"
+            value={values.guidance}
+            onChange={(value) => updateField("guidance", value)}
+            placeholder="Optional: be conservative with character merges, keep chapter titles close to the source, prefer evidence-heavy summaries."
+            rows={5}
+            hint="Optional. Use this to bias the extraction while keeping the review gate in place."
+          />
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <p className="text-sm font-medium text-zinc-900">Import mode</p>
+            <div className="mt-3 space-y-3">
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-3">
+                <input
+                  type="radio"
+                  name="import-mode"
+                  checked={values.importMode === "single_book"}
+                  onChange={() => updateField("importMode", "single_book")}
+                  className="mt-1"
+                />
+                <div>
+                  <p className="text-sm font-medium text-zinc-900">Single book</p>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500">
+                    One TXT or DOCX file mapped into one book.
+                  </p>
+                </div>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-3">
+                <input
+                  type="radio"
+                  name="import-mode"
+                  checked={values.importMode === "series"}
+                  onChange={() => updateField("importMode", "series")}
+                  className="mt-1"
+                />
+                <div>
+                  <p className="text-sm font-medium text-zinc-900">Series</p>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500">
+                    Multiple files handled inside one review workspace.
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-zinc-700">
+            Manuscript files *
+          </span>
+          <input
+            type="file"
+            accept=".txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            multiple={isSeries}
+            onChange={handleFilesChange}
+            className="block w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-950"
+          />
+          <span className="mt-2 block text-xs text-zinc-500">
+            V1 supports TXT and DOCX only. Maximum {MAX_FILES} files per import, 25 MB per file.
+          </span>
+        </label>
+
+        {fileSummary.length > 0 ? (
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+              Selected files
+            </p>
+            <div className="mt-3 grid gap-2">
+              {fileSummary.map((file) => (
+                <div
+                  key={file.name}
+                  className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 ring-1 ring-zinc-200"
+                >
+                  <span className="text-sm text-zinc-900">{file.name}</span>
+                  <span className="text-xs text-zinc-500">{file.sizeLabel}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+        >
+          {submitting ? "Preparing manuscript import..." : "Create manuscript import"}
+        </button>
+      </fieldset>
     </form>
   );
 }

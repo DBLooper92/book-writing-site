@@ -6,11 +6,20 @@ import type { ReactNode } from "react";
 
 import { BrainDumpForm } from "@/components/ai-sessions/brain-dump-form";
 import { PageShell } from "@/components/layout/page-shell";
+import { useAiCapabilities } from "@/components/providers/ai-capabilities-provider";
 import { useActiveProject } from "@/hooks/use-active-project";
+import {
+  getAiCapabilityDisabledMessage,
+  isAiCapabilityEnabled,
+} from "@/lib/ai/capabilities";
 
 export default function BrainDumpPage() {
   const router = useRouter();
+  const { loading: aiCapabilitiesLoading, settings: aiCapabilities } = useAiCapabilities();
   const { user, activeProjectId, activeProject, loading } = useActiveProject();
+  const creativeDisabled =
+    !aiCapabilitiesLoading && !isAiCapabilityEnabled(aiCapabilities, "creative");
+  const creativeDisabledMessage = getAiCapabilityDisabledMessage("creative");
 
   return (
     <PageShell
@@ -71,8 +80,17 @@ export default function BrainDumpPage() {
         </StateCard>
       ) : (
         <>
+          {creativeDisabled ? (
+            <StateCard tone="neutral">
+              {creativeDisabledMessage} This workflow stays visible here, but the form is locked
+              until creative AI is turned back on.
+            </StateCard>
+          ) : null}
+
           <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
             <BrainDumpForm
+              disabled={creativeDisabled}
+              disabledReason={creativeDisabledMessage}
               projectId={activeProjectId}
               onSuccess={(aiSessionId) => router.push(`/ai-sessions/${aiSessionId}`)}
             />

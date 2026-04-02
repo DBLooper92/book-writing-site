@@ -4,6 +4,7 @@ import {
   buildBrainDumpMatchCandidates,
   type BrainDumpMatchRecord,
 } from "@/lib/ai/brain-dump-matching";
+import { enforceProfileAiCapability } from "@/lib/server/profile-ai-capabilities";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizeBrainDumpExtractionResult } from "@/types/ai-brain-dump";
 import type {
@@ -64,6 +65,16 @@ export async function GET(request: Request, context: RouteContext) {
 
   if (authError || !user) {
     return NextResponse.json({ error: "Sign in before loading proposal context." }, { status: 401 });
+  }
+
+  const capabilityErrorResponse = await enforceProfileAiCapability(
+    supabase,
+    user.id,
+    "creative"
+  );
+
+  if (capabilityErrorResponse) {
+    return capabilityErrorResponse;
   }
 
   const { data: aiSession, error: aiSessionError } = await supabase

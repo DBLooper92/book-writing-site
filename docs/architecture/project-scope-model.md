@@ -6,7 +6,7 @@ This file defines the active runtime ownership model. The app is Supabase-only a
 
 - `profiles.id` identifies the signed-in user
 - `profiles.active_project_id` stores the active project pointer for that user
-- `profiles` now also holds encrypted per-user API key settings and other account-level preferences that should not be project-scoped
+- `profiles` now also holds encrypted per-user API key settings, AI capability toggles, and other account-level preferences that should not be project-scoped
 - `projects` rows are owned through `projects.user_id`
 - every story-bible entity row carries `user_id`, `project_id`, and readable `id`
 

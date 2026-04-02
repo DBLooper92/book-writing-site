@@ -7,6 +7,7 @@ import {
   MANUSCRIPT_IMPORT_MAX_FILES,
   parseManuscriptTextFromBuffer,
 } from "@/lib/ai/manuscript-import";
+import { enforceProfileAiCapability } from "@/lib/server/profile-ai-capabilities";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizeManuscriptImportWorkflowState } from "@/types/ai-manuscript-import";
 
@@ -39,6 +40,16 @@ export async function POST(_request: Request, context: RouteContext) {
       { error: "Sign in before preparing a manuscript import." },
       { status: 401 }
     );
+  }
+
+  const capabilityErrorResponse = await enforceProfileAiCapability(
+    supabase,
+    user.id,
+    "organizational"
+  );
+
+  if (capabilityErrorResponse) {
+    return capabilityErrorResponse;
   }
 
   const { data: aiSession, error: aiSessionError } = await supabase

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useLayoutEffect, useRef } from "react";
 
+import { useAiCapabilities } from "@/components/providers/ai-capabilities-provider";
 import { useAiSessions } from "@/hooks/use-ai-sessions";
 import { useAttachments } from "@/hooks/use-attachments";
 import { useBooks } from "@/hooks/use-books";
@@ -28,6 +29,11 @@ import { useSpecies } from "@/hooks/use-species";
 import { useTechnologies } from "@/hooks/use-technologies";
 import { useThemes } from "@/hooks/use-themes";
 import { useTimelineEvents } from "@/hooks/use-timeline-events";
+import {
+  getAiCapabilityDisabledMessage,
+  isAiCapabilityEnabled,
+  type AiCapability,
+} from "@/lib/ai/capabilities";
 import type { UserProject } from "@/lib/data/projects";
 import type { AiSession } from "@/types/ai-session";
 import type { Attachment } from "@/types/attachment";
@@ -62,6 +68,7 @@ type SliceSidebarContentProps = {
 type SliceSidebarContentComponent = (props: SliceSidebarContentProps) => React.JSX.Element;
 
 type SliceNavigationConfig = {
+  capability?: AiCapability | null;
   key: string;
   label: string;
   href: string;
@@ -97,6 +104,7 @@ export function getActiveSliceNavigationConfig(pathname: string | null) {
 
 export function SliceSidebar({ pathname }: { pathname: string }) {
   const activeConfig = getActiveSliceNavigationConfig(pathname);
+  const { loading: aiCapabilitiesLoading, settings: aiCapabilities } = useAiCapabilities();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
 
@@ -163,6 +171,15 @@ export function SliceSidebar({ pathname }: { pathname: string }) {
             {SLICE_NAVIGATION_CONFIG.map((config, index) => {
               const isActive = config.key === activeConfig.key;
               const ActiveSliceContent = config.renderContent;
+              const disabled =
+                config.capability !== null &&
+                config.capability !== undefined &&
+                !aiCapabilitiesLoading &&
+                !isAiCapabilityEnabled(aiCapabilities, config.capability);
+              const disabledMessage =
+                config.capability !== null && config.capability !== undefined
+                  ? getAiCapabilityDisabledMessage(config.capability)
+                  : null;
 
               return (
                 <div
@@ -170,18 +187,32 @@ export function SliceSidebar({ pathname }: { pathname: string }) {
                   className={index === 0 ? undefined : "border-t border-zinc-200"}
                 >
                   <div className="px-5 py-4 sm:px-6">
-                    <Link
-                      href={config.href}
-                      scroll={false}
-                      aria-current={isActive ? "page" : undefined}
-                      className={`inline-flex text-sm leading-6 underline-offset-4 transition ${
-                        isActive
-                          ? "font-semibold text-zinc-950 underline decoration-zinc-950"
-                          : "text-zinc-600 decoration-zinc-300 hover:text-zinc-950 hover:underline"
-                      }`}
-                    >
-                      {config.label}
-                    </Link>
+                    {disabled ? (
+                      <div
+                        title={disabledMessage ?? undefined}
+                        className={`inline-flex items-center gap-2 text-sm leading-6 ${
+                          isActive ? "font-semibold text-zinc-400" : "text-zinc-400"
+                        }`}
+                      >
+                        <span>{config.label}</span>
+                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+                          off
+                        </span>
+                      </div>
+                    ) : (
+                      <Link
+                        href={config.href}
+                        scroll={false}
+                        aria-current={isActive ? "page" : undefined}
+                        className={`inline-flex text-sm leading-6 underline-offset-4 transition ${
+                          isActive
+                            ? "font-semibold text-zinc-950 underline decoration-zinc-950"
+                            : "text-zinc-600 decoration-zinc-300 hover:text-zinc-950 hover:underline"
+                        }`}
+                      >
+                        {config.label}
+                      </Link>
+                    )}
 
                     {isActive ? <ActiveSliceContent pathname={pathname} /> : null}
                   </div>
@@ -340,6 +371,23 @@ function setSavedSidebarScrollTop(value: number) {
 
 function ProjectOverviewSidebarContent() {
   return <div className="mt-3" />;
+}
+
+function UploadBookSeriesSidebarContent() {
+  return (
+    <div className="mt-3 space-y-3 pl-3">
+      <SliceSidebarState>
+        Start a review-first manuscript import for one book or an existing series.
+      </SliceSidebarState>
+      <Link
+        href="/ai-sessions"
+        scroll={false}
+        className="inline-flex text-sm leading-6 text-zinc-600 underline decoration-zinc-300 underline-offset-4 transition hover:text-zinc-950"
+      >
+        Open AI sessions
+      </Link>
+    </div>
+  );
 }
 
 const BooksSliceContent = createSliceSidebarContent({
@@ -543,6 +591,14 @@ const AiSessionsSliceContent = createSliceSidebarContent({
 });
 
 const SLICE_NAVIGATION_CONFIG: SliceNavigationConfig[] = [
+  {
+    key: "upload-book-series",
+    label: "Upload Book/ Series",
+    href: "/ai-sessions/manuscript-import",
+    matchPath: matchesSlicePath("/ai-sessions/manuscript-import"),
+    renderContent: UploadBookSeriesSidebarContent,
+    capability: "organizational",
+  },
   {
     key: "project-overview",
     label: "Project Overview",

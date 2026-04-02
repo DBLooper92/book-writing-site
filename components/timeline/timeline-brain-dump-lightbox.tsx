@@ -5,6 +5,8 @@ import { BrainDumpForm } from "@/components/ai-sessions/brain-dump-form";
 type TimelineBrainDumpLightboxProps = {
   activeProjectId: string;
   activeProjectTitle: string;
+  disabled?: boolean;
+  disabledReason?: string;
   onClose: () => void;
   onSuccess: (aiSessionId: string) => void;
 };
@@ -12,6 +14,8 @@ type TimelineBrainDumpLightboxProps = {
 export function TimelineBrainDumpLightbox({
   activeProjectId,
   activeProjectTitle,
+  disabled = false,
+  disabledReason = "",
   onClose,
   onSuccess,
 }: TimelineBrainDumpLightboxProps) {
@@ -49,7 +53,12 @@ export function TimelineBrainDumpLightbox({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-          <BrainDumpForm projectId={activeProjectId} onSuccess={onSuccess} />
+          <BrainDumpForm
+            disabled={disabled}
+            disabledReason={disabledReason}
+            projectId={activeProjectId}
+            onSuccess={onSuccess}
+          />
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createEmptyManuscriptImportWorkflowState } from "@/types/ai-manuscript-import";
 import { buildAiSessionIdFromTitle, slugifyAiSessionTitle } from "@/types/ai-session";
+import { enforceProfileAiCapability } from "@/lib/server/profile-ai-capabilities";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
   normalizeManuscriptImportCreateInput,
@@ -23,6 +24,16 @@ export async function POST(request: Request) {
       { error: "Sign in before starting a manuscript import." },
       { status: 401 }
     );
+  }
+
+  const capabilityErrorResponse = await enforceProfileAiCapability(
+    supabase,
+    user.id,
+    "organizational"
+  );
+
+  if (capabilityErrorResponse) {
+    return capabilityErrorResponse;
   }
 
   const body = await request.json().catch(() => null);

@@ -15,6 +15,7 @@ import {
   consolidateManuscriptImportWorkflowState,
 } from "@/lib/ai/manuscript-import-workflow";
 import { decryptProfileSecret } from "@/lib/security/profile-secrets";
+import { enforceProfileAiCapability } from "@/lib/server/profile-ai-capabilities";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
   normalizeManuscriptImportWorkflowState,
@@ -62,6 +63,16 @@ export async function POST(request: Request, context: RouteContext) {
       { error: "Sign in before processing a manuscript import." },
       { status: 401 }
     );
+  }
+
+  const capabilityErrorResponse = await enforceProfileAiCapability(
+    supabase,
+    user.id,
+    "organizational"
+  );
+
+  if (capabilityErrorResponse) {
+    return capabilityErrorResponse;
   }
 
   let input: ProcessInput;

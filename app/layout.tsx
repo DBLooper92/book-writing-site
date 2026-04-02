@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { TopNav } from "@/components/navigation/top-nav";
+import { AiCapabilitiesProvider } from "@/components/providers/ai-capabilities-provider";
 
 import "./globals.css";
 
@@ -30,10 +31,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="min-h-screen bg-zinc-50 text-zinc-950">
-          <TopNav />
-          <div className="pt-24">{children}</div>
-        </div>
+        <AiCapabilitiesProvider>
+          <div className="min-h-screen bg-zinc-50 text-zinc-950">
+            <TopNav />
+            <div className="pt-24">{children}</div>
+          </div>
+        </AiCapabilitiesProvider>
       </body>
     </html>
   );

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { enforceProfileAiCapability } from "@/lib/server/profile-ai-capabilities";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
   BRAIN_DUMP_PROPOSAL_REVIEW_STATUS_VALUES,
@@ -34,6 +35,16 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   if (authError || !user) {
     return NextResponse.json({ error: "Sign in before updating proposal review." }, { status: 401 });
+  }
+
+  const capabilityErrorResponse = await enforceProfileAiCapability(
+    supabase,
+    user.id,
+    "creative"
+  );
+
+  if (capabilityErrorResponse) {
+    return capabilityErrorResponse;
   }
 
   let payload: CharacterProposalReviewUpdateInput;

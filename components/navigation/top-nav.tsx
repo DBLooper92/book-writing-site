@@ -5,47 +5,58 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ProfileLightbox } from "@/components/profile/profile-lightbox";
+import { useAiCapabilities } from "@/components/providers/ai-capabilities-provider";
 import { useAuthUser } from "@/hooks/use-auth-user";
+import {
+  getAiCapabilityDisabledMessage,
+  isAiCapabilityEnabled,
+  type AiCapability,
+} from "@/lib/ai/capabilities";
 import { signOutCurrentUser } from "@/lib/auth";
 import { emitProjectsChanged, useUserProjects } from "@/hooks/use-user-projects";
 import { rememberLastAppRoute } from "@/lib/navigation/last-app-route";
 import { setActiveProjectForUser } from "@/lib/data/projects";
 import { buildTimelineCreateHref } from "@/lib/timeline/create-route";
 
-const createLinks = [
-  { href: "/books/new", label: "Book" },
-  { href: "/chapters/new", label: "Chapter" },
-  { href: "/scenes/new", label: "Scene" },
-  { href: "/characters/new", label: "Character" },
-  { href: "/relationships/new", label: "Relationship" },
-  { href: "/factions/new", label: "Faction" },
-  { href: "/cultures/new", label: "Culture" },
-  { href: "/religions/new", label: "Religion" },
-  { href: "/governments/new", label: "Government" },
-  { href: "/organizations/new", label: "Organization" },
-  { href: "/plot-threads/new", label: "Plot thread" },
-  { href: "/outlines/new", label: "Outline" },
-  { href: "/glossary-terms/new", label: "Glossary term" },
-  { href: "/eras/new", label: "Era" },
-  { href: "/themes/new", label: "Theme" },
-  { href: "/languages/new", label: "Language" },
-  { href: "/species/new", label: "Species" },
-  { href: "/items/new", label: "Item" },
-  { href: "/technologies/new", label: "Technology" },
-  { href: "/locations/new", label: "Location" },
-  { href: buildTimelineCreateHref(), label: "Timeline event" },
-  { href: "/notes/new", label: "Note" },
-  { href: "/retcons/new", label: "Retcon" },
-  { href: "/attachments/new", label: "Attachment" },
-  { href: "/ai-sessions/brain-dump", label: "Brain dump" },
-  { href: "/ai-sessions/new", label: "AI session" },
-] as const;
+const createLinks: ReadonlyArray<{
+  capability: AiCapability | null;
+  href: string;
+  label: string;
+}> = [
+  { href: "/books/new", label: "Book", capability: null },
+  { href: "/chapters/new", label: "Chapter", capability: null },
+  { href: "/scenes/new", label: "Scene", capability: null },
+  { href: "/characters/new", label: "Character", capability: null },
+  { href: "/relationships/new", label: "Relationship", capability: null },
+  { href: "/factions/new", label: "Faction", capability: null },
+  { href: "/cultures/new", label: "Culture", capability: null },
+  { href: "/religions/new", label: "Religion", capability: null },
+  { href: "/governments/new", label: "Government", capability: null },
+  { href: "/organizations/new", label: "Organization", capability: null },
+  { href: "/plot-threads/new", label: "Plot thread", capability: null },
+  { href: "/outlines/new", label: "Outline", capability: null },
+  { href: "/glossary-terms/new", label: "Glossary term", capability: null },
+  { href: "/eras/new", label: "Era", capability: null },
+  { href: "/themes/new", label: "Theme", capability: null },
+  { href: "/languages/new", label: "Language", capability: null },
+  { href: "/species/new", label: "Species", capability: null },
+  { href: "/items/new", label: "Item", capability: null },
+  { href: "/technologies/new", label: "Technology", capability: null },
+  { href: "/locations/new", label: "Location", capability: null },
+  { href: buildTimelineCreateHref(), label: "Timeline event", capability: null },
+  { href: "/notes/new", label: "Note", capability: null },
+  { href: "/retcons/new", label: "Retcon", capability: null },
+  { href: "/attachments/new", label: "Attachment", capability: null },
+  { href: "/ai-sessions/brain-dump", label: "Brain dump", capability: "creative" },
+  { href: "/ai-sessions/new", label: "AI session", capability: null },
+];
 
 type OpenMenu = "create" | "project" | "account" | null;
 
 export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const { loading: aiCapabilitiesLoading, settings: aiCapabilities } = useAiCapabilities();
   const { user, uid } = useAuthUser();
   const { projects, activeProjectId, loading: projectsLoading } = useUserProjects(uid);
   const activeProject = useMemo(
@@ -214,20 +225,15 @@ export function TopNav() {
                 <div className="absolute right-0 top-[calc(100%+0.75rem)] w-72 rounded-3xl border border-zinc-200 bg-white p-2 shadow-xl">
                   <div className="max-h-[24rem] overflow-y-auto">
                     {createLinks.map((link) => (
-                      <Link
+                      <CreateMenuLink
                         key={link.href}
+                        active={isActivePath(pathname, link.href)}
+                        capability={link.capability}
                         href={link.href}
-                        className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm transition ${
-                          isActivePath(pathname, link.href)
-                            ? "bg-zinc-950 text-white"
-                            : "text-zinc-700 hover:bg-zinc-100"
-                        }`}
-                      >
-                        <span>{link.label}</span>
-                        <span className="text-[10px] uppercase tracking-[0.18em] text-current/60">
-                          new
-                        </span>
-                      </Link>
+                        label={link.label}
+                        loading={aiCapabilitiesLoading}
+                        settings={aiCapabilities}
+                      />
                     ))}
                   </div>
                 </div>
@@ -380,6 +386,52 @@ export function TopNav() {
         />
       ) : null}
     </>
+  );
+}
+
+function CreateMenuLink({
+  active,
+  capability,
+  href,
+  label,
+  loading,
+  settings,
+}: {
+  active: boolean;
+  capability: AiCapability | null;
+  href: string;
+  label: string;
+  loading: boolean;
+  settings: {
+    creativeEnabled: boolean;
+    organizationalEnabled: boolean;
+  };
+}) {
+  const disabled =
+    capability !== null && !loading && !isAiCapabilityEnabled(settings, capability);
+
+  if (disabled) {
+    return (
+      <div
+        className="flex items-center justify-between rounded-2xl bg-zinc-100 px-4 py-3 text-sm text-zinc-400"
+        title={getAiCapabilityDisabledMessage(capability)}
+      >
+        <span>{label}</span>
+        <span className="text-[10px] uppercase tracking-[0.18em] text-current/80">off</span>
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm transition ${
+        active ? "bg-zinc-950 text-white" : "text-zinc-700 hover:bg-zinc-100"
+      }`}
+    >
+      <span>{label}</span>
+      <span className="text-[10px] uppercase tracking-[0.18em] text-current/60">new</span>
+    </Link>
   );
 }
 

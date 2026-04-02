@@ -1,5 +1,6 @@
 import "client-only";
 
+import { normalizeAiCapabilitySettings } from "@/lib/ai/capabilities";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/types/database";
 
@@ -17,6 +18,8 @@ export type UserProfile = {
   plan: string;
   status: string;
   activeProjectId: string | null;
+  aiCreativeEnabled: boolean;
+  aiOrganizationalEnabled: boolean;
   createdAt: string;
   updatedAt: string;
   lastLoginAt: string | null;
@@ -29,7 +32,7 @@ export async function getProfileById(uid: string) {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, email, display_name, role, plan, status, active_project_id, created_at, updated_at, last_login_at"
+      "id, email, display_name, role, plan, status, active_project_id, ai_creative_enabled, ai_organizational_enabled, created_at, updated_at, last_login_at"
     )
     .eq("id", uid)
     .maybeSingle();
@@ -83,6 +86,8 @@ function normalizeProfileRow(row: ProfileRow): UserProfile {
     plan: row.plan,
     status: row.status,
     activeProjectId: row.active_project_id,
+    aiCreativeEnabled: normalizeAiCapabilitySettings(row).creativeEnabled,
+    aiOrganizationalEnabled: normalizeAiCapabilitySettings(row).organizationalEnabled,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     lastLoginAt: row.last_login_at,

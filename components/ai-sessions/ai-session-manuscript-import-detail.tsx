@@ -14,6 +14,8 @@ import type { AiSession } from "@/types/ai-session";
 
 type AiSessionManuscriptImportDetailProps = {
   aiSession: AiSession;
+  disabled?: boolean;
+  disabledReason?: string | null;
   uid: string;
   projectId: string;
 };
@@ -22,6 +24,8 @@ type AnyProposal = ManuscriptImportProposalByType<ManuscriptImportProposalType>;
 
 export function AiSessionManuscriptImportDetail({
   aiSession,
+  disabled = false,
+  disabledReason = null,
   uid,
   projectId,
 }: AiSessionManuscriptImportDetailProps) {
@@ -192,106 +196,162 @@ export function AiSessionManuscriptImportDetail({
         </div>
       </AiSessionDetailSection>
 
-      <AiSessionDetailSection title="Book mapping">
-        <div className="space-y-4">
-          {workflowState.books.map((book) => (
-            <BookMappingCard
-              key={book.importBookId}
-              aiSessionId={aiSession.id}
-              book={book}
-              books={books}
-            />
-          ))}
-          {booksError ? <p className="text-sm text-red-700">{booksError}</p> : null}
+      {disabled && disabledReason ? (
+        <div className="rounded-2xl border border-zinc-300 bg-zinc-100 px-4 py-3 text-sm text-zinc-600">
+          {disabledReason} Mapping, processing, review, and apply actions are read-only while this
+          capability is off.
         </div>
-      </AiSessionDetailSection>
+      ) : null}
 
-      <AiSessionDetailSection title="Extraction progress">
-        <div className="space-y-4">
-          {workflowState.books.map((book) => {
-            const nextChunk = book.chunks.find(
-              (chunk) => chunk.status === "pending" || chunk.status === "failed"
-            );
-
-            return (
-              <article
-                key={`progress-${book.importBookId}`}
-                className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-medium text-zinc-950">{book.title}</h3>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {book.processedChunkCount} / {book.chunkCount} chunks processed |{" "}
-                      {formatEnumLabel(book.status)}
-                    </p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {nextChunk
-                        ? `Next chapter unit: ${nextChunk.heading}`
-                        : "All chapter units processed."}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleProcessBook(book.importBookId)}
-                    disabled={
-                      processingBookId === book.importBookId ||
-                      !allParsedBooksMapped ||
-                      book.mapping.mappingStatus !== "saved" ||
-                      book.chunkCount === 0 ||
-                      book.status === "ready_for_review"
-                    }
-                    className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 transition disabled:cursor-not-allowed disabled:opacity-50 hover:bg-zinc-50"
-                  >
-                    {processingBookId === book.importBookId ? "Processing..." : "Process book"}
-                  </button>
-                </div>
-                {book.lastError ? <p className="mt-3 text-sm text-red-700">{book.lastError}</p> : null}
-              </article>
-            );
-          })}
-          {!allParsedBooksMapped ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Save book mappings for every parsed manuscript file before extraction can begin.
-            </div>
-          ) : null}
-          {processingError ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {processingError}
-            </div>
-          ) : null}
-        </div>
-      </AiSessionDetailSection>
-
-      <AiSessionDetailSection title="Review workspace">
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="text-sm font-medium text-zinc-700" htmlFor="book-filter">
-              Book filter
-            </label>
-            <select
-              id="book-filter"
-              value={selectedBookFilter}
-              onChange={(event) => setSelectedBookFilter(event.target.value)}
-              className="h-11 rounded-full border border-zinc-200 bg-white px-4 text-sm text-zinc-900"
-            >
-              <option value="all">All books</option>
-              {availableBookFilters.map((book) => (
-                <option key={book.importBookId} value={book.importBookId}>
-                  {book.title}
-                </option>
-              ))}
-            </select>
+      <fieldset
+        disabled={disabled}
+        className={`space-y-6 border-0 p-0 ${disabled ? "opacity-60" : ""}`}
+      >
+        <AiSessionDetailSection title="Book mapping">
+          <div className="space-y-4">
+            {workflowState.books.map((book) => (
+              <BookMappingCard
+                key={book.importBookId}
+                aiSessionId={aiSession.id}
+                book={book}
+                books={books}
+              />
+            ))}
+            {booksError ? <p className="text-sm text-red-700">{booksError}</p> : null}
           </div>
+        </AiSessionDetailSection>
 
-          <ProposalSection title="Characters" aiSessionId={aiSession.id} proposalType="characters" proposals={workflowState.proposals.characters.filter((proposal) => matchesBookFilter(proposal, selectedBookFilter))} />
-          <ProposalSection title="Locations" aiSessionId={aiSession.id} proposalType="locations" proposals={workflowState.proposals.locations.filter((proposal) => matchesBookFilter(proposal, selectedBookFilter))} />
-          <ProposalSection title="Plot threads" aiSessionId={aiSession.id} proposalType="plotThreads" proposals={workflowState.proposals.plotThreads.filter((proposal) => matchesBookFilter(proposal, selectedBookFilter))} />
-          <ProposalSection title="Timeline" aiSessionId={aiSession.id} proposalType="timelineEvents" proposals={workflowState.proposals.timelineEvents.filter((proposal) => matchesBookFilter(proposal, selectedBookFilter))} />
-          <ProposalSection title="Chapters" aiSessionId={aiSession.id} proposalType="chapters" proposals={workflowState.proposals.chapters.filter((proposal) => matchesBookFilter(proposal, selectedBookFilter))} />
-          <ProposalSection title="Scenes" aiSessionId={aiSession.id} proposalType="scenes" proposals={workflowState.proposals.scenes.filter((proposal) => matchesBookFilter(proposal, selectedBookFilter))} />
-        </div>
-      </AiSessionDetailSection>
+        <AiSessionDetailSection title="Extraction progress">
+          <div className="space-y-4">
+            {workflowState.books.map((book) => {
+              const nextChunk = book.chunks.find(
+                (chunk) => chunk.status === "pending" || chunk.status === "failed"
+              );
+
+              return (
+                <article
+                  key={`progress-${book.importBookId}`}
+                  className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-medium text-zinc-950">{book.title}</h3>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {book.processedChunkCount} / {book.chunkCount} chunks processed |{" "}
+                        {formatEnumLabel(book.status)}
+                      </p>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {nextChunk
+                          ? `Next chapter unit: ${nextChunk.heading}`
+                          : "All chapter units processed."}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleProcessBook(book.importBookId)}
+                      disabled={
+                        processingBookId === book.importBookId ||
+                        !allParsedBooksMapped ||
+                        book.mapping.mappingStatus !== "saved" ||
+                        book.chunkCount === 0 ||
+                        book.status === "ready_for_review"
+                      }
+                      className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 transition disabled:cursor-not-allowed disabled:opacity-50 hover:bg-zinc-50"
+                    >
+                      {processingBookId === book.importBookId ? "Processing..." : "Process book"}
+                    </button>
+                  </div>
+                  {book.lastError ? (
+                    <p className="mt-3 text-sm text-red-700">{book.lastError}</p>
+                  ) : null}
+                </article>
+              );
+            })}
+            {!allParsedBooksMapped ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Save book mappings for every parsed manuscript file before extraction can begin.
+              </div>
+            ) : null}
+            {processingError ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {processingError}
+              </div>
+            ) : null}
+          </div>
+        </AiSessionDetailSection>
+
+        <AiSessionDetailSection title="Review workspace">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-sm font-medium text-zinc-700" htmlFor="book-filter">
+                Book filter
+              </label>
+              <select
+                id="book-filter"
+                value={selectedBookFilter}
+                onChange={(event) => setSelectedBookFilter(event.target.value)}
+                className="h-11 rounded-full border border-zinc-200 bg-white px-4 text-sm text-zinc-900"
+              >
+                <option value="all">All books</option>
+                {availableBookFilters.map((book) => (
+                  <option key={book.importBookId} value={book.importBookId}>
+                    {book.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <ProposalSection
+              title="Characters"
+              aiSessionId={aiSession.id}
+              proposalType="characters"
+              proposals={workflowState.proposals.characters.filter((proposal) =>
+                matchesBookFilter(proposal, selectedBookFilter)
+              )}
+            />
+            <ProposalSection
+              title="Locations"
+              aiSessionId={aiSession.id}
+              proposalType="locations"
+              proposals={workflowState.proposals.locations.filter((proposal) =>
+                matchesBookFilter(proposal, selectedBookFilter)
+              )}
+            />
+            <ProposalSection
+              title="Plot threads"
+              aiSessionId={aiSession.id}
+              proposalType="plotThreads"
+              proposals={workflowState.proposals.plotThreads.filter((proposal) =>
+                matchesBookFilter(proposal, selectedBookFilter)
+              )}
+            />
+            <ProposalSection
+              title="Timeline"
+              aiSessionId={aiSession.id}
+              proposalType="timelineEvents"
+              proposals={workflowState.proposals.timelineEvents.filter((proposal) =>
+                matchesBookFilter(proposal, selectedBookFilter)
+              )}
+            />
+            <ProposalSection
+              title="Chapters"
+              aiSessionId={aiSession.id}
+              proposalType="chapters"
+              proposals={workflowState.proposals.chapters.filter((proposal) =>
+                matchesBookFilter(proposal, selectedBookFilter)
+              )}
+            />
+            <ProposalSection
+              title="Scenes"
+              aiSessionId={aiSession.id}
+              proposalType="scenes"
+              proposals={workflowState.proposals.scenes.filter((proposal) =>
+                matchesBookFilter(proposal, selectedBookFilter)
+              )}
+            />
+          </div>
+        </AiSessionDetailSection>
+      </fieldset>
     </>
   );
 }

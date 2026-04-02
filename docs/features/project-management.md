@@ -14,10 +14,12 @@ Implemented now.
 - project rename
 - password-confirmed project deletion from the profile lightbox Security tab
 - active project stored on `profiles.active_project_id`
+- profile-backed AI capability toggles on `profiles.ai_creative_enabled` and `profiles.ai_organizational_enabled`
 - compact header project control that shows `Project` until an active project exists, then shows the active project title
 - compact header overview control with a globe icon that routes directly to `/project-overview`
 - header project menu option that opens the project create screen
 - header profile icon with a small account menu that can open the profile lightbox or log the user out
+- profile lightbox AI access tab where authors can independently enable or disable creative AI versus organizational AI for the account
 - project deletion now removes the `projects` row, lets database cascades clear the scoped slice rows, removes uploaded files tied to that project, and switches `profiles.active_project_id` when the deleted project was active
 - project deletion preserves the current signed-in session; only full account deletion signs the user out
 

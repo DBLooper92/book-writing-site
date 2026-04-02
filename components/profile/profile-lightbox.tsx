@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { useAiCapabilities } from "@/components/providers/ai-capabilities-provider";
 import { emitProjectsChanged, useUserProjects } from "@/hooks/use-user-projects";
+import { getAiCapabilityDisabledMessage } from "@/lib/ai/capabilities";
 import { signOutCurrentUser } from "@/lib/auth";
 import { clearRememberedAppRoute } from "@/lib/navigation/last-app-route";
 import type { UserProject } from "@/lib/data/projects";
@@ -15,7 +17,7 @@ type ProfileLightboxProps = {
   uid: string;
 };
 
-type ProfileTab = "details" | "api_keys" | "security";
+type ProfileTab = "details" | "ai_access" | "api_keys" | "security";
 
 type OpenAiKeyState = {
   hasKey: boolean;
@@ -61,6 +63,12 @@ export function ProfileLightbox({
 }: ProfileLightboxProps) {
   const router = useRouter();
   const { activeProjectId, loading: projectsLoading, projects } = useUserProjects(uid);
+  const {
+    error: aiCapabilitiesError,
+    loading: loadingAiCapabilities,
+    replaceSettings,
+    settings: aiCapabilities,
+  } = useAiCapabilities();
   const [activeTab, setActiveTab] = useState<ProfileTab>("details");
   const [keyState, setKeyState] = useState<OpenAiKeyState>(EMPTY_KEY_STATE);
   const [loadingKeyState, setLoadingKeyState] = useState(true);
@@ -68,10 +76,17 @@ export function ProfileLightbox({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [apiKeyFeedback, setApiKeyFeedback] = useState<FeedbackState>(null);
+  const [aiAccessDraft, setAiAccessDraft] = useState(aiCapabilities);
+  const [savingAiAccess, setSavingAiAccess] = useState(false);
+  const [aiAccessFeedback, setAiAccessFeedback] = useState<FeedbackState>(null);
   const [securityPassword, setSecurityPassword] = useState("");
   const [securityFeedback, setSecurityFeedback] = useState<FeedbackState>(null);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
+
+  useEffect(() => {
+    setAiAccessDraft(aiCapabilities);
+  }, [aiCapabilities]);
 
   useEffect(() => {
     let cancelled = false;
@@ -209,6 +224,51 @@ export function ProfileLightbox({
       });
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleSaveAiAccess() {
+    setSavingAiAccess(true);
+    setAiAccessFeedback(null);
+
+    try {
+      const response = await fetch("/api/profile/ai-capabilities", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(aiAccessDraft),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | {
+            creativeEnabled?: boolean;
+            organizationalEnabled?: boolean;
+            error?: string;
+          }
+        | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "Unable to save AI access settings.");
+      }
+
+      replaceSettings({
+        creativeEnabled: payload?.creativeEnabled ?? true,
+        organizationalEnabled: payload?.organizationalEnabled ?? true,
+      });
+      setAiAccessFeedback({
+        message: "AI access settings updated.",
+        tone: "success",
+      });
+    } catch (nextError) {
+      setAiAccessFeedback({
+        message:
+          nextError instanceof Error
+            ? nextError.message
+            : "Unable to save AI access settings.",
+        tone: "error",
+      });
+    } finally {
+      setSavingAiAccess(false);
     }
   }
 
@@ -350,6 +410,11 @@ export function ProfileLightbox({
               onClick={() => setActiveTab("details")}
             />
             <TabButton
+              active={activeTab === "ai_access"}
+              label="AI access"
+              onClick={() => setActiveTab("ai_access")}
+            />
+            <TabButton
               active={activeTab === "api_keys"}
               label="API keys"
               onClick={() => setActiveTab("api_keys")}
@@ -386,6 +451,21 @@ export function ProfileLightbox({
           <div className="mt-6">
             {activeTab === "details" ? (
               <DetailsTab displayName={displayName} email={email} />
+            ) : activeTab === "ai_access" ? (
+              <AiAccessTab
+                draft={aiAccessDraft}
+                feedback={aiAccessFeedback}
+                isDirty={
+                  aiAccessDraft.creativeEnabled !== aiCapabilities.creativeEnabled ||
+                  aiAccessDraft.organizationalEnabled !==
+                    aiCapabilities.organizationalEnabled
+                }
+                loading={loadingAiCapabilities}
+                loadingError={aiCapabilitiesError}
+                onChangeDraft={setAiAccessDraft}
+                onSave={handleSaveAiAccess}
+                saving={savingAiAccess}
+              />
             ) : activeTab === "api_keys" ? (
               <ApiKeysTab
                 deleting={deleting}
@@ -467,6 +547,94 @@ function DetailsTab({
       <section className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5 text-sm leading-6 text-zinc-600">
         More profile details can live here later.
       </section>
+    </div>
+  );
+}
+
+function AiAccessTab({
+  draft,
+  feedback,
+  isDirty,
+  loading,
+  loadingError,
+  onChangeDraft,
+  onSave,
+  saving,
+}: {
+  draft: {
+    creativeEnabled: boolean;
+    organizationalEnabled: boolean;
+  };
+  feedback: FeedbackState;
+  isDirty: boolean;
+  loading: boolean;
+  loadingError: string | null;
+  onChangeDraft: (value: {
+    creativeEnabled: boolean;
+    organizationalEnabled: boolean;
+  }) => void;
+  onSave: () => Promise<void>;
+  saving: boolean;
+}) {
+  const controlsDisabled = loading || saving;
+
+  return (
+    <div className="space-y-5">
+      <section className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5 text-sm leading-6 text-zinc-600">
+        Choose which kinds of AI help are allowed on this account. Disabled features stay visible
+        in the UI, but they remain locked until you turn them back on here.
+      </section>
+
+      <ToggleCard
+        checked={draft.creativeEnabled}
+        description="Allows AI features that can invent, extend, or reshape story material. Current surface: brain dump extraction."
+        disabled={controlsDisabled}
+        label="Creative AI"
+        onChange={(checked) =>
+          onChangeDraft({
+            ...draft,
+            creativeEnabled: checked,
+          })
+        }
+      />
+
+      <ToggleCard
+        checked={draft.organizationalEnabled}
+        description="Allows AI features that structure or extract from material you already wrote. Current surface: manuscript import."
+        disabled={controlsDisabled}
+        label="Organizational AI"
+        onChange={(checked) =>
+          onChangeDraft({
+            ...draft,
+            organizationalEnabled: checked,
+          })
+        }
+      />
+
+      {loading ? (
+        <FeedbackCard tone="success">Loading current AI access settings...</FeedbackCard>
+      ) : null}
+      {loadingError ? <FeedbackCard tone="error">{loadingError}</FeedbackCard> : null}
+      {feedback ? <FeedbackCard tone={feedback.tone}>{feedback.message}</FeedbackCard> : null}
+
+      <div className="rounded-3xl border border-zinc-200 bg-white p-5 text-sm leading-6 text-zinc-700">
+        <p className="font-medium text-zinc-950">Current lock messages</p>
+        <p className="mt-3 text-zinc-600">{getAiCapabilityDisabledMessage("creative")}</p>
+        <p className="mt-2 text-zinc-600">
+          {getAiCapabilityDisabledMessage("organizational")}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={() => void onSave()}
+          disabled={controlsDisabled || !isDirty}
+          className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+        >
+          {saving ? "Saving..." : isDirty ? "Save AI access" : "Saved"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -765,6 +933,48 @@ function SavedKeyCard({
   );
 }
 
+function ToggleCard({
+  checked,
+  description,
+  disabled,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  description: string;
+  disabled: boolean;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <section className="rounded-3xl border border-zinc-200 bg-white p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-zinc-950">{label}</p>
+          <p className="mt-3 text-sm leading-6 text-zinc-600">{description}</p>
+        </div>
+
+        <label className="inline-flex cursor-pointer items-center gap-3">
+          <span className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+            {checked ? "On" : "Off"}
+          </span>
+          <span className="relative inline-flex">
+            <input
+              type="checkbox"
+              checked={checked}
+              disabled={disabled}
+              onChange={(event) => onChange(event.target.checked)}
+              className="peer sr-only"
+            />
+            <span className="h-7 w-12 rounded-full bg-zinc-300 transition peer-checked:bg-zinc-950 peer-disabled:cursor-not-allowed peer-disabled:bg-zinc-200" />
+            <span className="pointer-events-none absolute left-1 top-1 h-5 w-5 rounded-full bg-white transition peer-checked:translate-x-5 peer-disabled:bg-zinc-100" />
+          </span>
+        </label>
+      </div>
+    </section>
+  );
+}
+
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
     <section className="rounded-3xl border border-zinc-200 bg-white p-5">
@@ -834,6 +1044,8 @@ function SpinnerIcon() {
 
 function getTabEyebrow(activeTab: ProfileTab) {
   switch (activeTab) {
+    case "ai_access":
+      return "AI access";
     case "api_keys":
       return "API keys";
     case "security":
@@ -845,6 +1057,8 @@ function getTabEyebrow(activeTab: ProfileTab) {
 
 function getTabTitle(activeTab: ProfileTab) {
   switch (activeTab) {
+    case "ai_access":
+      return "AI capability access";
     case "api_keys":
       return "Provider keys";
     case "security":

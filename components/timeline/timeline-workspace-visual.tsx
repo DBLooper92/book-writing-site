@@ -5,11 +5,16 @@ import { useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { TimelineBrainDumpLightbox } from "@/components/timeline/timeline-brain-dump-lightbox";
+import { useAiCapabilities } from "@/components/providers/ai-capabilities-provider";
 import { TimelineEventComposerSheet } from "@/components/timeline/timeline-event-composer-sheet";
 import { TimelineEventDetailLightbox } from "@/components/timeline/timeline-event-detail-lightbox";
 import { TimelineWorkspaceControls } from "@/components/timeline/timeline-workspace-controls";
 import { TimelineWorkspaceEventCard } from "@/components/timeline/timeline-workspace-event-card";
 import { useTimelineFormOptions } from "@/hooks/use-timeline-form-options";
+import {
+  getAiCapabilityDisabledMessage,
+  isAiCapabilityEnabled,
+} from "@/lib/ai/capabilities";
 import {
   buildTimelineLayoutModel,
   type TimelineLayoutEventItem,
@@ -56,6 +61,7 @@ export function TimelineWorkspaceVisual({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { loading: aiCapabilitiesLoading, settings: aiCapabilities } = useAiCapabilities();
   const [filtersPinned, setFiltersPinned] = useState(false);
   const [requestedSelectedEventId, setRequestedSelectedEventId] = useState<string | null>(null);
   const [viewerEventId, setViewerEventId] = useState<string | null>(null);
@@ -102,6 +108,9 @@ export function TimelineWorkspaceVisual({
     !formOptions.loading && !formOptions.error ? formOptions.referenceMaps : null;
   const availableReferenceSets =
     !formOptions.loading && !formOptions.error ? formOptions.referenceSets : null;
+  const creativeDisabled =
+    !aiCapabilitiesLoading && !isAiCapabilityEnabled(aiCapabilities, "creative");
+  const creativeDisabledMessage = getAiCapabilityDisabledMessage("creative");
 
   function registerEventRef(eventId: string, node: HTMLDivElement | null) {
     if (node) {
@@ -256,7 +265,9 @@ export function TimelineWorkspaceVisual({
                 <button
                   type="button"
                   onClick={() => setBrainDumpOpen(true)}
-                  className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+                  disabled={creativeDisabled}
+                  title={creativeDisabled ? creativeDisabledMessage : undefined}
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400"
                 >
                   Brain dump
                 </button>
@@ -349,6 +360,8 @@ export function TimelineWorkspaceVisual({
         <TimelineBrainDumpLightbox
           activeProjectId={activeProjectId}
           activeProjectTitle={activeProjectTitle}
+          disabled={creativeDisabled}
+          disabledReason={creativeDisabledMessage}
           onClose={() => setBrainDumpOpen(false)}
           onSuccess={(aiSessionId) => {
             setBrainDumpOpen(false);
