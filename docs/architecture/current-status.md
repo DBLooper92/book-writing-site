@@ -13,6 +13,7 @@ This file documents the state of the desktop app as it exists now.
 - validation reports preserve the original source brain dump text on each scenario result, including failures
 - top navigation now waits for client-side project state after hydration so the server and browser render the same initial markup
 - multi-event brain dump parsing now recovers the first valid JSON object or array from mixed model output instead of skipping the whole chunk on extra prose or multiple blobs
+- timeline-launched multi-event brain dump jobs stay anchored in the timeline gap, lock the insertion notch while running, then show editable generated event drafts inline for review and apply
 - proposal status lifecycle in local filesystem
 
 ## Transitional Reality

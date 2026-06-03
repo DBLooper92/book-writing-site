@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildMultiTimelineBrainDumpUserPrompt,
   buildTimelineBrainDumpUserPrompt,
   extractFirstJsonObject,
   splitTextIntoChunks,
@@ -80,6 +81,31 @@ describe("ai-utils brain dump helpers", () => {
     expect(prompt).toContain("\"entities\"");
     expect(prompt).toContain("Treat the last Before event and the first After event as hard boundaries");
     expect(prompt).toContain("Gap between arrival and alarm");
+  });
+
+  it("treats one-sided multi-event insertion context as a valid anchor", () => {
+    const prompt = buildMultiTimelineBrainDumpUserPrompt({
+      chunkText: "Mara follows the convoy, sees the crate swap, and breaks the seal.",
+      projectContext: {
+        insertionContext: {
+          helperText: "Adds a new event after North Gate Market Riot.",
+          label: "Extend the chronology",
+          surroundingEvents: [
+            {
+              chronologyLabel: "From 742",
+              id: "event-market-riot",
+              position: 1,
+              relation: "before",
+              title: "North Gate Market Riot",
+            },
+          ],
+        },
+      },
+    });
+
+    expect(prompt).toContain("If only Before events are listed, draft events after the last Before event.");
+    expect(prompt).toContain("Treat the last Before event as the anchor. Draft events after it.");
+    expect(prompt).toContain("return event drafts even when the nearby timeline context is sparse");
   });
 
   it("splits long text into bounded chunks", () => {

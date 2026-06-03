@@ -1556,7 +1556,7 @@ function markStaleJobs(projectRuntime) {
   });
 }
 
-function createAiJobRecord({ brainDumpText }) {
+function createAiJobRecord({ brainDumpText, projectContext }) {
   const now = new Date().toISOString();
   const id = `ai-job-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   return {
@@ -1568,6 +1568,7 @@ function createAiJobRecord({ brainDumpText }) {
     finishedAt: null,
     input: {
       brainDumpText,
+      projectContext: projectContext ?? null,
     },
     progress: {
       totalChunks: 0,
@@ -1591,10 +1592,11 @@ async function startMultiEventTimelineBrainDumpJob(projectRuntime, input) {
     throw new Error("Brain dump text is required.");
   }
 
-  const jobRecord = createAiJobRecord({ brainDumpText });
+  const projectContext = input?.projectContext ?? null;
+  const jobRecord = createAiJobRecord({ brainDumpText, projectContext });
   writeAiJobRecord(projectRuntime, jobRecord);
   notifyAiJobsChanged();
-  queueRunAiJob(projectRuntime, jobRecord.id, input?.projectContext ?? null);
+  queueRunAiJob(projectRuntime, jobRecord.id, projectContext);
 
   return {
     jobId: jobRecord.id,

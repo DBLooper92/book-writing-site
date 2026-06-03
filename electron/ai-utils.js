@@ -25,8 +25,12 @@ function buildMultiTimelineBrainDumpSystemPrompt() {
     "You are extracting multiple timeline events from a large story brain dump chunk.",
     "Return JSON only with no markdown or wrapper text.",
     "Extract 0..N events from this chunk in chronological order when possible.",
-    "Keep every extracted event confined to the selected insertion gap.",
-    "If the dump mentions material that clearly belongs outside the gap, omit it and surface it as a warning instead of stretching the chronology.",
+    "When the chunk contains concrete story beats, extract them as drafts unless they clearly contradict the selected insertion gap.",
+    "Keep every extracted event confined to the selected insertion gap when both before and after boundaries exist.",
+    "If the selected insertion point only has Before events, treat it as extending the chronology after the last Before event.",
+    "If the selected insertion point only has After events, treat it as inserting before the first After event.",
+    "Do not return zero events just because one side of the insertion context is missing or the brain dump mentions not-yet-existing canon names.",
+    "If the dump mentions material that clearly belongs outside a two-sided gap, omit only that material and surface it as a warning instead of stretching the chronology.",
     "Split distinct beats into separate events when they belong at different points in the same gap.",
     "Do not invent IDs. Use confidence values: low, medium, high, confirmed.",
     "Also suggest predecessor/successor relationships when clearly implied.",
@@ -136,7 +140,10 @@ function buildMultiTimelineBrainDumpUserPrompt(input) {
     JSON.stringify(schemaExample, null, 2),
     "",
     "Use the insertion context, when present, to keep the extracted events localized to the chosen timeline gap.",
-    "Preserve the surrounding event order and only extend beyond the local window if the brain dump clearly demands it.",
+    "Preserve the surrounding event order and only extend beyond a two-sided local window if the brain dump clearly demands it.",
+    "If only Before events are listed, draft events after the last Before event.",
+    "If only After events are listed, draft events before the first After event.",
+    "If there are concrete event beats in the chunk, return event drafts even when the nearby timeline context is sparse.",
     "If an extracted event uses chronologyOrder, always include a concrete yearStart and yearEnd from the surrounding window.",
     "Never output chronologyOrder without yearStart/yearEnd.",
     "",
@@ -189,9 +196,18 @@ function buildInsertionContextSection(projectContext) {
   }
 
   lines.push("");
-  lines.push(
-    "Treat the last Before event and the first After event as hard boundaries for the extracted draft(s)."
-  );
+  const hasBefore = insertionContext.surroundingEvents.some((event) => event?.relation !== "after");
+  const hasAfter = insertionContext.surroundingEvents.some((event) => event?.relation === "after");
+
+  if (hasBefore && hasAfter) {
+    lines.push(
+      "Treat the last Before event and the first After event as hard boundaries for the extracted draft(s)."
+    );
+  } else if (hasBefore) {
+    lines.push("Treat the last Before event as the anchor. Draft events after it.");
+  } else if (hasAfter) {
+    lines.push("Treat the first After event as the anchor. Draft events before it.");
+  }
 
   return lines.join("\n");
 }

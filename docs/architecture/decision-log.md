@@ -21,3 +21,8 @@ Durable decisions for this desktop repository.
 
 - Decision: Treat generated exports as browsing context, not source-of-truth data.
 - Why: Canon truth must remain in structured project storage.
+
+## D-005
+
+- Decision: Keep timeline-launched multi-event BrainDump review anchored in the timeline insertion gap.
+- Why: Authors need to evaluate generated events in chronological context, and the locked gap prevents overlapping inserts while AI output is running or awaiting approval.

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useOpenAiConfig } from "@/hooks/use-openai-config";
@@ -22,6 +21,7 @@ type TimelineCreateModeLightboxProps = {
   open: boolean;
   onClose: () => void;
   onManual: (initialValues: TimelineEventFormValues) => void;
+  onMultiJobStarted?: (jobId: string) => void;
   onUseAiDraft: (draftState: AiTimelineCreateDraftState, initialValues: TimelineEventFormValues) => void;
 };
 
@@ -40,9 +40,9 @@ export function TimelineCreateModeLightbox({
   open,
   onClose,
   onManual,
+  onMultiJobStarted,
   onUseAiDraft,
 }: TimelineCreateModeLightboxProps) {
-  const router = useRouter();
   const { config, loading: configLoading } = useOpenAiConfig();
   const [step, setStep] = useState<LightboxStep>("chooser");
   const [singleBrainDumpText, setSingleBrainDumpText] = useState("");
@@ -198,7 +198,7 @@ export function TimelineCreateModeLightbox({
         ),
       });
       onClose();
-      router.push(`/ai-jobs/${result.jobId}`);
+      onMultiJobStarted?.(result.jobId);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Unable to start multi-event job.");
     } finally {

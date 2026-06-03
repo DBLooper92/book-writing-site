@@ -197,6 +197,10 @@ export type AiMultiEventJobRecord = AiJobSummary & {
   chunkMetrics?: AiJobChunkMetric[];
   errorMessage?: string | null;
   failureCategory?: "auth" | "canceled" | "invalid_response" | "network" | "rate_limited" | "timeout" | "unknown" | null;
+  input?: {
+    brainDumpText?: string;
+    projectContext?: TimelineBrainDumpProjectContext | null;
+  };
   progress: AiJobProgress;
   result: MultiEventBrainDumpPreviewResult | null;
   warnings: string[];

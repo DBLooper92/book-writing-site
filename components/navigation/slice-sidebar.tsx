@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 
 type SliceNavigationConfig = {
   href: string;
@@ -49,10 +50,31 @@ export function getActiveSliceNavigationConfig(pathname: string) {
 
 export function SliceSidebar({ pathname }: { pathname: string }) {
   const activeConfig = getActiveSliceNavigationConfig(pathname);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const activeLinkRef = useRef<HTMLAnchorElement | null>(null);
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    const activeLink = activeLinkRef.current;
+
+    if (!scrollContainer || !activeLink) {
+      return;
+    }
+
+    const scrollTop =
+      activeLink.offsetTop -
+      scrollContainer.clientHeight / 2 +
+      activeLink.clientHeight / 2;
+
+    scrollContainer.scrollTo({
+      top: Math.max(0, scrollTop),
+      behavior: "auto",
+    });
+  }, [activeConfig?.key]);
 
   return (
     <aside className="border-b border-zinc-200 bg-white xl:h-full xl:overflow-hidden xl:border-b-0 xl:border-r">
-      <div className="h-full xl:overflow-y-auto">
+      <div ref={scrollContainerRef} className="h-full xl:overflow-y-auto">
         <div className="border-b border-zinc-200 px-5 py-6 sm:px-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
             Workspace
@@ -69,6 +91,7 @@ export function SliceSidebar({ pathname }: { pathname: string }) {
             return (
               <Link
                 key={config.key}
+                ref={isActive ? activeLinkRef : undefined}
                 href={config.href}
                 scroll={false}
                 aria-current={isActive ? "page" : undefined}

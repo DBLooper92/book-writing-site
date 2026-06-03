@@ -13,6 +13,7 @@ This file tracks short-term priorities for the desktop-only direction.
 1. Normalize user-facing copy in renderer pages/components to local desktop wording.
 2. Audit data-layer naming where legacy web terms can mislead contributors.
 3. Tighten proposal review/apply ergonomics in the desktop UI.
+4. Decide whether the standalone AI Jobs review route should remain as an admin/fallback surface or become read-only job history now that timeline-launched reviews stay in the timeline.
 
 ## Deferred
 

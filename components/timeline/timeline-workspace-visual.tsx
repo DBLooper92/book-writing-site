@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { TimelineBrainDumpJobReview } from "@/components/timeline/timeline-brain-dump-job-review";
 import { TimelineCreateModeLightbox } from "@/components/timeline/timeline-create-mode-lightbox";
 import { TimelineEventComposerSheet } from "@/components/timeline/timeline-event-composer-sheet";
 import { TimelineEventDetailLightbox } from "@/components/timeline/timeline-event-detail-lightbox";
@@ -33,6 +34,7 @@ import {
   type TimelineWorkspaceStats,
 } from "@/lib/timeline/workspace";
 import type {
+  AiMultiEventJobRecord,
   AiTimelineCreateDraftState,
   TimelineBrainDumpInsertionContext,
 } from "@/types/ai-brain-dump";
@@ -87,6 +89,11 @@ export function TimelineWorkspaceVisual({
     insertionItem: TimelineLayoutInsertionItem | null;
     source: "local" | "url";
   } | null>(null);
+  const [activeBrainDumpJob, setActiveBrainDumpJob] = useState<{
+    insertionItemId: string;
+    job: AiMultiEventJobRecord | null;
+    jobId: string;
+  } | null>(null);
   const eventRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const knownTimelineEventIds = new Set(timelineEvents.map((timelineEvent) => timelineEvent.id));
   const formOptions = useTimelineFormOptions();
@@ -134,6 +141,44 @@ export function TimelineWorkspaceVisual({
       new Map(formOptions.chapterOptions.map((option) => [option.value, option.label] as const)),
     [formOptions.chapterOptions]
   );
+
+  useEffect(() => {
+    if (!activeBrainDumpJob) {
+      return;
+    }
+
+    let cancelled = false;
+    const jobId = activeBrainDumpJob.jobId;
+
+    async function loadJob() {
+      try {
+        const nextJob = await window.bookBible.ai.getJobStatus(jobId);
+
+        if (!cancelled) {
+          setActiveBrainDumpJob((current) =>
+            current && current.jobId === jobId
+              ? {
+                  ...current,
+                  job: nextJob,
+                }
+              : current
+          );
+        }
+      } catch {
+        // The timeline keeps the visual lock until the next jobs change event or refresh.
+      }
+    }
+
+    void loadJob();
+    const unsubscribe = window.bookBible.ai.subscribeJobs(() => {
+      void loadJob();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [activeBrainDumpJob?.jobId]);
 
   function registerEventRef(eventId: string, node: HTMLDivElement | null) {
     if (node) {
@@ -246,6 +291,27 @@ export function TimelineWorkspaceVisual({
       mode: "create",
       source: "local",
     });
+  }
+
+  async function handleMultiBrainDumpJobStarted(jobId: string) {
+    const insertionItemId = createFlowState?.insertionItem?.id;
+
+    if (!insertionItemId) {
+      return;
+    }
+
+    const job = await window.bookBible.ai.getJobStatus(jobId);
+
+    setActiveBrainDumpJob({
+      insertionItemId,
+      job,
+      jobId,
+    });
+  }
+
+  async function handleTimelineBrainDumpApproved() {
+    setActiveBrainDumpJob(null);
+    await onRefreshTimelineEvents();
   }
 
   const filterBarClassName = filtersPinned
@@ -395,7 +461,21 @@ export function TimelineWorkspaceVisual({
                       return (
                         <TimelineInsertionRow
                           key={item.id}
+                          activeJob={
+                            activeBrainDumpJob?.insertionItemId === item.id
+                              ? activeBrainDumpJob.job
+                              : null
+                          }
+                          activeProjectId={activeProjectId}
                           insertionItem={item}
+                          onApproved={handleTimelineBrainDumpApproved}
+                          onJobReplaced={(jobId, job) =>
+                            setActiveBrainDumpJob({
+                              insertionItemId: item.id,
+                              job,
+                              jobId,
+                            })
+                          }
                           onOpenComposer={(nextInsertionItem) =>
                             setLocalCreateFlowState({
                               createMode: "chooser",
@@ -408,6 +488,7 @@ export function TimelineWorkspaceVisual({
                               source: "local",
                             })
                           }
+                          uid={uid}
                         />
                       );
                     })}
@@ -446,6 +527,7 @@ export function TimelineWorkspaceVisual({
           open
           onClose={closeCreateFlow}
           onManual={(nextInitialValues) => openCreateComposerFromFlow(nextInitialValues, null)}
+          onMultiJobStarted={(jobId) => void handleMultiBrainDumpJobStarted(jobId)}
           onUseAiDraft={(draftState, nextInitialValues) =>
             openCreateComposerFromFlow(nextInitialValues, draftState)
           }
@@ -679,30 +761,197 @@ function TimelineGapRow({ gapItem }: { gapItem: TimelineLayoutGapItem }) {
 }
 
 function TimelineInsertionRow({
+  activeJob,
+  activeProjectId,
   insertionItem,
+  onApproved,
+  onJobReplaced,
   onOpenComposer,
+  uid,
 }: {
+  activeJob: AiMultiEventJobRecord | null;
+  activeProjectId: string;
   insertionItem: TimelineLayoutInsertionItem;
+  onApproved: () => Promise<void> | void;
+  onJobReplaced: (jobId: string, job: AiMultiEventJobRecord | null) => void;
   onOpenComposer: (insertionItem: TimelineLayoutInsertionItem) => void;
+  uid: string;
 }) {
+  const [reviewLightboxOpen, setReviewLightboxOpen] = useState(false);
+  const isRunning = activeJob?.status === "queued" || activeJob?.status === "running";
+  const hasExtractedDrafts = Boolean(activeJob?.result?.events?.length);
+  const isPendingApproval = activeJob?.status === "completed" && hasExtractedDrafts;
+  const needsRerun = activeJob?.status === "completed" && !hasExtractedDrafts;
+  const statusLabel = isRunning
+    ? "AI building"
+    : needsRerun
+      ? "Needs rerun"
+      : isPendingApproval
+      ? "Pending approval"
+      : "";
+  const statusMessage = isRunning
+    ? "Pending BrainDump: the AI is building events for this gap."
+    : needsRerun
+      ? "No drafts were extracted. Open the BrainDump review to rerun this gap."
+      : isPendingApproval
+      ? "Pending approval: review the generated events before inserting more here."
+      : insertionItem.helperText;
+
   return (
     <div className="relative grid gap-3 md:grid-cols-[minmax(0,1fr)_5rem_minmax(0,1fr)] md:items-center">
       <div className="pl-16 text-left md:col-span-3 md:pl-0 md:text-center">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-          {insertionItem.label}
+          {statusLabel || insertionItem.label}
         </p>
-        <p className="mt-2 text-sm leading-6 text-zinc-600">{insertionItem.helperText}</p>
+        <p className="mt-2 text-sm leading-6 text-zinc-600">{statusMessage}</p>
       </div>
 
       <div className="absolute left-6 top-1/2 flex -translate-x-1/2 -translate-y-1/2 justify-center md:static md:col-start-2 md:row-start-1 md:translate-x-0 md:translate-y-0">
         <button
           type="button"
-          onClick={() => onOpenComposer(insertionItem)}
-          className="flex h-11 w-11 items-center justify-center rounded-full border-4 border-white bg-zinc-950 text-xl font-semibold text-white shadow-sm transition hover:bg-zinc-800"
-          aria-label={insertionItem.label}
+          onClick={() => {
+            if (isPendingApproval) {
+              setReviewLightboxOpen(true);
+              return;
+            }
+
+            if (needsRerun) {
+              setReviewLightboxOpen(true);
+              return;
+            }
+
+            onOpenComposer(insertionItem);
+          }}
+          disabled={isRunning}
+          className={`flex h-11 w-11 items-center justify-center rounded-full border-4 border-white text-xl font-semibold shadow-sm transition ${
+            isRunning
+              ? "cursor-not-allowed bg-sky-600 text-white"
+              : isPendingApproval || needsRerun
+                ? "bg-amber-500 text-white hover:bg-amber-600"
+                : "bg-zinc-950 text-white hover:bg-zinc-800"
+          }`}
+          aria-label={isPendingApproval || needsRerun ? "Review pending BrainDump" : insertionItem.label}
         >
-          +
+          {isRunning ? "..." : isPendingApproval || needsRerun ? "!" : "+"}
         </button>
+      </div>
+
+      {activeJob && isRunning ? (
+        <div className="pl-16 md:col-span-3 md:pl-0">
+          <TimelineBrainDumpJobReview
+            activeProjectId={activeProjectId}
+            job={activeJob}
+            onApproved={onApproved}
+            uid={uid}
+          />
+        </div>
+      ) : null}
+
+      {activeJob && (isPendingApproval || needsRerun) && reviewLightboxOpen ? (
+        <TimelineBrainDumpReviewLightbox
+          activeProjectId={activeProjectId}
+          job={activeJob}
+          onApproved={async () => {
+            setReviewLightboxOpen(false);
+            await onApproved();
+          }}
+          onClose={() => setReviewLightboxOpen(false)}
+          onJobReplaced={onJobReplaced}
+          uid={uid}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function TimelineBrainDumpReviewLightbox({
+  activeProjectId,
+  job,
+  onApproved,
+  onClose,
+  onJobReplaced,
+  uid,
+}: {
+  activeProjectId: string;
+  job: AiMultiEventJobRecord;
+  onApproved: () => Promise<void> | void;
+  onClose: () => void;
+  onJobReplaced: (jobId: string, job: AiMultiEventJobRecord | null) => void;
+  uid: string;
+}) {
+  const [rerunning, setRerunning] = useState(false);
+  const [rerunError, setRerunError] = useState<string | null>(null);
+
+  async function handleRerunBrainDump() {
+    const brainDumpText = job.input?.brainDumpText?.trim();
+
+    if (!brainDumpText) {
+      setRerunError("This job does not have source brain dump text available to rerun.");
+      return;
+    }
+
+    setRerunning(true);
+    setRerunError(null);
+
+    try {
+      const started = await window.bookBible.ai.startMultiEventTimelineBrainDumpJob({
+        brainDumpText,
+        projectContext: job.input?.projectContext ?? undefined,
+      });
+      const nextJob = await window.bookBible.ai.getJobStatus(started.jobId);
+      onJobReplaced(started.jobId, nextJob);
+      onClose();
+    } catch (error) {
+      setRerunError(error instanceof Error ? error.message : "Unable to rerun this BrainDump.");
+    } finally {
+      setRerunning(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
+      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
+
+      <div className="relative z-10 mx-auto w-full max-w-5xl rounded-4xl border border-zinc-200 bg-[#fffdf9] shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-zinc-200 bg-white px-6 py-5">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+              Timeline BrainDump
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+              Review generated events
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-zinc-600">
+              These drafts were generated for this insertion point. Review, edit, skip, or apply
+              them without leaving the timeline.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 text-lg text-zinc-700 transition hover:bg-zinc-50"
+            aria-label="Close BrainDump review"
+          >
+            x
+          </button>
+        </div>
+
+        <div className="max-h-[calc(100vh-10rem)] overflow-y-auto px-6 py-6">
+          <TimelineBrainDumpJobReview
+            activeProjectId={activeProjectId}
+            job={job}
+            onApproved={onApproved}
+            onRerun={handleRerunBrainDump}
+            rerunning={rerunning}
+            uid={uid}
+          />
+          {rerunError ? (
+            <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {rerunError}
+            </p>
+          ) : null}
+        </div>
       </div>
     </div>
   );
