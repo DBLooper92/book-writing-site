@@ -1,0 +1,23 @@
+# Decision Log
+
+Durable decisions for this desktop repository.
+
+## D-001
+
+- Decision: Maintain this project as desktop-only from this point forward.
+- Why: It aligns with current product intent and reduces split focus across web and desktop tracks.
+
+## D-002
+
+- Decision: Keep local SQLite and project-folder boundaries as the primary data ownership model.
+- Why: It keeps project scope explicit and supports reliable local-first author workflows.
+
+## D-003
+
+- Decision: Keep review-first proposal/apply flow as the default for canon changes.
+- Why: It preserves author control and avoids silent AI-driven canon mutation.
+
+## D-004
+
+- Decision: Treat generated exports as browsing context, not source-of-truth data.
+- Why: Canon truth must remain in structured project storage.

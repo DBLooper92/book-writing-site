@@ -1,0 +1,71 @@
+{
+  "name": "book-bible-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"next dev\" \"wait-on http://127.0.0.1:3000 && cross-env NODE_ENV=development ELECTRON_RENDERER_URL=http://127.0.0.1:3000 electron .\"",
+    "build": "next build",
+    "start": "cross-env NODE_ENV=production electron .",
+    "dist": "npm run build && electron-builder",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "rebuild:electron": "electron-builder install-app-deps",
+    "postinstall": "npm run rebuild:electron"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "chokidar": "^4.0.3",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.0.0",
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^3.2.4",
+    "wait-on": "^8.0.5"
+  },
+  "build": {
+    "appId": "com.bookbible.desktop",
+    "productName": "Book Bible Desktop",
+    "files": [
+      "electron/**/*",
+      ".next/**/*",
+      "app/**/*",
+      "components/**/*",
+      "hooks/**/*",
+      "lib/**/*",
+      "public/**/*",
+      "types/**/*",
+      "desktop-project-example/**/*",
+      "package.json",
+      "next.config.ts"
+    ],
+    "extraMetadata": {
+      "main": "electron/main.js"
+    },
+    "asar": false,
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": "nsis"
+    },
+    "nsis": {
+      "createDesktopShortcut": "always",
+      "shortcutName": "Book Bible Desktop"
+    }
+  }
+}

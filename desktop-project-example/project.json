@@ -1,0 +1,24 @@
+{
+  "id": "project-glass-keep",
+  "slug": "the-glass-keep",
+  "title": "The Glass Keep",
+  "createdAt": "2026-04-07T10:00:00-04:00",
+  "templateVersion": 1,
+  "storage": {
+    "databaseFile": "data/project.sqlite",
+    "migrationsDir": "data/migrations",
+    "attachmentsDir": "attachments",
+    "exportsDir": "exports",
+    "proposalsDir": "proposals"
+  },
+  "workflow": {
+    "proposalMode": "review-first",
+    "applyMode": "explicit-approval-only",
+    "defaultExportFormat": "markdown-and-json"
+  },
+  "chronology": {
+    "calendarLabel": "Common Reckoning",
+    "yearZeroAllowed": false
+  }
+}
+

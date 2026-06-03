@@ -1,0 +1,5 @@
+data/project.sqlite
+data/project.sqlite-wal
+data/project.sqlite-shm
+exports/generated/
+

@@ -1,0 +1,46 @@
+{
+  "id": "proposal-bundle-arrival-safehouse",
+  "projectId": "project-glass-keep",
+  "createdAt": "2026-04-07T10:15:00-04:00",
+  "sourceFile": "inbox/brain-dumps/arrival-outline.md",
+  "status": "pending-review",
+  "summary": "The brain dump introduces a new canal safehouse, a pre-dawn arrival beat, and a sharper suspicion that someone in the Keep is coordinating the sabotage.",
+  "proposedChanges": [
+    {
+      "slice": "locations",
+      "action": "create",
+      "targetId": "loc-south-canal-safehouse",
+      "confidence": "medium",
+      "reason": "The dump names a new distinct setting with narrative importance.",
+      "fields": {
+        "name": "South Canal Safehouse",
+        "location_type": "hideout",
+        "summary": "A cramped canal-side refuge used by smugglers, witnesses, and dissidents."
+      }
+    },
+    {
+      "slice": "timeline_events",
+      "action": "create",
+      "targetId": "event-safehouse-arrival",
+      "confidence": "medium",
+      "reason": "The arrival happens after the riot and appears to be a meaningful chronology beat.",
+      "fields": {
+        "title": "Arrival At The South Canal Safehouse",
+        "summary": "Mara reaches the canal safehouse before dawn and finds the informant already dead.",
+        "display_date_label": "Before dawn, 20 Harvest, 742",
+        "start_year": 742
+      }
+    },
+    {
+      "slice": "characters",
+      "action": "update",
+      "targetId": "char-mara-vesk",
+      "confidence": "high",
+      "reason": "The dump strengthens an existing suspicion already tied to Mara's investigation arc.",
+      "fields": {
+        "summaryAppend": "She now suspects someone inside the Keep is leaking militia routes to the saboteurs."
+      }
+    }
+  ]
+}
+

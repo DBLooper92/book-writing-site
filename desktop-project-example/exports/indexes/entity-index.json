@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-04-07T10:00:00-04:00",
+  "entities": [
+    {
+      "slice": "books",
+      "id": "book-ashes-first-gate",
+      "title": "Ashes of the First Gate",
+      "path": "exports/manuscript/books.md"
+    },
+    {
+      "slice": "chapters",
+      "id": "chapter-lantern-debts",
+      "title": "Lantern Debts",
+      "path": "exports/manuscript/books.md"
+    },
+    {
+      "slice": "scenes",
+      "id": "scene-lantern-meeting",
+      "title": "The Lantern Meeting",
+      "path": "exports/manuscript/books.md"
+    },
+    {
+      "slice": "characters",
+      "id": "char-mara-vesk",
+      "title": "Mara Vesk",
+      "path": "exports/canon/characters.md"
+    },
+    {
+      "slice": "locations",
+      "id": "loc-north-gate-market",
+      "title": "North Gate Market",
+      "path": "exports/canon/locations.md"
+    },
+    {
+      "slice": "timeline_events",
+      "id": "event-market-riot",
+      "title": "North Gate Market Riot",
+      "path": "exports/timeline/chronology.md"
+    }
+  ]
+}
+
