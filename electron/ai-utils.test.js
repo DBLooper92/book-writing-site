@@ -1,13 +1,24 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildMultiTimelineBrainDumpSystemPrompt,
   buildMultiTimelineBrainDumpUserPrompt,
   buildTimelineBrainDumpUserPrompt,
   extractFirstJsonObject,
+  extractJsonObjectsFromText,
+  normalizeMultiTimelineBrainDumpChunkCandidates,
+  normalizeMultiTimelineBrainDumpChunkOutput,
   splitTextIntoChunks,
 } from "./ai-utils";
 
 describe("ai-utils brain dump helpers", () => {
+  it("requires multi-event chunks to use the events-array envelope", () => {
+    const prompt = buildMultiTimelineBrainDumpSystemPrompt();
+
+    expect(prompt).toContain("top-level JSON object MUST contain an events array");
+    expect(prompt).toContain("Never return a bare event object");
+  });
+
   it("extracts the first json object from mixed text", () => {
     const parsed = extractFirstJsonObject(
       "Ignore this prefix\n{\"event\":{\"title\":\"Arrival\"},\"entities\":[]}\nIgnore suffix"
@@ -106,6 +117,27 @@ describe("ai-utils brain dump helpers", () => {
     expect(prompt).toContain("If only Before events are listed, draft events after the last Before event.");
     expect(prompt).toContain("Treat the last Before event as the anchor. Draft events after it.");
     expect(prompt).toContain("return event drafts even when the nearby timeline context is sparse");
+    expect(prompt).toContain("Do not return a single bare event object");
+  });
+
+  it("extracts every complete json object from mixed text", () => {
+    const parsed = extractJsonObjectsFromText(
+      [
+        "prefix text",
+        "{\"event\":{\"title\":\"Arrival\"},\"entities\":[]}",
+        "middle text",
+        "{\"event\":{\"title\":\"Feast\"},\"entities\":[]}",
+        "truncated tail {\"event\":{\"title\":\"Mirror Well\"}",
+      ].join("\n")
+    );
+
+    const normalized = normalizeMultiTimelineBrainDumpChunkCandidates(parsed);
+
+    expect(normalized.events.map((entry) => entry.event.title)).toEqual([
+      "Arrival",
+      "Feast",
+      "Mirror Well",
+    ]);
   });
 
   it("asks the model to preserve source detail and avoid invented dates", () => {
@@ -127,5 +159,73 @@ describe("ai-utils brain dump helpers", () => {
 
     expect(chunks.length).toBeGreaterThan(1);
     expect(chunks.every((chunk) => chunk.length <= 2600)).toBe(true);
+  });
+
+  it("recovers a bare single-event chunk response", () => {
+    const normalized = normalizeMultiTimelineBrainDumpChunkOutput({
+      event: {
+        title: "Lord Evren Arrives at Glass Keep",
+        summary: "Evren reaches the pilgrim door.",
+      },
+      entities: [
+        {
+          target: "character",
+          mention: "Lord Evren",
+        },
+      ],
+    });
+
+    expect(normalized.events).toHaveLength(1);
+    expect(normalized.events[0].event.title).toBe("Lord Evren Arrives at Glass Keep");
+    expect(normalized.events[0].entities[0].mention).toBe("Lord Evren");
+    expect(normalized.warnings).toContain(
+      "Recovered one chunk event from a non-standard single-event JSON object."
+    );
+  });
+
+  it("normalizes top-level event arrays and direct event entries", () => {
+    const normalized = normalizeMultiTimelineBrainDumpChunkOutput([
+      {
+        title: "Market Riot",
+        summary: "Refugees crowd the lower market.",
+      },
+      {
+        event: {
+          title: "Archive Break-In",
+          summary: "Cassia and Nenn enter the upper archive.",
+        },
+        entities: [],
+      },
+    ]);
+
+    expect(normalized.events.map((entry) => entry.event.title)).toEqual([
+      "Market Riot",
+      "Archive Break-In",
+    ]);
+    expect(normalized.warnings).toContain("Recovered chunk events from a top-level JSON array.");
+  });
+
+  it("normalizes multiple parsed chunk candidates into one recovered chunk", () => {
+    const normalized = normalizeMultiTimelineBrainDumpChunkCandidates([
+      {
+        event: {
+          title: "Arrival at the Pilgrim Door",
+          summary: "Evren gets through the small door.",
+        },
+        entities: [],
+      },
+      {
+        event: {
+          title: "Prism Hall Feast Omen",
+          summary: "Cassia sees the orchard window omen.",
+        },
+        entities: [],
+      },
+    ]);
+
+    expect(normalized.events.map((entry) => entry.event.title)).toEqual([
+      "Arrival at the Pilgrim Door",
+      "Prism Hall Feast Omen",
+    ]);
   });
 });

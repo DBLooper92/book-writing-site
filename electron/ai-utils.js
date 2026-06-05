@@ -26,6 +26,8 @@ function buildMultiTimelineBrainDumpSystemPrompt() {
   return [
     "You are extracting multiple timeline events from a large story brain dump chunk.",
     "Return JSON only with no markdown or wrapper text.",
+    "The top-level JSON object MUST contain an events array. Never return a bare event object.",
+    "Each events array item MUST contain an event object and an entities array.",
     "Extract 0..N events from this chunk in chronological order when possible.",
     "When the chunk contains concrete story beats, extract them as drafts unless they clearly contradict the selected insertion gap.",
     "Keep every extracted event confined to the selected insertion gap when both before and after boundaries exist.",
@@ -144,6 +146,10 @@ function buildMultiTimelineBrainDumpUserPrompt(input) {
     "Return JSON with this shape:",
     JSON.stringify(schemaExample, null, 2),
     "",
+    "Important: always return the top-level object exactly with events, crossEventLinks, and warnings keys.",
+    "Do not return a single bare event object even when the chunk has only one event.",
+    "When a chunk has several concrete beats, include every distinct beat as a separate item in events.",
+    "",
     "Use the insertion context, when present, to keep the extracted events localized to the chosen timeline gap.",
     "Preserve the surrounding event order and only extend beyond a two-sided local window if the brain dump clearly demands it.",
     "If only Before events are listed, draft events after the last Before event.",
@@ -220,17 +226,25 @@ function buildInsertionContextSection(projectContext) {
 }
 
 function extractFirstJsonObject(rawText) {
+  const parsedObjects = extractJsonObjectsFromText(rawText);
+
+  return parsedObjects[0] ?? null;
+}
+
+function extractJsonObjectsFromText(rawText) {
   const text = String(rawText ?? "").trim();
 
   if (!text) {
-    return null;
+    return [];
   }
 
   const directParse = tryParseJsonCandidate(text);
 
   if (directParse !== null) {
-    return directParse;
+    return [directParse];
   }
+
+  const parsedObjects = [];
 
   for (let index = 0; index < text.length; index += 1) {
     const char = text[index];
@@ -249,11 +263,115 @@ function extractFirstJsonObject(rawText) {
     const parsed = tryParseJsonCandidate(candidate);
 
     if (parsed !== null) {
-      return parsed;
+      parsedObjects.push(parsed);
+      index = endIndex;
     }
   }
 
+  return parsedObjects;
+}
+
+function normalizeMultiTimelineBrainDumpChunkCandidates(parsedCandidates) {
+  const normalizedCandidates = (Array.isArray(parsedCandidates) ? parsedCandidates : [])
+    .map((parsed) => normalizeMultiTimelineBrainDumpChunkOutput(parsed))
+    .filter((normalized) => normalized.events.length > 0 || normalized.links.length > 0 || normalized.warnings.length > 0);
+
+  if (normalizedCandidates.length === 0) {
+    return {
+      events: [],
+      links: [],
+      warnings: [],
+    };
+  }
+
+  return {
+    events: normalizedCandidates.flatMap((normalized) => normalized.events),
+    links: normalizedCandidates.flatMap((normalized) => normalized.links),
+    warnings: normalizedCandidates.flatMap((normalized) => normalized.warnings),
+  };
+}
+
+function normalizeMultiTimelineBrainDumpChunkOutput(parsed) {
+  const links = Array.isArray(parsed?.crossEventLinks) ? parsed.crossEventLinks : [];
+  const warnings = asStringArray(parsed?.warnings);
+  const recoveredWarnings = [];
+  let rawEvents = [];
+
+  if (Array.isArray(parsed)) {
+    rawEvents = parsed;
+    recoveredWarnings.push("Recovered chunk events from a top-level JSON array.");
+  } else if (Array.isArray(parsed?.events)) {
+    rawEvents = parsed.events;
+  } else if (hasEventDraftShape(parsed)) {
+    rawEvents = [parsed];
+    recoveredWarnings.push("Recovered one chunk event from a non-standard single-event JSON object.");
+  }
+
+  const events = rawEvents
+    .map((entry) => normalizeMultiTimelineEventEntry(entry))
+    .filter((entry) => hasEventContent(entry?.event));
+
+  return {
+    events,
+    links,
+    warnings: [...warnings, ...recoveredWarnings],
+  };
+}
+
+function asStringArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+        .filter(Boolean)
+    )
+  );
+}
+
+function normalizeMultiTimelineEventEntry(entry) {
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+
+  if (entry.event && typeof entry.event === "object") {
+    return {
+      ...entry,
+      entities: Array.isArray(entry.entities) ? entry.entities : [],
+    };
+  }
+
+  if (hasEventContent(entry)) {
+    return {
+      event: entry,
+      entities: Array.isArray(entry.entities) ? entry.entities : [],
+    };
+  }
+
   return null;
+}
+
+function hasEventDraftShape(value) {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  if (value.event && typeof value.event === "object") {
+    return hasEventContent(value.event);
+  }
+
+  return hasEventContent(value);
+}
+
+function hasEventContent(event) {
+  if (!event || typeof event !== "object") {
+    return false;
+  }
+
+  return String(event?.title ?? "").trim().length > 0;
 }
 
 function splitTextIntoChunks(rawText, maxChunkChars = 4200) {
@@ -431,6 +549,9 @@ module.exports = {
   buildSummarySystemPrompt,
   buildSummaryUserPrompt,
   extractFirstJsonObject,
+  extractJsonObjectsFromText,
   extractOpenAiResponseText,
+  normalizeMultiTimelineBrainDumpChunkCandidates,
+  normalizeMultiTimelineBrainDumpChunkOutput,
   splitTextIntoChunks,
 };

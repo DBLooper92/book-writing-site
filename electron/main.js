@@ -51,7 +51,9 @@ const {
   buildSummarySystemPrompt,
   buildSummaryUserPrompt,
   extractFirstJsonObject,
+  extractJsonObjectsFromText,
   extractOpenAiResponseText,
+  normalizeMultiTimelineBrainDumpChunkCandidates,
 } = require("./ai-utils");
 const { buildValidationFixtures } = require("./brain-dump-validation-fixtures");
 const { HARD_TIME_INFERENCE_NOTES, buildHardTimeBrainDumpRegressionFixtures } = require("./hard-time-brain-dump-regression-fixtures");
@@ -1153,6 +1155,10 @@ function normalizeKey(value) {
     .trim();
 }
 
+function normalizeMatchKey(value) {
+  return normalizeKey(value).replace(/^(the|a|an)\s+/, "");
+}
+
 function toKeyTokens(value) {
   const normalized = normalizeKey(value);
   return normalized ? normalized.split(" ").filter(Boolean) : [];
@@ -1320,6 +1326,7 @@ function getTargetRecordMatches(projectRuntime, target, mention) {
   }
 
   const mentionKey = normalizeKey(mention);
+  const mentionMatchKey = normalizeMatchKey(mention);
 
   if (!mentionKey) {
     return [];
@@ -1329,8 +1336,9 @@ function getTargetRecordMatches(projectRuntime, target, mention) {
 
   const exactMatches = records.filter((record) => {
     const labelKey = normalizeKey(record?.[config.labelField]);
+    const labelMatchKey = normalizeMatchKey(record?.[config.labelField]);
 
-    if (labelKey && labelKey === mentionKey) {
+    if (labelKey && (labelKey === mentionKey || labelMatchKey === mentionMatchKey)) {
       return true;
     }
 
@@ -1339,7 +1347,10 @@ function getTargetRecordMatches(projectRuntime, target, mention) {
     }
 
     const aliases = Array.isArray(record?.[config.aliasField]) ? record[config.aliasField] : [];
-    return aliases.some((alias) => normalizeKey(alias) === mentionKey);
+    return aliases.some((alias) => {
+      const aliasKey = normalizeKey(alias);
+      return aliasKey === mentionKey || normalizeMatchKey(alias) === mentionMatchKey;
+    });
   });
 
   const mentionTokens = toKeyTokens(mention);
@@ -1351,7 +1362,12 @@ function getTargetRecordMatches(projectRuntime, target, mention) {
     const labelTokens = toKeyTokens(record?.[config.labelField]);
     const overlap = computeTokenOverlapScore(mentionTokens, labelTokens);
 
-    if (overlap >= 0.67 && mentionTokens.length >= 2) {
+    const hasContainedMention =
+      mentionTokens.length >= 2 && mentionTokens.every((token) => labelTokens.includes(token));
+    const hasContainedLabel =
+      labelTokens.length >= 2 && labelTokens.every((token) => mentionTokens.includes(token));
+
+    if ((overlap >= 0.66 && mentionTokens.length >= 2) || hasContainedMention || hasContainedLabel) {
       return true;
     }
 
@@ -1701,26 +1717,6 @@ function getAiJobStatus(projectRuntime, jobId) {
   return readAiJobRecord(projectRuntime, jobId);
 }
 
-function normalizeMultiChunkOutput(parsed) {
-  if (Array.isArray(parsed)) {
-    return {
-      events: parsed,
-      links: [],
-      warnings: [],
-    };
-  }
-
-  const events = Array.isArray(parsed?.events) ? parsed.events : [];
-  const links = Array.isArray(parsed?.crossEventLinks) ? parsed.crossEventLinks : [];
-  const warnings = asStringArray(parsed?.warnings);
-
-  return {
-    events,
-    links,
-    warnings,
-  };
-}
-
 function buildDraftId(index) {
   return `draft-event-${index + 1}`;
 }
@@ -1880,7 +1876,7 @@ async function runMultiEventTimelineBrainDumpJob(projectRuntime, jobId, projectC
         apiKey,
         input: requestInput,
         instructions: systemPrompt,
-        maxOutputTokens: 2200,
+        maxOutputTokens: 5200,
         model,
         requestType: "timeline_brain_dump_chunk",
         retries: 4,
@@ -1888,13 +1884,14 @@ async function runMultiEventTimelineBrainDumpJob(projectRuntime, jobId, projectC
         signal,
       });
       const rawText = extractOpenAiResponseText(payload);
-      const parsed = extractFirstJsonObject(rawText);
+      const parsedCandidates = extractJsonObjectsFromText(rawText);
+      const parsed = parsedCandidates[0] ?? null;
       let normalizedChunk = null;
 
       if (!parsed) {
         warnings.push(`Chunk ${index + 1} returned invalid JSON and was skipped.`);
       } else {
-        normalizedChunk = normalizeMultiChunkOutput(parsed);
+        normalizedChunk = normalizeMultiTimelineBrainDumpChunkCandidates(parsedCandidates);
         extractedEvents.push(...normalizedChunk.events);
         extractedLinks.push(...normalizedChunk.links);
         warnings.push(...normalizedChunk.warnings);

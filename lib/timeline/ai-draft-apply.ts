@@ -28,18 +28,20 @@ import type { NormalizedTimelineEventFormValues } from "@/types/timeline-event";
 export async function applyAiDraftResolutionsToTimelineValues({
   activeProjectId,
   aiDraftState,
+  createdRecordIdsByKey,
   uid,
   values,
 }: {
   activeProjectId: string;
   aiDraftState: AiTimelineCreateDraftState;
+  createdRecordIdsByKey?: Map<string, string>;
   uid: string;
   values: NormalizedTimelineEventFormValues;
 }) {
   const suggestionMap = new Map(
     aiDraftState.preview.entitySuggestions.map((suggestion) => [suggestion.id, suggestion] as const)
   );
-  const createdRecordIdsByKey = new Map<string, string>();
+  const creationCache = createdRecordIdsByKey ?? new Map<string, string>();
   const nextValues: NormalizedTimelineEventFormValues = {
     ...values,
     bookIds: [...values.bookIds],
@@ -70,13 +72,13 @@ export async function applyAiDraftResolutionsToTimelineValues({
 
     if (resolution.action === "create") {
       const creationKey = getSuggestionCreationKey(suggestion);
-      const existingCreatedId = createdRecordIdsByKey.get(creationKey);
+      const existingCreatedId = creationCache.get(creationKey);
 
       if (existingCreatedId) {
         linkedId = existingCreatedId;
       } else {
         linkedId = await createRecordFromSuggestion(uid, activeProjectId, suggestion);
-        createdRecordIdsByKey.set(creationKey, linkedId);
+        creationCache.set(creationKey, linkedId);
       }
     }
 

@@ -16,7 +16,10 @@ This file documents the state of the desktop app as it exists now.
 - timeline-launched multi-event brain dump jobs stay anchored in the timeline gap, lock the insertion notch while running, then show editable generated event drafts inline for review and apply
 - timeline BrainDump insertion controls animate running jobs and pending-review calls to action in place, so authors can spot build/review states without leaving the chronology
 - timeline brain dump jobs now write a per-job `.ai-jobs/<jobId>.log.ndjson` sidecar with the generated prompt, raw chunk response, and completion/failure summary for debugging zero-draft runs
-- AI draft apply now reuses repeated entity creations within a single pass so obvious repeats do not mint duplicate rows for the same target/name pair
+- multi-event brain dump chunk parsing now recovers useful drafts when a model returns a bare single-event object, top-level event array, or multiple complete event objects inside an otherwise malformed response
+- multi-event brain dump chunk calls use a larger output budget so dense chunks can return several event drafts without truncating midway through JSON
+- AI draft apply now reuses repeated entity creations across a multi-draft review/apply batch so obvious repeats do not mint duplicate rows for the same target/name pair
+- AI entity suggestions match leading-article variants as exact candidates, so mentions like `Glass Keep` can auto-link to `The Glass Keep`
 - proposal status lifecycle in local filesystem
 
 ## Transitional Reality

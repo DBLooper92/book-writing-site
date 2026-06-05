@@ -173,6 +173,7 @@ export function AiJobReviewPage({ jobId }: AiJobReviewPageProps) {
       success: [],
     };
     const createdByDraftId = new Map<string, string>();
+    const createdRecordIdsByKey = new Map<string, string>();
     const createdValuesByDraftId = new Map<
       string,
       {
@@ -240,6 +241,7 @@ export function AiJobReviewPage({ jobId }: AiJobReviewPageProps) {
           const valuesWithResolvedEntities = await applyAiDraftResolutionsToTimelineValues({
             activeProjectId,
             aiDraftState,
+            createdRecordIdsByKey,
             uid,
             values: normalizedValues,
           });

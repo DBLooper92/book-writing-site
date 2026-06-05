@@ -119,6 +119,7 @@ export function TimelineBrainDumpJobReview({
       success: [],
     };
     const createdByDraftId = new Map<string, string>();
+    const createdRecordIdsByKey = new Map<string, string>();
     const createdValuesByDraftId = new Map<
       string,
       {
@@ -187,6 +188,7 @@ export function TimelineBrainDumpJobReview({
           const valuesWithResolvedEntities = await applyAiDraftResolutionsToTimelineValues({
             activeProjectId,
             aiDraftState,
+            createdRecordIdsByKey,
             uid,
             values: normalizedValues,
           });
@@ -338,60 +340,91 @@ export function TimelineBrainDumpJobReview({
         ) : null}
       </div>
 
-      {job.warnings.length > 0 ? (
-        <div className="rounded-3xl border border-amber-200 bg-white p-4 text-sm text-amber-900">
-          {job.warnings.join(" ")}
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(20rem,0.42fr)_minmax(0,0.58fr)]">
+        <BrainDumpSourcePanel text={job.input?.brainDumpText ?? ""} />
+
+        <div className="space-y-4">
+          {job.warnings.length > 0 ? (
+            <div className="rounded-3xl border border-amber-200 bg-white p-4 text-sm text-amber-900">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+                Job notes
+              </p>
+              {job.warnings.join(" ")}
+            </div>
+          ) : null}
+
+          <div className="space-y-4">
+            {drafts.map((draft, index) => {
+              const state = draftStateById[draft.draftId];
+              const expanded = expandedDraftId === draft.draftId;
+
+              return (
+                <TimelineDraftCard
+                  allDrafts={drafts}
+                  draft={draft}
+                  expanded={expanded}
+                  key={draft.draftId}
+                  position={index + 1}
+                  reviewState={state}
+                  onToggleExpanded={() =>
+                    setExpandedDraftId((current) => (current === draft.draftId ? null : draft.draftId))
+                  }
+                  onUpdate={(updater) => updateDraft(draft.draftId, updater)}
+                />
+              );
+            })}
+          </div>
+
+          {applyReport ? (
+            <section className="rounded-3xl border border-zinc-200 bg-white p-5">
+              <h3 className="text-base font-semibold tracking-tight text-zinc-950">Apply report</h3>
+              <p className="mt-2 text-sm text-zinc-600">
+                Created {applyReport.success.length}, failed {applyReport.failed.length}, skipped{" "}
+                {applyReport.skipped.length}.
+              </p>
+              {applyReport.failed.length > 0 ? (
+                <ul className="mt-3 space-y-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                  {applyReport.failed.map((entry) => (
+                    <li key={entry.draftId}>
+                      {entry.draftId}: {entry.error}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {postApplyWarnings.length > 0 ? (
+                <ul className="mt-3 space-y-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  {postApplyWarnings.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </section>
+          ) : null}
         </div>
-      ) : null}
-
-      <div className="space-y-4">
-        {drafts.map((draft, index) => {
-          const state = draftStateById[draft.draftId];
-          const expanded = expandedDraftId === draft.draftId;
-
-          return (
-            <TimelineDraftCard
-              allDrafts={drafts}
-              draft={draft}
-              expanded={expanded}
-              key={draft.draftId}
-              position={index + 1}
-              reviewState={state}
-              onToggleExpanded={() =>
-                setExpandedDraftId((current) => (current === draft.draftId ? null : draft.draftId))
-              }
-              onUpdate={(updater) => updateDraft(draft.draftId, updater)}
-            />
-          );
-        })}
       </div>
-
-      {applyReport ? (
-        <section className="rounded-3xl border border-zinc-200 bg-white p-5">
-          <h3 className="text-base font-semibold tracking-tight text-zinc-950">Apply report</h3>
-          <p className="mt-2 text-sm text-zinc-600">
-            Created {applyReport.success.length}, failed {applyReport.failed.length}, skipped{" "}
-            {applyReport.skipped.length}.
-          </p>
-          {applyReport.failed.length > 0 ? (
-            <ul className="mt-3 space-y-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              {applyReport.failed.map((entry) => (
-                <li key={entry.draftId}>
-                  {entry.draftId}: {entry.error}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {postApplyWarnings.length > 0 ? (
-            <ul className="mt-3 space-y-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              {postApplyWarnings.map((message) => (
-                <li key={message}>{message}</li>
-              ))}
-            </ul>
-          ) : null}
-        </section>
-      ) : null}
     </section>
+  );
+}
+
+function BrainDumpSourcePanel({ text }: { text: string }) {
+  return (
+    <aside className="xl:sticky xl:top-4">
+      <section className="flex max-h-[calc(100vh-2rem)] min-h-[28rem] flex-col rounded-3xl border border-zinc-300 bg-white shadow-[0_24px_70px_-48px_rgba(24,24,27,0.7)]">
+        <div className="border-b border-zinc-200 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+            Source BrainDump
+          </p>
+          <h3 className="mt-1 text-sm font-semibold tracking-tight text-zinc-950">
+            Original raw text
+          </h3>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+          <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-5 text-zinc-700">
+            {text || "No source text was saved with this job."}
+          </pre>
+        </div>
+      </section>
+    </aside>
   );
 }
 
@@ -417,6 +450,7 @@ function TimelineDraftCard({
     reviewState && !reviewState.skipped
       ? getUnresolvedCount(draft.entitySuggestions, reviewState.resolutionsBySuggestionId)
       : 0;
+  const attentionItems = getDraftAttentionItems(draft, reviewState, unresolvedCount);
 
   return (
     <article
@@ -437,6 +471,18 @@ function TimelineDraftCard({
           <p className="mt-2 text-sm leading-6 text-zinc-600">
             {values.summary || "No summary extracted yet."}
           </p>
+          {attentionItems.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {attentionItems.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-900"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
         <span className="rounded-full bg-zinc-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
           {values.displayDateLabel.trim() || values.yearStart || "Undated"}
@@ -704,8 +750,11 @@ function SuggestionResolutionCard({
       <p className="mt-1 text-xs text-zinc-600">{suggestion.reason}</p>
       {suggestion.suggestedAction === "ambiguous" ||
       suggestion.suggestedAction === "unresolved" ? (
-        <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-900">
-          AI could not resolve this mention confidently. Choose link/create/ignore explicitly.
+        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] leading-5 text-amber-900">
+          Choose <span className="font-semibold">Link existing</span> when one of the
+          candidates is the same canon record, <span className="font-semibold">Create new</span>{" "}
+          when this is new canon, or <span className="font-semibold">Ignore</span> when this
+          mention should not create or link anything.
         </p>
       ) : null}
       <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
@@ -891,6 +940,35 @@ function getUnresolvedCount(
 
     return count;
   }, 0);
+}
+
+function getDraftAttentionItems(
+  draft: MultiEventBrainDumpEventDraft,
+  reviewState: DraftReviewState | undefined,
+  unresolvedCount: number
+) {
+  const items: string[] = [];
+
+  if (reviewState?.skipped) {
+    items.push("Skipped");
+  }
+
+  if (unresolvedCount > 0) {
+    items.push(`${unresolvedCount} needs review`);
+  }
+
+  if (draft.warnings.length > 0) {
+    items.push(`${draft.warnings.length} AI note${draft.warnings.length === 1 ? "" : "s"}`);
+  }
+
+  const normalizedValues = normalizeTimelineEventFormValues(reviewState?.draftValues ?? draft.prefill);
+  const validation = validateNormalizedTimelineEventFormValues(normalizedValues);
+
+  if (validation.errors.length > 0 && !reviewState?.skipped) {
+    items.push(`${validation.errors.length} field issue${validation.errors.length === 1 ? "" : "s"}`);
+  }
+
+  return items;
 }
 
 function buildResolutions(

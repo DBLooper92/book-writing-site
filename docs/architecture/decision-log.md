@@ -36,3 +36,8 @@ Durable decisions for this desktop repository.
 
 - Decision: Preserve raw multi-event BrainDump requests and responses in per-job NDJSON logs for debugging.
 - Why: Prompt regressions and missing-detail bugs are only fixable when the exact request/response pair is available after the run.
+
+## D-008
+
+- Decision: Recover malformed-but-usable multi-event BrainDump chunk output when it contains clear event drafts, and surface the recovery as a warning.
+- Why: Raw model output can drift from the requested envelope or truncate under dense input; preserving valid drafts is safer than silently losing story beats.
