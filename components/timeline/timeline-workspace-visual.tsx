@@ -827,12 +827,24 @@ function TimelineInsertionRow({
             isRunning
               ? "cursor-not-allowed bg-sky-600 text-white"
               : isPendingApproval || needsRerun
-                ? "bg-amber-500 text-white hover:bg-amber-600"
+                ? "timeline-review-button bg-amber-500 text-white hover:bg-amber-600"
                 : "bg-zinc-950 text-white hover:bg-zinc-800"
           }`}
-          aria-label={isPendingApproval || needsRerun ? "Review pending BrainDump" : insertionItem.label}
+          aria-label={
+            isRunning
+              ? "BrainDump building timeline events"
+              : isPendingApproval || needsRerun
+                ? "Review pending BrainDump"
+                : insertionItem.label
+          }
         >
-          {isRunning ? "..." : isPendingApproval || needsRerun ? "!" : "+"}
+          {isRunning ? (
+            <TimelineLoadingDots />
+          ) : isPendingApproval || needsRerun ? (
+            <TimelineReviewAttentionIcon />
+          ) : (
+            "+"
+          )}
         </button>
       </div>
 
@@ -861,6 +873,24 @@ function TimelineInsertionRow({
         />
       ) : null}
     </div>
+  );
+}
+
+function TimelineLoadingDots() {
+  return (
+    <span className="timeline-loading-dots" aria-hidden="true">
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
+
+function TimelineReviewAttentionIcon() {
+  return (
+    <span className="timeline-review-mark" aria-hidden="true">
+      !
+    </span>
   );
 }
 
