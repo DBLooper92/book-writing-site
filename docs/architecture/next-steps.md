@@ -7,6 +7,8 @@ This file tracks short-term priorities for the desktop-only direction.
 - keep local project open/create/export/apply workflows stable
 - finish removing outdated web/Supabase wording from user-facing copy
 - keep docs aligned with real desktop runtime behavior
+- use the new per-job AI diagnostics logs to tune multi-event BrainDump prompting when a run returns no drafts
+- work through the AI BrainDump cleanup plan in `docs/architecture/ai-brain-dump-cleanup-plan.md`
 
 ## Recommended Order
 

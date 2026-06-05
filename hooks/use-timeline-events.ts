@@ -120,7 +120,7 @@ export function useTimelineEvents(): UseTimelineEventsResult {
   }, [activeProjectId, loadTimelineEvents, queryKey, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
-  const loading = projectLoading || (!!queryKey && (!matchesCurrentQuery || state.loading));
+  const loading = projectLoading || (!!queryKey && !matchesCurrentQuery);
 
   async function refreshTimelineEvents() {
     await loadTimelineEvents({

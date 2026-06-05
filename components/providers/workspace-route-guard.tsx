@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { useActiveProject } from "@/hooks/use-active-project";
@@ -10,36 +10,21 @@ export function WorkspaceRouteGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { activeProjectId, loading } = useActiveProject();
   const isLauncherRoute = pathname === "/";
+  const [allowRedirect, setAllowRedirect] = useState(false);
 
   useEffect(() => {
-    if (!isLauncherRoute && !loading && !activeProjectId) {
-      router.replace("/");
-    }
-  }, [activeProjectId, isLauncherRoute, loading, router]);
+    setAllowRedirect(true);
+  }, []);
 
   useEffect(() => {
-    if (isLauncherRoute || !loading) {
+    if (!allowRedirect || isLauncherRoute || loading || activeProjectId) {
       return;
     }
 
-    const timeout = window.setTimeout(() => {
       router.replace("/");
-    }, 4000);
+  }, [activeProjectId, allowRedirect, isLauncherRoute, loading, router]);
 
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [isLauncherRoute, loading, router]);
-
-  if (!isLauncherRoute && loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 text-zinc-700">
-        Loading local project workspace...
-      </main>
-    );
-  }
-
-  if (!isLauncherRoute && !activeProjectId) {
+  if (!isLauncherRoute && allowRedirect && !loading && !activeProjectId) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 text-zinc-700">
         Redirecting to launcher...

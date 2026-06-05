@@ -7,6 +7,7 @@
     "dev": "concurrently -k \"next dev\" \"wait-on http://127.0.0.1:3000 && cross-env NODE_ENV=development ELECTRON_RENDERER_URL=http://127.0.0.1:3000 electron .\"",
     "build": "next build",
     "start": "cross-env NODE_ENV=production electron .",
+    "run:hard-time-ui-regression": "cross-env BOOK_BIBLE_RUN_HARD_TIME_UI_REGRESSION=1 electron .",
     "dist": "npm run build && electron-builder",
     "lint": "eslint .",
     "test": "vitest run",

@@ -241,3 +241,41 @@ export type BrainDumpValidationReport = {
     scenarios: number;
   };
 };
+
+export type BrainDumpRegressionCaseReport = {
+  comparison: {
+    duplicateFocus: Array<{
+      afterCount: number;
+      beforeCount: number;
+      focusLabel: string;
+      stable: boolean;
+    }>;
+    missingPhrases: string[];
+    preservedPhrases: string[];
+  };
+  error: string | null;
+  id: string;
+  jobId: string | null;
+  notes: string[];
+  pass: boolean;
+  title: string;
+};
+
+export type BrainDumpRegressionReport = {
+  createdAt: string;
+  cases: BrainDumpRegressionCaseReport[];
+  id: string;
+  inferenceNotes: string[];
+  path: string;
+  projectId: string | null;
+  projectPath: string;
+  projectTitle: string | null;
+  sandboxRoot: string;
+  summary: {
+    cases: number;
+    draftCount: number;
+    missingPhraseCount: number;
+    passCount: number;
+    preservedPhraseCount: number;
+  };
+};

@@ -5,7 +5,11 @@ import { useEffect, useState } from "react";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { useActiveProject } from "@/hooks/use-active-project";
-import type { AiJobSummary, BrainDumpValidationReport } from "@/types/ai-brain-dump";
+import type {
+  AiJobSummary,
+  BrainDumpRegressionReport,
+  BrainDumpValidationReport,
+} from "@/types/ai-brain-dump";
 
 export default function AiJobsPage() {
   const { activeProject, activeProjectId, user, loading: projectLoading } = useActiveProject();
@@ -19,6 +23,9 @@ export default function AiJobsPage() {
   const [runningValidation, setRunningValidation] = useState(false);
   const [latestValidationReport, setLatestValidationReport] =
     useState<BrainDumpValidationReport | null>(null);
+  const [runningRegression, setRunningRegression] = useState(false);
+  const [latestRegressionReport, setLatestRegressionReport] =
+    useState<BrainDumpRegressionReport | null>(null);
 
   useEffect(() => {
     if (!activeProjectId) {
@@ -108,6 +115,24 @@ export default function AiJobsPage() {
     }
   }
 
+  async function handleRunHardTimeRegressionSuite() {
+    setRunningRegression(true);
+    setError(null);
+
+    try {
+      const report = await window.bookBible.ai.runHardTimeBrainDumpRegressionSuite();
+      setLatestRegressionReport(report);
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to run the Hard Time regression loop."
+      );
+    } finally {
+      setRunningRegression(false);
+    }
+  }
+
   return (
     <PageShell
       eyebrow="AI Jobs"
@@ -149,6 +174,29 @@ export default function AiJobsPage() {
                 {error}
               </p>
             ) : null}
+          </article>
+          <article className="rounded-3xl border border-zinc-200 bg-white p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold tracking-tight text-zinc-950">
+                  Hard Time UI Regression Loop
+                </h2>
+                <p className="mt-2 text-sm text-zinc-600">
+                  Clones the active project into disposable sandbox copies, drives the real
+                  timeline and AI Jobs UI, and records source text, generated drafts, saved slices,
+                  and job logs in one comparison report.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleRunHardTimeRegressionSuite()}
+                disabled={runningRegression}
+                className="inline-flex h-10 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+              >
+                {runningRegression ? "Running..." : "Run Hard Time Regression"}
+              </button>
+            </div>
+            {latestRegressionReport ? <RegressionReportCard report={latestRegressionReport} /> : null}
           </article>
           <StateCard>No AI jobs yet. Start one from Timeline &gt; Create timeline event &gt; AI Multi-Event.</StateCard>
           {latestValidationReport ? <ValidationReportCard report={latestValidationReport} /> : null}
@@ -267,6 +315,56 @@ function ValidationReportCard({ report }: { report: BrainDumpValidationReport })
       <p className="mt-1 text-sm text-zinc-600">
         Original brain dump text is preserved on each scenario result for failed reruns and manual review.
       </p>
+    </article>
+  );
+}
+
+function RegressionReportCard({ report }: { report: BrainDumpRegressionReport }) {
+  return (
+    <article className="mt-4 rounded-3xl border border-zinc-200 bg-zinc-50 p-5">
+      <h3 className="text-base font-semibold tracking-tight text-zinc-950">
+        Latest Hard Time Regression Report
+      </h3>
+      <p className="mt-2 text-sm text-zinc-600">
+        Passed {report.summary.passCount} of {report.summary.cases} cases. Drafts extracted:{" "}
+        {report.summary.draftCount}. Missing phrase hits: {report.summary.missingPhraseCount}.
+      </p>
+      <p className="mt-1 text-sm text-zinc-600">
+        Preserved phrase hits: {report.summary.preservedPhraseCount}. Report saved at{" "}
+        {report.path}.
+      </p>
+      <ul className="mt-4 space-y-2 text-sm text-zinc-700">
+        {report.cases.map((entry) => (
+          <li key={entry.id} className="rounded-2xl border border-zinc-200 bg-white px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-medium text-zinc-900">{entry.title}</span>
+              <span
+                className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                  entry.pass
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-red-100 text-red-700"
+                }`}
+              >
+                {entry.pass ? "Pass" : "Needs work"}
+              </span>
+            </div>
+            {entry.error ? <p className="mt-2 text-red-700">{entry.error}</p> : null}
+            {entry.comparison.missingPhrases.length > 0 ? (
+              <p className="mt-2 text-zinc-600">
+                Missing: {entry.comparison.missingPhrases.join(", ")}
+              </p>
+            ) : null}
+            {entry.comparison.duplicateFocus.length > 0 ? (
+              <p className="mt-2 text-zinc-600">
+                Duplicate focus:{" "}
+                {entry.comparison.duplicateFocus
+                  .map((focus) => `${focus.focusLabel} ${focus.beforeCount}->${focus.afterCount}`)
+                  .join(", ")}
+              </p>
+            ) : null}
+          </li>
+        ))}
+      </ul>
     </article>
   );
 }

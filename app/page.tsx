@@ -29,6 +29,25 @@ export default function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
+    const syncRefresh = () => {
+      if (cancelled) {
+        return;
+      }
+
+      try {
+        const currentProject = window.bookBible?.project?.getCurrentSync?.() ?? null;
+        const recentProjects = window.bookBible?.launcher?.listRecentProjectsSync?.() ?? [];
+
+        setState((current) => ({
+          ...current,
+          currentProject,
+          loading: false,
+          recentProjects,
+        }));
+      } catch {
+        // Keep the async path as the fallback if sync access is temporarily unavailable.
+      }
+    };
 
     async function loadLauncher() {
       try {
@@ -62,10 +81,13 @@ export default function HomePage() {
       }
     }
 
+    syncRefresh();
     void loadLauncher();
+    const poller = window.setInterval(syncRefresh, 1000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(poller);
     };
   }, []);
 

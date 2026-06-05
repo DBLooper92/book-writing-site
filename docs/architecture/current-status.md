@@ -14,6 +14,8 @@ This file documents the state of the desktop app as it exists now.
 - top navigation now waits for client-side project state after hydration so the server and browser render the same initial markup
 - multi-event brain dump parsing now recovers the first valid JSON object or array from mixed model output instead of skipping the whole chunk on extra prose or multiple blobs
 - timeline-launched multi-event brain dump jobs stay anchored in the timeline gap, lock the insertion notch while running, then show editable generated event drafts inline for review and apply
+- timeline brain dump jobs now write a per-job `.ai-jobs/<jobId>.log.ndjson` sidecar with the generated prompt, raw chunk response, and completion/failure summary for debugging zero-draft runs
+- AI draft apply now reuses repeated entity creations within a single pass so obvious repeats do not mint duplicate rows for the same target/name pair
 - proposal status lifecycle in local filesystem
 
 ## Transitional Reality

@@ -108,6 +108,20 @@ describe("ai-utils brain dump helpers", () => {
     expect(prompt).toContain("return event drafts even when the nearby timeline context is sparse");
   });
 
+  it("asks the model to preserve source detail and avoid invented dates", () => {
+    const singlePrompt = buildTimelineBrainDumpUserPrompt({
+      brainDumpText: "An old man offers free tech, gets arrested, and is moved into a digital prison.",
+    });
+    const multiPrompt = buildMultiTimelineBrainDumpUserPrompt({
+      chunkText: "An old man offers free tech, gets arrested, and is moved into a digital prison.",
+    });
+
+    expect(singlePrompt).toContain("Do not invent yearStart/yearEnd values");
+    expect(singlePrompt).toContain("Preserve specific worldbuilding details");
+    expect(multiPrompt).toContain("Do not invent yearStart/yearEnd values");
+    expect(multiPrompt).toContain("Preserve specific worldbuilding details");
+  });
+
   it("splits long text into bounded chunks", () => {
     const chunks = splitTextIntoChunks("A".repeat(2500) + "\n\n" + "B".repeat(2500), 2600);
 

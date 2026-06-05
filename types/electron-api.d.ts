@@ -1,6 +1,7 @@
 import type { Json } from "@/types/database";
 import type {
   BrainDumpValidationReport,
+  BrainDumpRegressionReport,
   AiJobSummary,
   AiMultiEventJobRecord,
   BrainDumpPreviewResult,
@@ -244,6 +245,10 @@ export type BookBibleElectronApi = {
       budgetUsd?: number;
       sandboxProjectTitle?: string;
     }): Promise<BrainDumpValidationReport>;
+    runHardTimeBrainDumpRegressionSuite(input?: {
+      sandboxRoot?: string;
+      sourceProjectPath?: string;
+    }): Promise<BrainDumpRegressionReport>;
     listValidationReports(): Promise<
       Array<{
         createdAt: string;

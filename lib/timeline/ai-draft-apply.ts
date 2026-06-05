@@ -39,6 +39,7 @@ export async function applyAiDraftResolutionsToTimelineValues({
   const suggestionMap = new Map(
     aiDraftState.preview.entitySuggestions.map((suggestion) => [suggestion.id, suggestion] as const)
   );
+  const createdRecordIdsByKey = new Map<string, string>();
   const nextValues: NormalizedTimelineEventFormValues = {
     ...values,
     bookIds: [...values.bookIds],
@@ -68,7 +69,15 @@ export async function applyAiDraftResolutionsToTimelineValues({
     let linkedId = resolution.linkedId ?? "";
 
     if (resolution.action === "create") {
-      linkedId = await createRecordFromSuggestion(uid, activeProjectId, suggestion);
+      const creationKey = getSuggestionCreationKey(suggestion);
+      const existingCreatedId = createdRecordIdsByKey.get(creationKey);
+
+      if (existingCreatedId) {
+        linkedId = existingCreatedId;
+      } else {
+        linkedId = await createRecordFromSuggestion(uid, activeProjectId, suggestion);
+        createdRecordIdsByKey.set(creationKey, linkedId);
+      }
     }
 
     if (!linkedId) {
@@ -278,4 +287,19 @@ async function createRecordFromSuggestion(
 
 function unique(values: string[]) {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function getSuggestionCreationKey(suggestion: BrainDumpEntitySuggestion) {
+  return `${suggestion.target}:${normalizeCreationKey(
+    suggestion.suggestedCreateFields.titleOrName || suggestion.mention
+  )}`;
+}
+
+function normalizeCreationKey(value: string) {
+  return String(value ?? "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }

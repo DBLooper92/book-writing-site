@@ -49,6 +49,22 @@ export async function listUserProjects(_uid: string) {
   })) satisfies UserProject[];
 }
 
+export function listUserProjectsSync(_uid: string) {
+  if (typeof window === "undefined") {
+    return [] satisfies UserProject[];
+  }
+
+  const recentProjects = window.bookBible.launcher.listRecentProjectsSync();
+
+  return recentProjects.map((project) => ({
+    id: project.id,
+    title: project.title,
+    slug: project.id,
+    summary: project.missing ? "Project folder is missing." : "Local desktop project.",
+    status: project.missing ? "missing" : "active",
+  })) satisfies UserProject[];
+}
+
 export async function getProjectById(_uid: string, projectId: string) {
   const currentProject = await window.bookBible.project.getCurrent();
 
@@ -61,6 +77,15 @@ export async function getProjectById(_uid: string, projectId: string) {
 
 export async function getActiveProjectId(_uid: string) {
   const currentProject = await window.bookBible.project.getCurrent();
+  return currentProject?.id ?? null;
+}
+
+export function getActiveProjectIdSync(_uid: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const currentProject = window.bookBible.project.getCurrentSync();
   return currentProject?.id ?? null;
 }
 

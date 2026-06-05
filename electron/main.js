@@ -54,6 +54,7 @@ const {
   extractOpenAiResponseText,
 } = require("./ai-utils");
 const { buildValidationFixtures } = require("./brain-dump-validation-fixtures");
+const { HARD_TIME_INFERENCE_NOTES, buildHardTimeBrainDumpRegressionFixtures } = require("./hard-time-brain-dump-regression-fixtures");
 const { slugify } = require("../lib/drafts/apply-helpers");
 
 const APP_PROTOCOL = "bookbible-file";
@@ -72,6 +73,9 @@ const RUN_DIGITAL_PRISON_BRAIN_DUMP_CLI = process.argv.includes(
 );
 
 const RUN_DIGITAL_PRISON_UI_CLI = process.env.BOOK_BIBLE_RUN_DIGITAL_PRISON_UI === "1";
+const RUN_HARD_TIME_UI_REGRESSION_CLI =
+  process.argv.includes("--run-hard-time-ui-regression") ||
+  process.env.BOOK_BIBLE_RUN_HARD_TIME_UI_REGRESSION === "1";
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -183,12 +187,16 @@ function updateAppSettings(updater) {
   return nextSettings;
 }
 
-function sendRendererEvent(channelName) {
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    return;
-  }
+function sendRendererEvent(channelName, targetWindow = null) {
+  const windows = targetWindow ? [targetWindow] : BrowserWindow.getAllWindows();
 
-  mainWindow.webContents.send(channelName);
+  windows.forEach((window) => {
+    if (!window || window.isDestroyed()) {
+      return;
+    }
+
+    window.webContents.send(channelName);
+  });
 }
 
 function getDefaultProjectsRoot() {
@@ -1475,6 +1483,10 @@ function getAiJobPath(projectRuntime, jobId) {
   return path.join(getAiJobsRoot(projectRuntime), `${jobId}.json`);
 }
 
+function getAiJobLogPath(projectRuntime, jobId) {
+  return path.join(getAiJobsRoot(projectRuntime), `${jobId}.log.ndjson`);
+}
+
 function notifyAiJobsChanged() {
   sendRendererEvent("ai:jobs:changed");
 }
@@ -1482,6 +1494,21 @@ function notifyAiJobsChanged() {
 function writeAiJobRecord(projectRuntime, jobRecord) {
   ensureDirectory(getAiJobsRoot(projectRuntime));
   fs.writeFileSync(getAiJobPath(projectRuntime, jobRecord.id), JSON.stringify(jobRecord, null, 2) + "\n", "utf8");
+}
+
+function appendAiJobLogEntry(projectRuntime, jobId, entry) {
+  ensureDirectory(getAiJobsRoot(projectRuntime));
+  const logEntry = {
+    at: new Date().toISOString(),
+    jobId,
+    ...entry,
+  };
+
+  fs.appendFileSync(
+    getAiJobLogPath(projectRuntime, jobId),
+    `${JSON.stringify(logEntry)}\n`,
+    "utf8"
+  );
 }
 
 function readAiJobRecord(projectRuntime, jobId) {
@@ -1595,6 +1622,11 @@ async function startMultiEventTimelineBrainDumpJob(projectRuntime, input) {
   const projectContext = input?.projectContext ?? null;
   const jobRecord = createAiJobRecord({ brainDumpText, projectContext });
   writeAiJobRecord(projectRuntime, jobRecord);
+  appendAiJobLogEntry(projectRuntime, jobRecord.id, {
+    event: "job_created",
+    brainDumpChars: brainDumpText.length,
+    projectContext,
+  });
   notifyAiJobsChanged();
   queueRunAiJob(projectRuntime, jobRecord.id, projectContext);
 
@@ -1789,6 +1821,15 @@ async function runMultiEventTimelineBrainDumpJob(projectRuntime, jobId, projectC
     }
 
     const chunks = splitTextIntoChunks(job.input?.brainDumpText ?? "", MULTI_BRAIN_DUMP_MAX_CHARS);
+    const systemPrompt = buildMultiTimelineBrainDumpSystemPrompt();
+
+    appendAiJobLogEntry(projectRuntime, jobId, {
+      event: "job_running",
+      brainDumpChars: String(job.input?.brainDumpText ?? "").length,
+      chunkCount: chunks.length,
+      projectContext: projectContext ?? null,
+      systemPrompt,
+    });
 
     updateAiJobRecord(projectRuntime, jobId, (current) => ({
       ...current,
@@ -1820,15 +1861,25 @@ async function runMultiEventTimelineBrainDumpJob(projectRuntime, jobId, projectC
       }
 
       const chunkText = chunks[index];
+      const requestInput = buildMultiTimelineBrainDumpUserPrompt({
+        chunkIndex: index + 1,
+        chunkText,
+        chunkTotal: chunks.length,
+        projectContext: projectContext ?? null,
+      });
+
+      appendAiJobLogEntry(projectRuntime, jobId, {
+        event: "chunk_request",
+        chunkIndex: index + 1,
+        chunkTotal: chunks.length,
+        chunkChars: chunkText.length,
+        requestInput,
+      });
+
       const { payload, telemetry } = await callOpenAiResponsesApi({
         apiKey,
-        input: buildMultiTimelineBrainDumpUserPrompt({
-          chunkIndex: index + 1,
-          chunkText,
-          chunkTotal: chunks.length,
-          projectContext: projectContext ?? null,
-        }),
-        instructions: buildMultiTimelineBrainDumpSystemPrompt(),
+        input: requestInput,
+        instructions: systemPrompt,
         maxOutputTokens: 2200,
         model,
         requestType: "timeline_brain_dump_chunk",
@@ -1838,15 +1889,36 @@ async function runMultiEventTimelineBrainDumpJob(projectRuntime, jobId, projectC
       });
       const rawText = extractOpenAiResponseText(payload);
       const parsed = extractFirstJsonObject(rawText);
+      let normalizedChunk = null;
 
       if (!parsed) {
         warnings.push(`Chunk ${index + 1} returned invalid JSON and was skipped.`);
       } else {
-        const normalized = normalizeMultiChunkOutput(parsed);
-        extractedEvents.push(...normalized.events);
-        extractedLinks.push(...normalized.links);
-        warnings.push(...normalized.warnings);
+        normalizedChunk = normalizeMultiChunkOutput(parsed);
+        extractedEvents.push(...normalizedChunk.events);
+        extractedLinks.push(...normalizedChunk.links);
+        warnings.push(...normalizedChunk.warnings);
       }
+
+      appendAiJobLogEntry(projectRuntime, jobId, {
+        event: "chunk_response",
+        chunkIndex: index + 1,
+        chunkTotal: chunks.length,
+        responseText: rawText,
+        parsedResponse: parsed,
+        extractedEventCount: normalizedChunk?.events.length ?? 0,
+        extractedLinkCount: normalizedChunk?.links.length ?? 0,
+        warningCount: warnings.length,
+        telemetry: {
+          attempts: telemetry?.attempts ?? 1,
+          category: telemetry?.category ?? "unknown",
+          durationMs: telemetry?.durationMs ?? 0,
+          outputTokens: telemetry?.outputTokens ?? 0,
+          promptTokens: telemetry?.promptTokens ?? 0,
+          retriesUsed: telemetry?.retriesUsed ?? 0,
+          totalTokens: telemetry?.totalTokens ?? 0,
+        },
+      });
 
       updateAiJobRecord(projectRuntime, jobId, (current) => ({
         ...current,
@@ -1879,6 +1951,15 @@ async function runMultiEventTimelineBrainDumpJob(projectRuntime, jobId, projectC
     const drafts = normalizeMultiEventDrafts(projectRuntime, extractedEvents, projectContext);
     applySuggestedLinksByTitle(drafts, extractedLinks);
     const dedupedDrafts = dedupeDraftsByIdentity(drafts);
+    const completionEvent =
+      dedupedDrafts.length === 0 ? "job_completed_no_events" : "job_completed";
+
+    appendAiJobLogEntry(projectRuntime, jobId, {
+      event: completionEvent,
+      draftCount: dedupedDrafts.length,
+      warningCount: warnings.length,
+      linkCount: extractedLinks.length,
+    });
 
     updateAiJobRecord(projectRuntime, jobId, (current) => ({
       ...current,
@@ -1897,6 +1978,9 @@ async function runMultiEventTimelineBrainDumpJob(projectRuntime, jobId, projectC
     }));
   } catch (error) {
     if (signal?.aborted) {
+      appendAiJobLogEntry(projectRuntime, jobId, {
+        event: "job_canceled",
+      });
       updateAiJobRecord(projectRuntime, jobId, (current) => ({
         ...current,
         finishedAt: new Date().toISOString(),
@@ -1911,6 +1995,11 @@ async function runMultiEventTimelineBrainDumpJob(projectRuntime, jobId, projectC
       error && typeof error === "object" && typeof error.category === "string"
         ? error.category
         : "unknown";
+    appendAiJobLogEntry(projectRuntime, jobId, {
+      event: "job_failed",
+      errorMessage: message,
+      failureCategory: category,
+    });
     updateAiJobRecord(projectRuntime, jobId, (current) => ({
       ...current,
       failureCategory: category,
@@ -2968,15 +3057,15 @@ function buildDigitalPrisonUiGapTarget(timelineEvents, insertionIndex, fallbackL
   };
 }
 
-async function executeRendererScript(script) {
-  if (!mainWindow || mainWindow.isDestroyed()) {
+async function executeRendererScript(script, targetWindow = mainWindow) {
+  if (!targetWindow || targetWindow.isDestroyed()) {
     throw new Error("Main window is unavailable.");
   }
 
-  return mainWindow.webContents.executeJavaScript(script, true);
+  return targetWindow.webContents.executeJavaScript(script, true);
 }
 
-async function waitForRendererCondition(conditionSource, timeoutMs = 60000) {
+async function waitForRendererCondition(conditionSource, timeoutMs = 60000, targetWindow = mainWindow) {
   return executeRendererScript(`(async () => {
     const startedAt = Date.now();
     const timeoutMs = ${Number(timeoutMs)};
@@ -2990,10 +3079,10 @@ async function waitForRendererCondition(conditionSource, timeoutMs = 60000) {
     }
 
     throw new Error("Timed out waiting for the requested renderer state.");
-  })()`);
+  })()`, targetWindow);
 }
 
-async function waitForRendererButtonText(buttonText, timeoutMs = 60000) {
+async function waitForRendererButtonText(buttonText, timeoutMs = 60000, targetWindow = mainWindow) {
   const textLiteral = JSON.stringify(String(buttonText));
   return executeRendererScript(`(async () => {
     const targetText = ${textLiteral};
@@ -3013,10 +3102,10 @@ async function waitForRendererButtonText(buttonText, timeoutMs = 60000) {
     }
 
     throw new Error(\`Timed out waiting for button text: ${textLiteral}\`);
-  })()`);
+  })()`, targetWindow);
 }
 
-async function clickRendererButtonByText(buttonText, timeoutMs = 60000) {
+async function clickRendererButtonByText(buttonText, timeoutMs = 60000, targetWindow = mainWindow) {
   const textLiteral = JSON.stringify(String(buttonText));
   return executeRendererScript(`(async () => {
     const targetText = ${textLiteral};
@@ -3038,10 +3127,10 @@ async function clickRendererButtonByText(buttonText, timeoutMs = 60000) {
     }
 
     throw new Error(\`Timed out waiting to click button text: ${textLiteral}\`);
-  })()`);
+  })()`, targetWindow);
 }
 
-async function clickRendererLinkByText(linkText, timeoutMs = 60000) {
+async function clickRendererLinkByText(linkText, timeoutMs = 60000, targetWindow = mainWindow) {
   const textLiteral = JSON.stringify(String(linkText));
   return executeRendererScript(`(async () => {
     const targetText = ${textLiteral};
@@ -3063,10 +3152,14 @@ async function clickRendererLinkByText(linkText, timeoutMs = 60000) {
     }
 
     throw new Error(\`Timed out waiting to click link text: ${textLiteral}\`);
-  })()`);
+  })()`, targetWindow);
 }
 
-async function clickRendererTimelineInsertionByHelperText(helperText, timeoutMs = 60000) {
+async function clickRendererTimelineInsertionByHelperText(
+  helperText,
+  timeoutMs = 60000,
+  targetWindow = mainWindow
+) {
   const helperTextLiteral = JSON.stringify(String(helperText));
   return executeRendererScript(`(async () => {
     const targetText = ${helperTextLiteral};
@@ -3094,10 +3187,10 @@ async function clickRendererTimelineInsertionByHelperText(helperText, timeoutMs 
     }
 
     throw new Error(\`Timed out waiting for insertion row: ${helperTextLiteral}\`);
-  })()`);
+  })()`, targetWindow);
 }
 
-async function setRendererTextareaValue(text, timeoutMs = 60000) {
+async function setRendererTextareaValue(text, timeoutMs = 60000, targetWindow = mainWindow) {
   const textLiteral = JSON.stringify(String(text));
   return executeRendererScript(`(async () => {
     const targetText = ${textLiteral};
@@ -3118,17 +3211,52 @@ async function setRendererTextareaValue(text, timeoutMs = 60000) {
     }
 
     throw new Error("Timed out waiting for a textarea.");
-  })()`);
+  })()`, targetWindow);
 }
 
-async function getRendererLocationPathname() {
-  return executeRendererScript(`window.location.pathname`);
+async function getRendererLocationPathname(targetWindow = mainWindow) {
+  return executeRendererScript(`window.location.pathname`, targetWindow);
+}
+
+async function createAutomationWindow() {
+  const automationWindow = new BrowserWindow({
+    width: 1440,
+    height: 960,
+    minWidth: 1200,
+    minHeight: 800,
+    show: true,
+    backgroundColor: "#f8f8f6",
+    title: "Book Bible Desktop Automation",
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      backgroundThrottling: false,
+      preload: path.join(__dirname, "preload.js"),
+      spellcheck: true,
+    },
+  });
+
+  configureSpellChecker(automationWindow);
+  automationWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+    console.log(`[automation renderer console:${level}] ${sourceId}:${line} ${message}`);
+  });
+  automationWindow.webContents.on("page-error", (_event, errorMessage, sourceId, lineNumber) => {
+    console.log(`[automation renderer page-error] ${sourceId}:${lineNumber} ${errorMessage}`);
+  });
+  automationWindow.webContents.on("render-process-gone", (_event, details) => {
+    console.log(
+      `[automation renderer gone] reason=${details.reason} exitCode=${details.exitCode}`
+    );
+  });
+  const rendererUrl = await ensureRendererUrl();
+  await automationWindow.loadURL(rendererUrl);
+  return automationWindow;
 }
 
 async function runDigitalPrisonUiChecks(projectRuntime) {
   const projectPath = projectRuntime.projectPath;
   const noteRoot = path.join(projectPath, "inbox", "brain-dumps");
-  const rendererUrl = new URL("/timeline", await ensureRendererUrl()).toString();
+  const rendererUrl = await ensureRendererUrl();
   const cases = [
     {
       file: path.join(noteRoot, "single-2415-to-2416.md"),
@@ -3322,6 +3450,673 @@ async function runDigitalPrisonUiChecks(projectRuntime) {
   }
 
   return results;
+}
+
+function getBrainDumpRegressionReportsRoot(projectPath) {
+  return path.join(projectPath, "exports", "ai-validation", "hard-time-regression");
+}
+
+function getBrainDumpRegressionReportPath(projectPath, reportId) {
+  return path.join(getBrainDumpRegressionReportsRoot(projectPath), `${reportId}.json`);
+}
+
+function writeBrainDumpRegressionReport(projectPath, report) {
+  const reportsRoot = getBrainDumpRegressionReportsRoot(projectPath);
+  ensureDirectory(reportsRoot);
+  fs.writeFileSync(
+    getBrainDumpRegressionReportPath(projectPath, report.id),
+    `${JSON.stringify(report, null, 2)}\n`,
+    "utf8"
+  );
+}
+
+function readAiJobLogEntries(projectRuntime, jobId) {
+  const logPath = getAiJobLogPath(projectRuntime, jobId);
+
+  if (!fs.existsSync(logPath)) {
+    return [];
+  }
+
+  return fs
+    .readFileSync(logPath, "utf8")
+    .split(/\r?\n/g)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return { raw: line };
+      }
+    });
+}
+
+function parseCaseIdList(value) {
+  return Array.from(
+    new Set(
+      String(value ?? "")
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function cloneProjectDirectory(sourceProjectPath, targetProjectPath) {
+  if (path.resolve(sourceProjectPath) === path.resolve(targetProjectPath)) {
+    throw new Error("Source and sandbox project paths must differ.");
+  }
+
+  fs.cpSync(sourceProjectPath, targetProjectPath, {
+    recursive: true,
+    force: true,
+    preserveTimestamps: true,
+  });
+}
+
+function summarizeTargetRecord(target, record) {
+  if (!record) {
+    return null;
+  }
+
+  const config = TARGET_TABLE_CONFIG[target];
+  const label = String(record?.[config.labelField] ?? record?.id ?? "").trim();
+
+  return {
+    aliases: Array.isArray(record?.aliases) ? record.aliases : [],
+    description: asString(record?.description),
+    id: String(record?.id ?? ""),
+    label,
+    publicWikiSummary: asString(record?.public_wiki_summary),
+    summary: asString(record?.summary),
+  };
+}
+
+function buildTargetRecordIndex(projectRuntime) {
+  const index = {};
+
+  for (const [target, config] of Object.entries(TARGET_TABLE_CONFIG)) {
+    const records = readAllDocuments(projectRuntime.db, config.tableName, projectRuntime.projectId);
+    index[target] = new Map(records.map((record) => [String(record.id), record]));
+  }
+
+  return index;
+}
+
+function collectDuplicateGroupsForTarget(projectRuntime, target) {
+  const config = TARGET_TABLE_CONFIG[target];
+
+  if (!config) {
+    return [];
+  }
+
+  const records = readAllDocuments(projectRuntime.db, config.tableName, projectRuntime.projectId);
+  const groups = new Map();
+
+  for (const record of records) {
+    const label = String(record?.[config.labelField] ?? record?.id ?? "").trim();
+    const normalized = normalizeKey(label);
+
+    if (!normalized) {
+      continue;
+    }
+
+    const existing = groups.get(normalized) ?? {
+      ids: [],
+      label,
+      normalized,
+      target,
+    };
+
+    existing.ids.push(String(record.id));
+    groups.set(normalized, existing);
+  }
+
+  return Array.from(groups.values())
+    .filter((group) => group.ids.length > 1)
+    .sort((left, right) => left.normalized.localeCompare(right.normalized));
+}
+
+function collectDuplicateSnapshot(projectRuntime) {
+  const snapshot = {};
+
+  for (const target of Object.keys(TARGET_TABLE_CONFIG)) {
+    snapshot[target] = collectDuplicateGroupsForTarget(projectRuntime, target);
+  }
+
+  return snapshot;
+}
+
+function collectFocusRecords(projectRuntime, target, focusLabel) {
+  const config = TARGET_TABLE_CONFIG[target];
+
+  if (!config) {
+    return [];
+  }
+
+  const targetKey = normalizeKey(focusLabel);
+  const records = readAllDocuments(projectRuntime.db, config.tableName, projectRuntime.projectId);
+
+  return records.filter((record) => {
+    const label = String(record?.[config.labelField] ?? "").trim();
+    if (normalizeKey(label) === targetKey) {
+      return true;
+    }
+
+    if (!Array.isArray(record?.[config.aliasField])) {
+      return false;
+    }
+
+    return record[config.aliasField].some((alias) => normalizeKey(alias) === targetKey);
+  });
+}
+
+function collectLinkedSliceSnapshot(projectRuntime, event, recordIndex) {
+  const snapshot = {};
+
+  for (const [target] of Object.entries(TARGET_TABLE_CONFIG)) {
+    const idsField = target === "plotThread" ? "plot_thread_ids" : `${target}_ids`;
+    const ids = Array.isArray(event?.[idsField]) ? event[idsField] : [];
+
+    if (target === "era") {
+      if (!event?.era_id) {
+        continue;
+      }
+
+      const record = recordIndex[target].get(String(event.era_id));
+      snapshot[target] = record ? [summarizeTargetRecord(target, record)] : [];
+      continue;
+    }
+
+    if (ids.length === 0) {
+      continue;
+    }
+
+    snapshot[target] = ids
+      .map((id) => recordIndex[target].get(String(id)))
+      .filter(Boolean)
+      .map((record) => summarizeTargetRecord(target, record));
+  }
+
+  return snapshot;
+}
+
+function collectEventText(event, linkedSliceSnapshot) {
+  const linkedLabels = Object.values(linkedSliceSnapshot)
+    .flat()
+    .map((record) => [record?.label, record?.summary, record?.description].filter(Boolean).join(" "))
+    .filter(Boolean)
+    .join(" ");
+
+  return [
+    event?.title,
+    event?.summary,
+    event?.description,
+    event?.publicWikiSummary ?? event?.public_wiki_summary,
+    event?.displayDateLabel ?? event?.display_date_label,
+    linkedLabels,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function collectDraftText(draft) {
+  return [
+    draft?.prefill?.title,
+    draft?.prefill?.summary,
+    draft?.prefill?.description,
+    draft?.prefill?.publicWikiSummary,
+    draft?.warnings?.join(" "),
+    (draft?.entitySuggestions ?? [])
+      .map((suggestion) => [
+        suggestion?.target,
+        suggestion?.mention,
+        suggestion?.reason,
+        suggestion?.suggestedCreateFields?.titleOrName,
+        suggestion?.suggestedCreateFields?.summary,
+        suggestion?.suggestedCreateFields?.description,
+      ]
+        .filter(Boolean)
+        .join(" "))
+      .join(" "),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function evaluatePhrasePreservation(phrases, text) {
+  const normalizedText = String(text ?? "").toLowerCase();
+  const preserved = [];
+  const missing = [];
+
+  for (const phrase of Array.isArray(phrases) ? phrases : []) {
+    if (normalizedText.includes(String(phrase).toLowerCase())) {
+      preserved.push(phrase);
+    } else {
+      missing.push(phrase);
+    }
+  }
+
+  return {
+    missing,
+    preserved,
+  };
+}
+
+function summarizeBrainDumpEventDraft(draft) {
+  return {
+    draftId: draft?.draftId ?? null,
+    entitySuggestionCount: Array.isArray(draft?.entitySuggestions) ? draft.entitySuggestions.length : 0,
+    eventType: draft?.prefill?.eventType ?? null,
+    prefill: {
+      description: draft?.prefill?.description ?? null,
+      publicWikiSummary: draft?.prefill?.publicWikiSummary ?? null,
+      summary: draft?.prefill?.summary ?? null,
+      title: draft?.prefill?.title ?? null,
+    },
+    suggestedPredecessorDraftIds: Array.isArray(draft?.suggestedPredecessorDraftIds)
+      ? [...draft.suggestedPredecessorDraftIds]
+      : [],
+    suggestedSuccessorDraftIds: Array.isArray(draft?.suggestedSuccessorDraftIds)
+      ? [...draft.suggestedSuccessorDraftIds]
+      : [],
+    warnings: Array.isArray(draft?.warnings) ? [...draft.warnings] : [],
+  };
+}
+
+function summarizeBrainDumpEventRecord(event, linkedSlices) {
+  return {
+    canonicalIds: {
+      bookIds: Array.isArray(event?.book_ids) ? [...event.book_ids] : [],
+      chapterIds: Array.isArray(event?.chapter_ids) ? [...event.chapter_ids] : [],
+      characterIds: Array.isArray(event?.character_ids) ? [...event.character_ids] : [],
+      cultureIds: Array.isArray(event?.culture_ids) ? [...event.culture_ids] : [],
+      factionIds: Array.isArray(event?.faction_ids) ? [...event.faction_ids] : [],
+      locationIds: Array.isArray(event?.location_ids) ? [...event.location_ids] : [],
+      plotThreadIds: Array.isArray(event?.plot_thread_ids) ? [...event.plot_thread_ids] : [],
+      religionIds: Array.isArray(event?.religion_ids) ? [...event.religion_ids] : [],
+      sceneIds: Array.isArray(event?.scene_ids) ? [...event.scene_ids] : [],
+      technologyIds: Array.isArray(event?.technology_ids) ? [...event.technology_ids] : [],
+      themeIds: Array.isArray(event?.theme_ids) ? [...event.theme_ids] : [],
+    },
+    chronologyOrder: event?.chronology_order ?? null,
+    description: event?.description ?? null,
+    displayDateLabel: event?.display_date_label ?? null,
+    eventType: event?.event_type ?? null,
+    id: event?.id ?? null,
+    linkedSlices,
+    publicWikiSummary: event?.public_wiki_summary ?? null,
+    summary: event?.summary ?? null,
+    title: event?.title ?? null,
+    yearEnd: event?.year_end ?? null,
+    yearStart: event?.year_start ?? null,
+  };
+}
+
+async function runHardTimeBrainDumpRegressionSuite(projectRuntime, input = {}) {
+  const reportId = `hard-time-regression-${Date.now()}`;
+  const sourceProjectPath = String(input?.sourceProjectPath ?? projectRuntime.projectPath).trim();
+  const sourceProjectTitle = projectRuntime?.manifest?.title ?? null;
+  const sourceProjectId = projectRuntime?.projectId ?? null;
+  const requestedCaseIds = parseCaseIdList(
+    input?.caseIds ?? process.env.BOOK_BIBLE_HARD_TIME_CASE_IDS ?? ""
+  );
+  const fixtureCases = buildHardTimeBrainDumpRegressionFixtures().filter((fixture) =>
+    requestedCaseIds.length > 0 ? requestedCaseIds.includes(fixture.id) : true
+  );
+  const rendererUrl = await ensureRendererUrl();
+  const baseSandboxRoot =
+    String(input?.sandboxRoot ?? "").trim() ||
+    path.join(os.tmpdir(), "book-bible-hard-time-regression", reportId);
+  const caseReports = [];
+  const startedAt = new Date().toISOString();
+  const automationWindow = mainWindow && !mainWindow.isDestroyed()
+    ? mainWindow
+    : await createAutomationWindow();
+
+  ensureDirectory(baseSandboxRoot);
+
+  try {
+    await automationWindow.loadURL(rendererUrl);
+
+    for (const fixture of fixtureCases) {
+      const caseSandboxPath = path.join(baseSandboxRoot, fixture.id);
+      const caseReport = {
+      comparison: {
+        duplicateFocus: [],
+        missingPhrases: [],
+        preservedPhrases: [],
+      },
+      duplicateSnapshotAfter: null,
+      duplicateSnapshotBefore: null,
+      error: null,
+      extractedDrafts: [],
+      id: fixture.id,
+      insertionContext: null,
+      jobId: null,
+      jobLogEntries: [],
+      jobLogPath: null,
+      jobRecord: null,
+      linkedSliceSnapshots: [],
+      notes: [],
+      path: caseSandboxPath,
+      pass: false,
+      sourceText: fixture.sourceText,
+      title: fixture.title,
+      uiSteps: [],
+      };
+
+      try {
+      fs.rmSync(caseSandboxPath, { recursive: true, force: true });
+      cloneProjectDirectory(sourceProjectPath, caseSandboxPath);
+      caseReport.uiSteps.push({ step: "clone-source-project", at: new Date().toISOString() });
+
+      openProjectAtPath(caseSandboxPath);
+      await automationWindow.loadURL(rendererUrl);
+      caseReport.uiSteps.push({ step: "open-sandbox-project", at: new Date().toISOString() });
+      openProjectAtPath(caseSandboxPath);
+      await automationWindow.reload();
+
+      await executeRendererScript(`(() => {
+        window.addEventListener("error", (event) => {
+          console.log("[renderer window error] " + (event.message || "unknown error"));
+        });
+        window.addEventListener("unhandledrejection", (event) => {
+          const reason = event.reason instanceof Error ? event.reason.message : String(event.reason);
+          console.log("[renderer unhandledrejection] " + reason);
+        });
+        return true;
+      })()`, automationWindow);
+
+      caseReport.rendererSnapshot = await executeRendererScript(`(async () => {
+        const currentProject = window.bookBible?.project?.getCurrentSync
+          ? window.bookBible.project.getCurrentSync()
+          : null;
+        const scriptSrcs = Array.from(document.scripts)
+          .map((script) => script.src || "")
+          .filter(Boolean)
+          .slice(0, 50);
+        const nextChunkResources = performance
+          .getEntriesByType("resource")
+          .map((entry) => entry.name)
+          .filter((name) => name.includes("/_next/static/chunks/") || name.includes("/_next/static/css/"))
+          .slice(0, 100);
+
+        return {
+          bodyText: document.body ? document.body.innerText.slice(0, 5000) : "",
+          hasBookBible: Boolean(window.bookBible),
+          hasLauncherApi: Boolean(window.bookBible?.launcher),
+          hasProjectApi: Boolean(window.bookBible?.project),
+          readyState: document.readyState,
+          pathname: window.location.pathname,
+          title: document.title,
+          debug: typeof window.__bookBibleDebug === "object" && window.__bookBibleDebug
+            ? window.__bookBibleDebug
+            : null,
+          scriptSrcs,
+          nextChunkResources,
+          currentProject,
+        };
+      })()`, automationWindow);
+
+      await waitForRendererCondition(
+        `document.body.innerText.includes("Desktop Launcher")`,
+        120000,
+        automationWindow
+      );
+      await waitForRendererCondition(
+        `document.body.innerText.includes("Open Timeline")`,
+        120000,
+        automationWindow
+      );
+      await clickRendererLinkByText("Open Timeline", 120000, automationWindow);
+      await waitForRendererCondition(
+        `window.location.pathname.startsWith("/timeline")`,
+        120000,
+        automationWindow
+      );
+      await waitForRendererCondition(
+        `document.body.innerText.includes("Create timeline event")`,
+        120000,
+        automationWindow
+      );
+        caseReport.uiSteps.push({ step: "timeline-ready", at: new Date().toISOString() });
+
+        const timelineEvents = sortBrainDumpTimelineEvents(
+          readAllDocuments(currentProjectRuntime.db, "timeline_events", currentProjectRuntime.projectId)
+        );
+        const helperTarget = buildDigitalPrisonUiGapTarget(
+          timelineEvents,
+          fixture.insertionIndex,
+          `${fixture.title} gap`
+        );
+        caseReport.insertionContext = {
+          helperText: helperTarget.helperText,
+          insertionIndex: fixture.insertionIndex,
+          nextTitle: helperTarget.nextTitle,
+          previousTitle: helperTarget.previousTitle,
+        };
+
+        const duplicateFocusBefore = fixture.duplicateFocus.map((focusLabel) => ({
+          beforeCount: collectFocusRecords(currentProjectRuntime, "character", focusLabel).length,
+          focusLabel,
+        }));
+        caseReport.duplicateSnapshotBefore = collectDuplicateSnapshot(currentProjectRuntime);
+        caseReport.uiSteps.push({ step: "snapshot-before", at: new Date().toISOString() });
+
+        await clickRendererTimelineInsertionByHelperText(
+          helperTarget.helperText,
+          60000,
+          automationWindow
+        );
+        caseReport.uiSteps.push({ step: "click-gap", at: new Date().toISOString() });
+
+        await clickRendererLinkByText("Create timeline event", 60000, automationWindow);
+        await waitForRendererCondition(
+          `document.body.innerText.includes("AI Multi-Event")`,
+          120000,
+          automationWindow
+        );
+        await clickRendererButtonByText("AI Multi-Event", 60000, automationWindow);
+        await setRendererTextareaValue(fixture.sourceText, 60000, automationWindow);
+        caseReport.uiSteps.push({ step: "fill-brain-dump", at: new Date().toISOString() });
+
+        await clickRendererButtonByText("Start Background Job", 120000, automationWindow);
+        await waitForRendererCondition(
+          `window.location.pathname.startsWith("/ai-jobs/")`,
+          120000,
+          automationWindow
+        );
+        const jobPathname = await getRendererLocationPathname(automationWindow);
+        const jobId = String(jobPathname.split("/").filter(Boolean).pop() ?? "");
+        caseReport.jobId = jobId || null;
+        caseReport.jobLogPath = jobId ? getAiJobLogPath(currentProjectRuntime, jobId) : null;
+        caseReport.uiSteps.push({ step: "start-job", at: new Date().toISOString(), jobId });
+
+        await waitForRendererButtonText("Apply reviewed events", 120000, automationWindow);
+        caseReport.uiSteps.push({ step: "review-ready", at: new Date().toISOString() });
+
+        const jobRecordBeforeApply = jobId ? readAiJobRecord(currentProjectRuntime, jobId) : null;
+        caseReport.jobRecord = jobRecordBeforeApply
+          ? {
+              ...jobRecordBeforeApply,
+              result: {
+                events: Array.isArray(jobRecordBeforeApply?.result?.events)
+                  ? jobRecordBeforeApply.result.events.map(summarizeBrainDumpEventDraft)
+                  : [],
+                warnings: Array.isArray(jobRecordBeforeApply?.result?.warnings)
+                  ? [...jobRecordBeforeApply.result.warnings]
+                  : [],
+              },
+            }
+          : null;
+
+        const jobLogEntries = jobId ? readAiJobLogEntries(currentProjectRuntime, jobId) : [];
+        caseReport.jobLogEntries = jobLogEntries;
+
+        await clickRendererButtonByText("Apply reviewed events", 60000, automationWindow);
+        caseReport.uiSteps.push({ step: "apply-reviewed-events", at: new Date().toISOString() });
+
+        await waitForRendererButtonText("Open timeline", 120000, automationWindow);
+        await clickRendererButtonByText("Open timeline", 60000, automationWindow);
+        await waitForRendererCondition(
+          `document.body.innerText.includes("Create timeline event") && !document.body.innerText.includes("Apply reviewed events")`,
+          120000,
+          automationWindow
+        );
+        caseReport.uiSteps.push({ step: "return-to-timeline", at: new Date().toISOString() });
+
+        const afterEvents = sortBrainDumpTimelineEvents(
+          readAllDocuments(currentProjectRuntime.db, "timeline_events", currentProjectRuntime.projectId)
+        );
+        const beforeEventIds = new Set(timelineEvents.map((event) => event.id));
+        const addedEvents = afterEvents.filter((event) => !beforeEventIds.has(event.id));
+        const recordIndex = buildTargetRecordIndex(currentProjectRuntime);
+        const jobRecord = jobId ? readAiJobRecord(currentProjectRuntime, jobId) : null;
+        const draftEvents = Array.isArray(jobRecord?.result?.events) ? jobRecord.result.events : [];
+        const duplicateSnapshotAfter = collectDuplicateSnapshot(currentProjectRuntime);
+        caseReport.duplicateSnapshotAfter = duplicateSnapshotAfter;
+
+        caseReport.extractedDrafts = draftEvents.map(summarizeBrainDumpEventDraft);
+        caseReport.linkedSliceSnapshots = addedEvents.map((event) => {
+          const linkedSlices = collectLinkedSliceSnapshot(currentProjectRuntime, event, recordIndex);
+          return summarizeBrainDumpEventRecord(event, linkedSlices);
+        });
+
+        const combinedDraftText = [
+          draftEvents.map(collectDraftText).join(" "),
+          caseReport.jobLogEntries
+            .map((entry) => [entry?.event, entry?.brainDumpChars, JSON.stringify(entry?.projectContext || {})].join(" "))
+            .join(" "),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        const combinedSavedText = caseReport.linkedSliceSnapshots
+          .map((event) => collectEventText(event, event.linkedSlices))
+          .join(" ")
+          .toLowerCase();
+
+        const phraseEvaluation = evaluatePhrasePreservation(
+          fixture.mustPreservePhrases,
+          `${combinedDraftText} ${combinedSavedText}`
+        );
+        const duplicateFocus = fixture.duplicateFocus.map((focusLabel) => {
+          const beforeCount =
+            duplicateFocusBefore.find((entry) => entry.focusLabel === focusLabel)?.beforeCount ??
+            0;
+          const afterCount = collectFocusRecords(currentProjectRuntime, "character", focusLabel).length;
+          return {
+            afterCount,
+            beforeCount,
+            focusLabel,
+            stable: afterCount === beforeCount,
+          };
+        });
+
+        caseReport.duplicateSnapshotAfter = duplicateSnapshotAfter;
+        caseReport.comparison = {
+          duplicateFocus,
+          missingPhrases: phraseEvaluation.missing,
+          preservedPhrases: phraseEvaluation.preserved,
+        };
+
+        const draftCountMatches = addedEvents.length === draftEvents.length;
+        const duplicateStable = duplicateFocus.every((entry) => entry.stable);
+        const phraseCoverage = phraseEvaluation.preserved.length >= Math.max(1, Math.floor(fixture.mustPreservePhrases.length * 0.75));
+        const hasDrafts = draftEvents.length > 0;
+        caseReport.pass = Boolean(draftCountMatches && duplicateStable && phraseCoverage && hasDrafts);
+
+        caseReport.notes.push(
+          draftCountMatches
+            ? `Applied ${addedEvents.length} event(s) for ${draftEvents.length} draft(s).`
+            : `Draft count mismatch: applied ${addedEvents.length}, extracted ${draftEvents.length}.`
+        );
+        caseReport.notes.push(
+          phraseEvaluation.missing.length > 0
+            ? `Missing phrases: ${phraseEvaluation.missing.join(", ")}`
+            : "All required phrases were preserved in draft or saved records."
+        );
+        caseReport.notes.push(
+          duplicateFocus.every((entry) => entry.stable)
+            ? "Duplicate focus counts stayed stable."
+            : duplicateFocus
+                .filter((entry) => !entry.stable)
+                .map((entry) => `Duplicate focus grew for ${entry.focusLabel}.`)
+                .join(" ")
+        );
+
+        caseReport.jobRecord = jobRecord
+          ? {
+              ...jobRecord,
+              result: {
+                events: Array.isArray(jobRecord?.result?.events)
+                  ? jobRecord.result.events.map(summarizeBrainDumpEventDraft)
+                  : [],
+                warnings: Array.isArray(jobRecord?.result?.warnings)
+                  ? [...jobRecord.result.warnings]
+                  : [],
+              },
+            }
+          : caseReport.jobRecord;
+        caseReport.jobLogEntries = jobId ? readAiJobLogEntries(currentProjectRuntime, jobId) : [];
+      } catch (error) {
+        caseReport.error = error instanceof Error ? error.message : "Hard Time regression case failed.";
+        caseReport.notes.push(caseReport.error);
+      }
+
+      caseReports.push(caseReport);
+    }
+  } finally {
+    if (!automationWindow.isDestroyed()) {
+      automationWindow.close();
+    }
+
+    if (sourceProjectPath && fs.existsSync(sourceProjectPath)) {
+      try {
+        openProjectAtPath(sourceProjectPath);
+      } catch {
+        // If restoring the source project fails, keep the report and surface the main result.
+      }
+    }
+  }
+
+  const summary = {
+    cases: caseReports.length,
+    draftCount: caseReports.reduce(
+      (total, caseReport) =>
+        total + (Array.isArray(caseReport?.extractedDrafts) ? caseReport.extractedDrafts.length : 0),
+      0
+    ),
+    missingPhraseCount: caseReports.reduce(
+      (total, caseReport) => total + (Array.isArray(caseReport?.comparison?.missingPhrases) ? caseReport.comparison.missingPhrases.length : 0),
+      0
+    ),
+    passCount: caseReports.filter((caseReport) => caseReport.pass).length,
+    preservedPhraseCount: caseReports.reduce(
+      (total, caseReport) => total + (Array.isArray(caseReport?.comparison?.preservedPhrases) ? caseReport.comparison.preservedPhrases.length : 0),
+      0
+    ),
+  };
+
+  const report = {
+    createdAt: startedAt,
+    id: reportId,
+    inferenceNotes: HARD_TIME_INFERENCE_NOTES,
+    path: getBrainDumpRegressionReportPath(sourceProjectPath, reportId),
+    projectId: sourceProjectId,
+    projectPath: sourceProjectPath,
+    projectTitle: sourceProjectTitle,
+    sandboxRoot: baseSandboxRoot,
+    summary,
+    cases: caseReports,
+  };
+
+  writeBrainDumpRegressionReport(sourceProjectPath, report);
+  return report;
 }
 
 function registerProtocol() {
@@ -3742,6 +4537,11 @@ function registerIpcHandlers() {
     return runBrainDumpValidationSuite(input ?? {});
   });
 
+  ipcMain.handle("ai:run-hard-time-brain-dump-regression-suite", async (_event, input) => {
+    const projectRuntime = ensureCurrentProjectRuntime();
+    return runHardTimeBrainDumpRegressionSuite(projectRuntime, input ?? {});
+  });
+
   ipcMain.handle("ai:list-validation-reports", async () => {
     const projectRuntime = ensureCurrentProjectRuntime();
     return listValidationReports(projectRuntime);
@@ -3904,6 +4704,40 @@ app.whenReady().then(async () => {
         error instanceof Error
           ? `Digital Prison UI checks failed: ${error.message}`
           : "Digital Prison UI checks failed."
+      );
+      app.exit(1);
+      return;
+    }
+  }
+
+  if (RUN_HARD_TIME_UI_REGRESSION_CLI) {
+    try {
+      const settings = readAppSettings();
+      const projectPath = settings.currentProjectPath;
+
+      if (typeof projectPath !== "string" || !projectPath.trim()) {
+        throw new Error("No current project path is configured.");
+      }
+
+      if (!fs.existsSync(projectPath)) {
+        throw new Error(`Current project path does not exist: ${projectPath}`);
+      }
+
+      openProjectAtPath(projectPath);
+      await createMainWindow();
+
+      const projectRuntime = ensureCurrentProjectRuntime();
+      const report = await runHardTimeBrainDumpRegressionSuite(projectRuntime, {
+        sourceProjectPath: projectPath,
+      });
+      console.log(JSON.stringify(report, null, 2));
+      app.quit();
+      return;
+    } catch (error) {
+      console.error(
+        error instanceof Error
+          ? `Hard Time UI regression failed: ${error.message}`
+          : "Hard Time UI regression failed."
       );
       app.exit(1);
       return;

@@ -80,6 +80,8 @@ contextBridge.exposeInMainWorld("bookBible", {
     subscribeJobs: createSubscription("ai:jobs:changed"),
     runBrainDumpValidationSuite: (input) =>
       ipcRenderer.invoke("ai:run-validation-suite", input),
+    runHardTimeBrainDumpRegressionSuite: (input) =>
+      ipcRenderer.invoke("ai:run-hard-time-brain-dump-regression-suite", input),
     listValidationReports: () => ipcRenderer.invoke("ai:list-validation-reports"),
     getValidationReport: (reportId) => ipcRenderer.invoke("ai:get-validation-report", reportId),
   },

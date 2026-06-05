@@ -26,3 +26,13 @@ Durable decisions for this desktop repository.
 
 - Decision: Keep timeline-launched multi-event BrainDump review anchored in the timeline insertion gap.
 - Why: Authors need to evaluate generated events in chronological context, and the locked gap prevents overlapping inserts while AI output is running or awaiting approval.
+
+## D-006
+
+- Decision: Reuse created entity records within a single AI draft apply pass when the same target/name pair appears again.
+- Why: Repeated mentions in one BrainDump should resolve to one canonical slice instead of creating obvious duplicate rows.
+
+## D-007
+
+- Decision: Preserve raw multi-event BrainDump requests and responses in per-job NDJSON logs for debugging.
+- Why: Prompt regressions and missing-detail bugs are only fixable when the exact request/response pair is available after the run.
