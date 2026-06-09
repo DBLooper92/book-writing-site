@@ -93,64 +93,60 @@ export function TimelineWorkspaceControls({
           >
             Reset filters
           </button>
-          {viewMode === "timeline" ? (
-            <button
-              type="button"
-              onClick={onTogglePinned}
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
-                pinned
-                  ? "border-zinc-950 bg-zinc-950 text-white hover:bg-zinc-800"
-                  : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-              }`}
-              aria-label={pinned ? "Unpin filters" : "Pin filters"}
-              title={pinned ? "Unpin filters" : "Pin filters"}
-            >
-              {pinned ? <PinnedIcon /> : <UnpinnedIcon />}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={onTogglePinned}
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
+              pinned
+                ? "border-zinc-950 bg-zinc-950 text-white hover:bg-zinc-800"
+                : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+            }`}
+            aria-label={pinned ? "Unpin filters" : "Pin filters"}
+            title={pinned ? "Unpin filters" : "Pin filters"}
+          >
+            {pinned ? <PinnedIcon /> : <UnpinnedIcon />}
+          </button>
         </div>
       </div>
 
-      {viewMode === "timeline" ? (
-        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <Field label="Search">
-            <input
-              value={filters.search}
-              onChange={(event) => onChange({ search: event.target.value })}
-              placeholder="Search title, summary, IDs, causes..."
-              className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400 focus:bg-white"
-            />
-          </Field>
-
-          <SelectField
-            label="Status"
-            value={filters.status}
-            options={TIMELINE_WORKSPACE_STATUS_OPTIONS}
-            onChange={(value) => onChange({ status: value })}
+      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <Field label="Search">
+          <input
+            value={filters.search}
+            onChange={(event) => onChange({ search: event.target.value })}
+            placeholder="Search title, summary, IDs, causes..."
+            className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400 focus:bg-white"
           />
+        </Field>
 
-          <SelectField
-            label="Event type"
-            value={filters.eventType}
-            options={TIMELINE_WORKSPACE_TYPE_OPTIONS}
-            onChange={(value) => onChange({ eventType: value })}
-          />
+        <SelectField
+          label="Status"
+          value={filters.status}
+          options={TIMELINE_WORKSPACE_STATUS_OPTIONS}
+          onChange={(value) => onChange({ status: value })}
+        />
 
-          <SelectField
-            label="Dating"
-            value={filters.dating}
-            options={TIMELINE_WORKSPACE_DATING_OPTIONS}
-            onChange={(value) => onChange({ dating: value })}
-          />
+        <SelectField
+          label="Event type"
+          value={filters.eventType}
+          options={TIMELINE_WORKSPACE_TYPE_OPTIONS}
+          onChange={(value) => onChange({ eventType: value })}
+        />
 
-          <SelectField
-            label="Linked scope"
-            value={filters.linkScope}
-            options={TIMELINE_WORKSPACE_LINK_SCOPE_OPTIONS}
-            onChange={(value) => onChange({ linkScope: value })}
-          />
-        </div>
-      ) : null}
+        <SelectField
+          label="Dating"
+          value={filters.dating}
+          options={TIMELINE_WORKSPACE_DATING_OPTIONS}
+          onChange={(value) => onChange({ dating: value })}
+        />
+
+        <SelectField
+          label="Linked scope"
+          value={filters.linkScope}
+          options={TIMELINE_WORKSPACE_LINK_SCOPE_OPTIONS}
+          onChange={(value) => onChange({ linkScope: value })}
+        />
+      </div>
     </section>
   );
 }

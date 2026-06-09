@@ -21,7 +21,6 @@ import {
   type TimelineLayoutGapItem,
   type TimelineLayoutInsertionItem,
 } from "@/lib/timeline/layout";
-import type { TimelineReferenceOption } from "@/lib/timeline/references";
 import {
   loadPendingSingleReviewMap,
   savePendingSingleReviewMap,
@@ -165,10 +164,6 @@ export function TimelineWorkspaceVisual({
     () =>
       new Map(formOptions.chapterOptions.map((option) => [option.value, option.label] as const)),
     [formOptions.chapterOptions]
-  );
-  const visibleChapterFilterOptions = useMemo(
-    () => buildVisibleChapterFilterOptions(formOptions.chapterOptions, filters.bookIds),
-    [filters.bookIds, formOptions.chapterOptions]
   );
   const pendingInsertionItemIds = useMemo(() => {
     const pendingIds = new Set([
@@ -506,29 +501,9 @@ export function TimelineWorkspaceVisual({
     await onRefreshTimelineEvents();
   }
 
-  function handleToggleBookFilter(bookId: string) {
-    const nextBookIds = toggleTimelineFilterValue(filters.bookIds, bookId);
-    const nextChapterIds = pruneChapterFiltersToSelectedBooks(
-      filters.chapterIds,
-      nextBookIds,
-      formOptions.chapterOptions
-    );
-
-    onChange({
-      bookIds: nextBookIds,
-      chapterIds: nextChapterIds,
-    });
-  }
-
-  function handleToggleChapterFilter(chapterId: string) {
-    onChange({
-      chapterIds: toggleTimelineFilterValue(filters.chapterIds, chapterId),
-    });
-  }
-
   const isScrollMode = viewMode === "scroll";
   const filterBarClassName =
-    !isScrollMode && filtersPinned
+    filtersPinned
       ? "xl:sticky xl:top-0 xl:z-20 xl:shadow-[0_18px_45px_-36px_rgba(24,24,27,0.55)]"
       : "";
 
@@ -551,52 +526,7 @@ export function TimelineWorkspaceVisual({
             />
           </div>
 
-          <div className="grid flex-1 xl:grid-cols-[19rem_minmax(0,1fr)]">
-            <aside className="border-b border-zinc-200 bg-[#fafaf8] xl:border-b-0 xl:border-r xl:shadow-[20px_0_40px_-32px_rgba(24,24,27,0.55)]">
-              <div className="flex h-full flex-col px-5 py-5 sm:px-6 xl:min-h-0 xl:overflow-y-auto">
-                <div className="border-b border-zinc-200 pb-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                    Books and chapters
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-zinc-600">
-                    Focus the reading stream by the manuscript sources attached to each event.
-                  </p>
-
-                  {formOptions.loading ? (
-                    <p className="mt-4 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
-                      Loading book and chapter filters...
-                    </p>
-                  ) : formOptions.error ? (
-                    <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                      Book and chapter filters could not be loaded right now.
-                    </p>
-                  ) : (
-                    <div className="mt-4 space-y-4">
-                      <FilterGroup
-                        emptyLabel="No books available."
-                        items={formOptions.bookOptions}
-                        label="Books"
-                        selectedIds={filters.bookIds}
-                        onToggle={handleToggleBookFilter}
-                      />
-
-                      <FilterGroup
-                        emptyLabel={
-                          filters.bookIds.length > 0
-                            ? "No chapters in the selected books."
-                            : "No chapters available."
-                        }
-                        items={visibleChapterFilterOptions}
-                        label="Chapters"
-                        selectedIds={filters.chapterIds}
-                        onToggle={handleToggleChapterFilter}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </aside>
-
+          <div className="flex-1">
             <div className="min-w-0 px-4 py-6 sm:px-6 xl:px-8 xl:py-8">
               <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1005,75 +935,6 @@ function QuickMapStat({
   );
 }
 
-function FilterGroup({
-  emptyLabel,
-  items,
-  label,
-  selectedIds,
-  onToggle,
-}: {
-  emptyLabel: string;
-  items: ReadonlyArray<TimelineReferenceOption>;
-  label: string;
-  selectedIds: string[];
-  onToggle: (value: string) => void;
-}) {
-  const selectedCount = selectedIds.length;
-
-  return (
-    <section className="rounded-3xl border border-zinc-200 bg-white px-4 py-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-          {label}
-        </p>
-        {selectedCount > 0 ? (
-          <span className="rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
-            {selectedCount}
-          </span>
-        ) : null}
-      </div>
-
-      {items.length > 0 ? (
-        <div className="mt-3 max-h-56 space-y-1 overflow-y-auto pr-1">
-          {items.map((item) => {
-            const checked = selectedIds.includes(item.value);
-
-            return (
-              <label
-                key={item.value}
-                className={`flex cursor-pointer items-start gap-3 rounded-2xl px-3 py-2 transition ${
-                  checked ? "bg-zinc-100" : "hover:bg-zinc-50"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => onToggle(item.value)}
-                  className="mt-1 h-4 w-4 rounded border-zinc-300 text-zinc-950 focus:ring-zinc-950"
-                />
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-zinc-900">
-                    {item.label}
-                  </span>
-                  {item.meta ? (
-                    <span className="mt-0.5 block truncate text-[11px] uppercase tracking-[0.14em] text-zinc-500">
-                      {item.meta}
-                    </span>
-                  ) : null}
-                </span>
-              </label>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="mt-3 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-3 py-3 text-sm leading-6 text-zinc-600">
-          {emptyLabel}
-        </p>
-      )}
-    </section>
-  );
-}
-
 function TimelineStateCard({ children }: { children: ReactNode }) {
   return (
     <section className="rounded-3xl border border-zinc-300 bg-zinc-50 px-5 py-4 text-sm leading-6 text-zinc-600">
@@ -1168,61 +1029,6 @@ function buildInsertionBrainDumpContext(
     label: insertionItem.label,
     surroundingEvents,
   };
-}
-
-function toggleTimelineFilterValue(values: string[], value: string) {
-  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
-}
-
-function pruneChapterFiltersToSelectedBooks(
-  selectedChapterIds: string[],
-  selectedBookIds: string[],
-  chapterOptions: TimelineReferenceOption[]
-) {
-  if (selectedBookIds.length === 0) {
-    return selectedChapterIds;
-  }
-
-  const allowedChapterIds = new Set(
-    chapterOptions
-      .filter((option) => {
-        const bookId = getChapterOptionBookId(option);
-        return bookId ? selectedBookIds.includes(bookId) : false;
-      })
-      .map((option) => option.value)
-  );
-
-  return selectedChapterIds.filter((chapterId) => allowedChapterIds.has(chapterId));
-}
-
-function buildVisibleChapterFilterOptions(
-  chapterOptions: TimelineReferenceOption[],
-  selectedBookIds: string[]
-) {
-  if (selectedBookIds.length === 0) {
-    return chapterOptions;
-  }
-
-  const selectedBookIdSet = new Set(selectedBookIds);
-
-  return chapterOptions.filter((option) => {
-    const bookId = getChapterOptionBookId(option);
-    return bookId ? selectedBookIdSet.has(bookId) : false;
-  });
-}
-
-function getChapterOptionBookId(option: TimelineReferenceOption) {
-  const meta = option.meta?.trim();
-
-  if (!meta) {
-    return null;
-  }
-
-  if (!meta.startsWith("Book: ")) {
-    return null;
-  }
-
-  return meta.slice("Book: ".length).trim() || null;
 }
 
 function TimelineEventRow({
@@ -1511,6 +1317,7 @@ function TimelineInsertionRow({
         <TimelineBrainDumpReviewLightbox
           activeProjectId={activeProjectId}
           job={activeJob}
+          streamlined={compact}
           onApproved={async () => {
             setReviewLightboxOpen(false);
             await onApproved();
@@ -1765,6 +1572,7 @@ function TimelineBrainDumpReviewLightbox({
   onApproved,
   onClose,
   onJobReplaced,
+  streamlined,
   uid,
 }: {
   activeProjectId: string;
@@ -1772,6 +1580,7 @@ function TimelineBrainDumpReviewLightbox({
   onApproved: () => Promise<void> | void;
   onClose: () => void;
   onJobReplaced: (jobId: string, job: AiMultiEventJobRecord | null) => void;
+  streamlined: boolean;
   uid: string;
 }) {
   const [rerunning, setRerunning] = useState(false);
@@ -1841,6 +1650,7 @@ function TimelineBrainDumpReviewLightbox({
             onApproved={onApproved}
             onRerun={handleRerunBrainDump}
             rerunning={rerunning}
+            streamlined={streamlined}
             uid={uid}
           />
           {rerunError ? (

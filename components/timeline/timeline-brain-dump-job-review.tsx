@@ -23,6 +23,7 @@ type TimelineBrainDumpJobReviewProps = {
   onApproved: () => Promise<void> | void;
   onRerun?: () => Promise<void> | void;
   rerunning?: boolean;
+  streamlined?: boolean;
   uid: string;
 };
 
@@ -46,6 +47,7 @@ export function TimelineBrainDumpJobReview({
   onApproved,
   onRerun,
   rerunning = false,
+  streamlined = false,
   uid,
 }: TimelineBrainDumpJobReviewProps) {
   const drafts = useMemo(() => job.result?.events ?? [], [job.result?.events]);
@@ -377,7 +379,19 @@ export function TimelineBrainDumpJobReview({
 
   return (
     <section className="space-y-4">
-      <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+      {streamlined ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => void handleApplyReviewedEvents()}
+            disabled={applying}
+            className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+          >
+            {applying ? "Applying..." : "Apply"}
+          </button>
+        </div>
+      ) : (
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-700">
@@ -411,13 +425,20 @@ export function TimelineBrainDumpJobReview({
             {error}
           </p>
         ) : null}
-      </div>
+        </div>
+      )}
+
+      {streamlined && error ? (
+        <p className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      ) : null}
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(20rem,0.42fr)_minmax(0,0.58fr)]">
         <BrainDumpSourcePanel text={job.input?.brainDumpText ?? ""} />
 
         <div className="space-y-4">
-          {job.warnings.length > 0 ? (
+          {!streamlined && job.warnings.length > 0 ? (
             <div className="rounded-3xl border border-amber-200 bg-white p-4 text-sm text-amber-900">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
                 Job notes
