@@ -21,11 +21,13 @@ export function emitProjectsChanged() {
 type UseUserProjectsResult = {
   projects: UserProject[];
   activeProjectId: string | null;
+  activeProjectPath: string | null;
   loading: boolean;
 };
 
 type UserProjectsState = {
   activeProjectId: string | null;
+  activeProjectPath: string | null;
   loading: boolean;
   projects: UserProject[];
   uid: string | null;
@@ -35,6 +37,7 @@ export function useUserProjects(uid: string | null): UseUserProjectsResult {
   const [state, setState] = useState<UserProjectsState>(() => getInitialUserProjectsState(uid));
   updateUserProjectsDebug({
     activeProjectId: state.activeProjectId,
+    activeProjectPath: state.activeProjectPath,
     loading: state.loading,
     projects: state.projects.map((project) => project.id),
     uid: state.uid,
@@ -57,6 +60,22 @@ export function useUserProjects(uid: string | null): UseUserProjectsResult {
 
     let cancelled = false;
     const currentUid = uid;
+    const mapProjects = (
+      recentProjects: Array<{ id: string; missing?: boolean; path?: string; title: string }>
+    ) =>
+      recentProjects.map((project) => ({
+        id: project.id,
+        path: project.path ?? project.id,
+        title: project.title,
+        slug: project.id,
+        summary: project.missing ? "Project folder is missing." : "Local desktop project.",
+        status: project.missing ? "missing" : "active",
+      }));
+
+    const applyState = (nextState: UserProjectsState) => {
+      setState((current) => (areUserProjectsStatesEqual(current, nextState) ? current : nextState));
+    };
+
     const syncRefresh = (phase: string) => {
       const syncState = getWindowSyncProjectState();
 
@@ -64,26 +83,21 @@ export function useUserProjects(uid: string | null): UseUserProjectsResult {
         return;
       }
 
-      const projects = syncState.recentProjects.map((project) => ({
-        id: project.id,
-        title: project.title,
-        slug: project.id,
-        summary: project.missing ? "Project folder is missing." : "Local desktop project.",
-        status: project.missing ? "missing" : "active",
-      }));
-
-      setState({
+      const nextState = {
         activeProjectId: syncState.currentProject?.id ?? null,
+        activeProjectPath: syncState.currentProject?.path ?? null,
         loading: false,
-        projects,
+        projects: mapProjects(syncState.recentProjects),
         uid: currentUid,
-      });
-      console.log("[book-bible:user-projects]", phase, syncState.currentProject?.id ?? null);
+      };
+
+      applyState(nextState);
       updateUserProjectsDebug({
-        activeProjectId: syncState.currentProject?.id ?? null,
-        loading: false,
+        activeProjectId: nextState.activeProjectId,
+        activeProjectPath: nextState.activeProjectPath,
+        loading: nextState.loading,
         phase,
-        projects: projects.map((project) => project.id),
+        projects: nextState.projects.map((project) => project.id),
         uid: currentUid,
       });
     };
@@ -95,6 +109,7 @@ export function useUserProjects(uid: string | null): UseUserProjectsResult {
       });
       setState((current) => ({
         activeProjectId: current.activeProjectId,
+        activeProjectPath: current.activeProjectPath,
         loading: current.uid === currentUid && Boolean(current.activeProjectId) ? false : true,
         projects: current.projects,
         uid: currentUid,
@@ -110,15 +125,19 @@ export function useUserProjects(uid: string | null): UseUserProjectsResult {
           return;
         }
 
-        setState({
+        const activeProjectPath =
+          projects.find((project) => project.id === activeProjectId)?.path ?? null;
+
+        applyState({
           activeProjectId,
+          activeProjectPath,
           loading: false,
           projects,
           uid: currentUid,
         });
-        console.log("[book-bible:user-projects]", "load-done", activeProjectId);
         updateUserProjectsDebug({
           activeProjectId,
+          activeProjectPath,
           loading: false,
           phase: "load-done",
           projects: projects.map((project) => project.id),
@@ -136,6 +155,7 @@ export function useUserProjects(uid: string | null): UseUserProjectsResult {
         });
         setState({
           activeProjectId: null,
+          activeProjectPath: null,
           loading: false,
           projects: [],
           uid: currentUid,
@@ -169,15 +189,11 @@ export function useUserProjects(uid: string | null): UseUserProjectsResult {
     };
 
     window.addEventListener(PROJECTS_CHANGED_EVENT, handleProjectsChanged);
-    const poller = window.setInterval(() => {
-      syncRefresh("poll-sync");
-    }, 1000);
 
     return () => {
       cancelled = true;
       unsubscribeProject();
       window.removeEventListener(PROJECTS_CHANGED_EVENT, handleProjectsChanged);
-      window.clearInterval(poller);
     };
   }, [uid]);
 
@@ -186,6 +202,7 @@ export function useUserProjects(uid: string | null): UseUserProjectsResult {
   return {
     projects: uid && matchesCurrentUser ? state.projects : [],
     activeProjectId: uid && matchesCurrentUser ? state.activeProjectId : null,
+    activeProjectPath: uid && matchesCurrentUser ? state.activeProjectPath : null,
     loading: uid ? !matchesCurrentUser || state.loading : false,
   };
 }
@@ -213,10 +230,12 @@ function getInitialUserProjectsState(uid: string | null): UserProjectsState {
   if (bootstrap) {
     return {
       activeProjectId: bootstrap.currentProject?.id ?? null,
+      activeProjectPath: bootstrap.currentProject?.path ?? null,
       loading: false,
       projects: Array.isArray(bootstrap.recentProjects)
         ? bootstrap.recentProjects.map((project) => ({
             id: project.id,
+            path: project.path ?? project.id,
             title: project.title,
             slug: project.id,
             summary: project.missing ? "Project folder is missing." : "Local desktop project.",
@@ -232,9 +251,11 @@ function getInitialUserProjectsState(uid: string | null): UserProjectsState {
   if (syncState) {
     return {
       activeProjectId: syncState.currentProject?.id ?? null,
+      activeProjectPath: syncState.currentProject?.path ?? null,
       loading: false,
       projects: syncState.recentProjects.map((project) => ({
         id: project.id,
+        path: project.path,
         title: project.title,
         slug: project.id,
         summary: project.missing ? "Project folder is missing." : "Local desktop project.",
@@ -246,6 +267,7 @@ function getInitialUserProjectsState(uid: string | null): UserProjectsState {
 
   return {
     activeProjectId: null,
+    activeProjectPath: null,
     loading: false,
     projects: [],
     uid,
@@ -258,10 +280,11 @@ function getWindowBootstrap() {
   }
 
   return (window as Window & { __bookBibleBootstrap?: {
-    currentProject?: { id: string } | null;
+    currentProject?: { id: string; path?: string } | null;
     recentProjects?: Array<{
       id: string;
       missing?: boolean;
+      path?: string;
       title: string;
     }>;
   } }).__bookBibleBootstrap ?? null;
@@ -283,4 +306,33 @@ function getWindowSyncProjectState() {
   } catch {
     return null;
   }
+}
+
+function areUserProjectsStatesEqual(
+  current: UserProjectsState,
+  next: UserProjectsState
+) {
+  if (
+    current.uid !== next.uid ||
+    current.loading !== next.loading ||
+    current.activeProjectId !== next.activeProjectId ||
+    current.activeProjectPath !== next.activeProjectPath ||
+    current.projects.length !== next.projects.length
+  ) {
+    return false;
+  }
+
+  return current.projects.every((project, index) => {
+    const nextProject = next.projects[index];
+
+    return (
+      !!nextProject &&
+      project.id === nextProject.id &&
+      project.path === nextProject.path &&
+      project.title === nextProject.title &&
+      project.slug === nextProject.slug &&
+      project.summary === nextProject.summary &&
+      project.status === nextProject.status
+    );
+  });
 }

@@ -7,6 +7,8 @@ This file tracks short-term priorities for the desktop-only direction.
 - keep local project open/create/export/apply workflows stable
 - finish removing outdated web/Supabase wording from user-facing copy
 - keep docs aligned with real desktop runtime behavior
+- tune the new book/chapter Scroll rail filters after author testing, especially long-list scrolling and selected-book/chapter coordination
+- tune the new Scroll reading mode after author testing, especially line length, separator contrast, and menu affordance clarity
 - use the per-job AI diagnostics logs to tune multi-event BrainDump prompting when a run drops drafts, truncates JSON, or over/under-splits events
 - work through the AI BrainDump cleanup plan in `docs/architecture/ai-brain-dump-cleanup-plan.md`
 

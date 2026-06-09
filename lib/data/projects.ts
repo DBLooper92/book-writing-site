@@ -7,6 +7,7 @@ export type ProjectOwnerContext = ProfileOwnerContext;
 
 export type UserProject = {
   id: string;
+  path: string;
   title: string;
   slug: string | null;
   summary: string | null;
@@ -42,6 +43,7 @@ export async function listUserProjects(_uid: string) {
 
   return recentProjects.map((project) => ({
     id: project.id,
+    path: project.path,
     title: project.title,
     slug: project.id,
     summary: project.missing ? "Project folder is missing." : "Local desktop project.",
@@ -58,6 +60,7 @@ export function listUserProjectsSync(_uid: string) {
 
   return recentProjects.map((project) => ({
     id: project.id,
+    path: project.path,
     title: project.title,
     slug: project.id,
     summary: project.missing ? "Project folder is missing." : "Local desktop project.",
@@ -80,6 +83,11 @@ export async function getActiveProjectId(_uid: string) {
   return currentProject?.id ?? null;
 }
 
+export async function getActiveProjectPath(_uid: string) {
+  const currentProject = await window.bookBible.project.getCurrent();
+  return currentProject?.path ?? null;
+}
+
 export function getActiveProjectIdSync(_uid: string) {
   if (typeof window === "undefined") {
     return null;
@@ -89,9 +97,20 @@ export function getActiveProjectIdSync(_uid: string) {
   return currentProject?.id ?? null;
 }
 
-export async function setActiveProjectForUser(_uid: string, projectId: string) {
+export function getActiveProjectPathSync(_uid: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const currentProject = window.bookBible.project.getCurrentSync();
+  return currentProject?.path ?? null;
+}
+
+export async function setActiveProjectForUser(_uid: string, projectPath: string) {
   const recentProjects = await window.bookBible.launcher.listRecentProjects();
-  const matchingProject = recentProjects.find((project) => project.id === projectId);
+  const matchingProject =
+    recentProjects.find((project) => project.path === projectPath) ??
+    recentProjects.find((project) => project.id === projectPath);
 
   if (!matchingProject || matchingProject.missing) {
     throw new Error("The selected project could not be opened from recents.");
@@ -113,6 +132,16 @@ export async function renameProjectForUser(_uid: string, projectId: string, titl
   }
 
   await window.bookBible.project.rename(title);
+}
+
+export async function deleteProjectForUser(_uid: string, projectId: string) {
+  const currentProject = await window.bookBible.project.getCurrent();
+
+  if (!currentProject || currentProject.id !== projectId) {
+    throw new Error("Only the currently open desktop project can be deleted.");
+  }
+
+  await window.bookBible.project.deleteCurrent();
 }
 
 function normalizeProjectRecord(projectRecord: {

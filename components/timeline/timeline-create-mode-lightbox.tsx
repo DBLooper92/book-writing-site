@@ -11,6 +11,7 @@ import type {
   BrainDumpResolution,
   TimelineBrainDumpInsertionContext,
   TimelineBrainDumpProjectContext,
+  TimelineSingleEventBrainDumpReviewState,
 } from "@/types/ai-brain-dump";
 import type { TimelineEventFormValues } from "@/types/timeline-event";
 
@@ -18,10 +19,16 @@ type TimelineCreateModeLightboxProps = {
   initialMode?: "aiMulti" | "aiSingle" | "chooser" | "manual";
   initialValues: TimelineEventFormValues;
   insertionContext?: TimelineBrainDumpInsertionContext | null;
+  timelineInsertionItemId?: string | null;
+  resumeSingleReviewState?: TimelineSingleEventBrainDumpReviewState | null;
   open: boolean;
   onClose: () => void;
   onManual: (initialValues: TimelineEventFormValues) => void;
   onMultiJobStarted?: (jobId: string) => void;
+  onSingleReviewStateChange?: (
+    insertionItemId: string,
+    state: TimelineSingleEventBrainDumpReviewState | null
+  ) => void;
   onUseAiDraft: (draftState: AiTimelineCreateDraftState, initialValues: TimelineEventFormValues) => void;
 };
 
@@ -37,10 +44,13 @@ export function TimelineCreateModeLightbox({
   initialMode = "chooser",
   initialValues,
   insertionContext = null,
+  timelineInsertionItemId = null,
+  resumeSingleReviewState = null,
   open,
   onClose,
   onManual,
   onMultiJobStarted,
+  onSingleReviewStateChange,
   onUseAiDraft,
 }: TimelineCreateModeLightboxProps) {
   const { config, loading: configLoading } = useOpenAiConfig();
@@ -52,14 +62,36 @@ export function TimelineCreateModeLightbox({
   const [error, setError] = useState<string | null>(null);
   const [resolutionState, setResolutionState] = useState<Record<string, ReviewResolutionState>>({});
   const autoModeHandledRef = useRef(false);
+  const resumeStateHandledRef = useRef<string | null>(null);
+  const singleReviewCreatedAtRef = useRef<string | null>(null);
 
-  const reviewSuggestions = preview?.entitySuggestions ?? [];
+  const reviewSuggestions = useMemo(() => preview?.entitySuggestions ?? [], [preview?.entitySuggestions]);
   const canUseAi = !configLoading && Boolean(config?.configured);
   const insertionContextEvents = insertionContext?.surroundingEvents ?? [];
 
   useEffect(() => {
     if (!open) {
       autoModeHandledRef.current = false;
+      resumeStateHandledRef.current = null;
+      singleReviewCreatedAtRef.current = null;
+      return;
+    }
+
+    if (resumeSingleReviewState && timelineInsertionItemId) {
+      const resumeKey = `${timelineInsertionItemId}:${resumeSingleReviewState.savedAt}`;
+
+      if (resumeStateHandledRef.current !== resumeKey) {
+        resumeStateHandledRef.current = resumeKey;
+        singleReviewCreatedAtRef.current = resumeSingleReviewState.createdAt;
+        setSingleBrainDumpText(resumeSingleReviewState.brainDumpText);
+        setPreview(resumeSingleReviewState.preview);
+        setResolutionState(
+          buildReviewStateFromSavedRecord(resumeSingleReviewState.resolutionStateBySuggestionId)
+        );
+        setWorking(false);
+        setError(null);
+        setStep("singleReview");
+      }
       return;
     }
 
@@ -86,7 +118,7 @@ export function TimelineCreateModeLightbox({
     }
 
     setStep("chooser");
-  }, [initialMode, initialValues, onManual, open]);
+  }, [initialMode, initialValues, onManual, open, resumeSingleReviewState, timelineInsertionItemId]);
 
   const unresolvedCount = useMemo(() => {
     return reviewSuggestions.reduce((count, suggestion) => {
@@ -145,10 +177,6 @@ export function TimelineCreateModeLightbox({
     );
   }
 
-  if (!open) {
-    return null;
-  }
-
   async function handleGenerateSingle() {
     const normalized = singleBrainDumpText.trim();
 
@@ -168,6 +196,7 @@ export function TimelineCreateModeLightbox({
           insertionContext
         ),
       });
+      singleReviewCreatedAtRef.current = new Date().toISOString();
       setPreview(nextPreview);
       setResolutionState(buildInitialResolutionState(nextPreview.entitySuggestions));
       setStep("singleReview");
@@ -196,6 +225,7 @@ export function TimelineCreateModeLightbox({
           initialValues,
           insertionContext
         ),
+        timelineInsertionItemId,
       });
       onClose();
       onMultiJobStarted?.(result.jobId);
@@ -255,187 +285,225 @@ export function TimelineCreateModeLightbox({
           ? preview.prefill.successorEventIds
           : initialValues.successorEventIds,
     };
+    if (timelineInsertionItemId) {
+      onSingleReviewStateChange?.(timelineInsertionItemId, null);
+    }
     onUseAiDraft(draftState, prefilledValues);
   }
 
+  useEffect(() => {
+    if (!open || !timelineInsertionItemId || !preview || step !== "singleReview") {
+      return;
+    }
+
+      onSingleReviewStateChange?.(
+        timelineInsertionItemId,
+        buildCurrentSingleReviewState({
+          brainDumpText: singleBrainDumpText,
+          createdAt: singleReviewCreatedAtRef.current ?? new Date().toISOString(),
+          initialValues,
+          insertionItemId: timelineInsertionItemId,
+          preview,
+          resolutionState,
+          insertionContext,
+      })
+    );
+  }, [
+    initialValues,
+    insertionContext,
+    open,
+    preview,
+    resolutionState,
+    singleBrainDumpText,
+    step,
+    timelineInsertionItemId,
+    onSingleReviewStateChange,
+  ]);
+
+  if (!open) {
+    return null;
+  }
+
   return (
-    <div className="fixed inset-0 z-[65] flex items-center justify-center bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[65] overflow-y-auto bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
-      <section className="relative z-10 w-full max-w-3xl rounded-4xl border border-zinc-200 bg-[#fffdf9] p-6 shadow-2xl">
-        {step === "chooser" ? (
-          <>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Create timeline event</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Choose creation mode</h2>
-            <p className="mt-3 text-sm leading-6 text-zinc-600">
-              Manual opens the editor directly. AI Single-Event drafts one timeline event. AI Multi-Event starts a background job for large dumps and sends you to review queue.
-            </p>
-            {renderInsertionContextSummary()}
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <button
-                type="button"
-                onClick={() => onManual(initialValues)}
-                className="inline-flex h-12 items-center justify-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50"
-              >
-                Manual
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep("singleInput")}
-                disabled={!canUseAi}
-                className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
-              >
-                AI Single-Event
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep("multiInput")}
-                disabled={!canUseAi}
-                className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-800 px-5 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
-              >
-                AI Multi-Event
-              </button>
-            </div>
-            {!canUseAi ? (
-              <p className="mt-3 text-xs text-zinc-600">
-                Add an OpenAI API key in{" "}
-                <Link href="/profile" className="underline">
-                  Profile
-                </Link>{" "}
-                to enable AI BrainDump.
+      <section className="relative z-10 mx-auto my-auto flex w-full max-w-3xl max-h-[calc(100vh-3rem)] flex-col overflow-hidden rounded-4xl border border-zinc-200 bg-[#fffdf9] shadow-2xl">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+          {step === "chooser" ? (
+            <>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Create timeline event</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Choose creation mode</h2>
+              <p className="mt-3 text-sm leading-6 text-zinc-600">
+                Manual opens the editor directly. AI Single-Event drafts one timeline event. AI Multi-Event starts a background job for large dumps and sends you to review queue.
               </p>
-            ) : null}
-          </>
-        ) : null}
-
-        {step === "singleInput" ? (
-          <>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">AI Single-Event BrainDump</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Paste raw event brain dump</h2>
-            <p className="mt-3 text-sm leading-6 text-zinc-600">
-              The draft should fit between the surrounding timeline events shown above. If the notes wander, keep the result local to this gap.
-            </p>
-            {renderInsertionContextSummary()}
-            <textarea
-              value={singleBrainDumpText}
-              onChange={(event) => setSingleBrainDumpText(event.target.value)}
-              className="mt-4 min-h-[18rem] w-full rounded-3xl border border-zinc-200 bg-white p-4 font-mono text-sm leading-6 text-zinc-900 outline-none transition focus:border-zinc-400"
-              placeholder="Dump your raw notes for one event here..."
-              spellCheck={false}
-            />
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => setStep("chooser")}
-                className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleGenerateSingle()}
-                disabled={working}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
-              >
-                {working ? "Generating..." : "Generate AI Draft"}
-              </button>
-            </div>
-          </>
-        ) : null}
-
-        {step === "multiInput" ? (
-          <>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">AI Multi-Event BrainDump</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Paste large timeline brain dump</h2>
-            <p className="mt-3 text-sm leading-6 text-zinc-600">
-              This mode can split one dump into multiple events, but every extracted event should stay between the before/after anchors in the insertion context.
-            </p>
-            {renderInsertionContextSummary()}
-            <textarea
-              value={multiBrainDumpText}
-              onChange={(event) => setMultiBrainDumpText(event.target.value)}
-              className="mt-4 min-h-[18rem] w-full rounded-3xl border border-zinc-200 bg-white p-4 font-mono text-sm leading-6 text-zinc-900 outline-none transition focus:border-zinc-400"
-              placeholder="Paste a long dump with multiple events. This will run in a background AI job."
-              spellCheck={false}
-            />
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => setStep("chooser")}
-                className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleStartMultiJob()}
-                disabled={working}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
-              >
-                {working ? "Starting..." : "Start Background Job"}
-              </button>
-            </div>
-          </>
-        ) : null}
-
-        {step === "singleReview" && preview ? (
-          <>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">AI Review</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Review extracted draft</h2>
-            <div className="mt-4 rounded-3xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700">
-              <p><span className="font-medium">Title:</span> {preview.prefill.title || "Untitled draft"}</p>
-              <p className="mt-2"><span className="font-medium">Summary:</span> {preview.prefill.summary || "None"}</p>
-              <p className="mt-2"><span className="font-medium">Event type:</span> {preview.prefill.eventType}</p>
-            </div>
-            <div className="mt-4 max-h-[16rem] space-y-3 overflow-y-auto pr-1">
-              {reviewSuggestions.length === 0 ? (
-                <p className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600">No linked entity suggestions were extracted.</p>
-              ) : (
-                reviewSuggestions.map((suggestion) => (
-                  <SuggestionCard
-                    key={suggestion.id}
-                    state={resolutionState[suggestion.id]}
-                    suggestion={suggestion}
-                    onChange={(nextState) =>
-                      setResolutionState((current) => ({
-                        ...current,
-                        [suggestion.id]: nextState,
-                      }))
-                    }
-                  />
-                ))
-              )}
-            </div>
-            {preview.warnings.length > 0 ? (
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                {preview.warnings.join(" ")}
+              {renderInsertionContextSummary()}
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={() => onManual(initialValues)}
+                  className="inline-flex h-12 items-center justify-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50"
+                >
+                  Manual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep("singleInput")}
+                  disabled={!canUseAi}
+                  className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+                >
+                  AI Single-Event
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep("multiInput")}
+                  disabled={!canUseAi}
+                  className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-800 px-5 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
+                >
+                  AI Multi-Event
+                </button>
               </div>
-            ) : null}
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => setStep("singleInput")}
-                className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={handleApproveAndContinue}
-                disabled={unresolvedCount > 0}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
-              >
-                Approve & Continue
-              </button>
-              {unresolvedCount > 0 ? (
-                <p className="self-center text-xs text-zinc-600">Resolve {unresolvedCount} remaining suggestion(s).</p>
+              {!canUseAi ? (
+                <p className="mt-3 text-xs text-zinc-600">
+                  Add an OpenAI API key in{" "}
+                  <Link href="/profile" className="underline">
+                    Profile
+                  </Link>{" "}
+                  to enable AI BrainDump.
+                </p>
               ) : null}
-            </div>
-          </>
-        ) : null}
+            </>
+          ) : null}
 
-        {error ? (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-        ) : null}
+          {step === "singleInput" ? (
+            <>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">AI Single-Event BrainDump</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Paste raw event brain dump</h2>
+              <p className="mt-3 text-sm leading-6 text-zinc-600">
+                The draft should fit between the surrounding timeline events shown above. If the notes wander, keep the result local to this gap.
+              </p>
+              {renderInsertionContextSummary()}
+              <textarea
+                value={singleBrainDumpText}
+                onChange={(event) => setSingleBrainDumpText(event.target.value)}
+                className="mt-4 min-h-[18rem] w-full rounded-3xl border border-zinc-200 bg-white p-4 font-mono text-sm leading-6 text-zinc-900 outline-none transition focus:border-zinc-400"
+                placeholder="Dump your raw notes for one event here..."
+                spellCheck={false}
+              />
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep("chooser")}
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleGenerateSingle()}
+                  disabled={working}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+                >
+                  {working ? "Generating..." : "Generate AI Draft"}
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          {step === "multiInput" ? (
+            <>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">AI Multi-Event BrainDump</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Paste large timeline brain dump</h2>
+              <p className="mt-3 text-sm leading-6 text-zinc-600">
+                This mode can split one dump into multiple events, but every extracted event should stay between the before/after anchors in the insertion context.
+              </p>
+              {renderInsertionContextSummary()}
+              <textarea
+                value={multiBrainDumpText}
+                onChange={(event) => setMultiBrainDumpText(event.target.value)}
+                className="mt-4 min-h-[18rem] w-full rounded-3xl border border-zinc-200 bg-white p-4 font-mono text-sm leading-6 text-zinc-900 outline-none transition focus:border-zinc-400"
+                placeholder="Paste a long dump with multiple events. This will run in a background AI job."
+                spellCheck={false}
+              />
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep("chooser")}
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleStartMultiJob()}
+                  disabled={working}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+                >
+                  {working ? "Starting..." : "Start Background Job"}
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          {step === "singleReview" && preview ? (
+            <>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">AI Review</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Review extracted draft</h2>
+              <div className="mt-4 rounded-3xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700">
+                <p><span className="font-medium">Title:</span> {preview.prefill.title || "Untitled draft"}</p>
+                <p className="mt-2"><span className="font-medium">Summary:</span> {preview.prefill.summary || "None"}</p>
+                <p className="mt-2"><span className="font-medium">Event type:</span> {preview.prefill.eventType}</p>
+              </div>
+              <div className="mt-4 max-h-[16rem] space-y-3 overflow-y-auto pr-1">
+                {reviewSuggestions.length === 0 ? (
+                  <p className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600">No linked entity suggestions were extracted.</p>
+                ) : (
+                  reviewSuggestions.map((suggestion) => (
+                    <SuggestionCard
+                      key={suggestion.id}
+                      state={resolutionState[suggestion.id]}
+                      suggestion={suggestion}
+                      onChange={(nextState) =>
+                        setResolutionState((current) => ({
+                          ...current,
+                          [suggestion.id]: nextState,
+                        }))
+                      }
+                    />
+                  ))
+                )}
+              </div>
+              {preview.warnings.length > 0 ? (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  {preview.warnings.join(" ")}
+                </div>
+              ) : null}
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep("singleInput")}
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApproveAndContinue}
+                  disabled={unresolvedCount > 0}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+                >
+                  Approve & Continue
+                </button>
+                {unresolvedCount > 0 ? (
+                  <p className="self-center text-xs text-zinc-600">Resolve {unresolvedCount} remaining suggestion(s).</p>
+                ) : null}
+              </div>
+            </>
+          ) : null}
+
+          {error ? (
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+          ) : null}
+        </div>
       </section>
     </div>
   );
@@ -452,6 +520,51 @@ function buildTimelineBrainDumpProjectContext(
     yearEnd: initialValues.yearEnd,
     yearStart: initialValues.yearStart,
   };
+}
+
+function buildCurrentSingleReviewState({
+  brainDumpText,
+  createdAt,
+  initialValues,
+  insertionContext,
+  insertionItemId,
+  preview,
+  resolutionState,
+}: {
+  brainDumpText: string;
+  createdAt: string;
+  initialValues: TimelineEventFormValues;
+  insertionContext: TimelineBrainDumpInsertionContext | null;
+  insertionItemId: string;
+  preview: BrainDumpPreviewResult;
+  resolutionState: Record<string, ReviewResolutionState>;
+}) {
+  return {
+    brainDumpText: brainDumpText.trim(),
+    createdAt,
+    initialValues,
+    insertionItemId,
+    preview,
+    projectContext: buildTimelineBrainDumpProjectContext(initialValues, insertionContext),
+    resolutionStateBySuggestionId: resolutionState,
+    savedAt: new Date().toISOString(),
+    status: "pending" as const,
+  };
+}
+
+function buildReviewStateFromSavedRecord(
+  state: TimelineSingleEventBrainDumpReviewState["resolutionStateBySuggestionId"]
+) {
+  return Object.fromEntries(
+    Object.entries(state).map(([suggestionId, resolution]) => [
+      suggestionId,
+      {
+        action: resolution.action,
+        linkedId: resolution.linkedId,
+        touched: resolution.touched,
+      } satisfies ReviewResolutionState,
+    ])
+  ) as Record<string, ReviewResolutionState>;
 }
 
 function buildInitialResolutionState(suggestions: BrainDumpEntitySuggestion[]) {

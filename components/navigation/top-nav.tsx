@@ -42,14 +42,14 @@ export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { uid } = useAuthUser();
-  const { projects, activeProjectId, loading } = useUserProjects(uid);
+  const { projects, activeProjectId, activeProjectPath, loading } = useUserProjects(uid);
   const createButtonRef = useRef<HTMLButtonElement | null>(null);
   const createMenuRef = useRef<HTMLDivElement | null>(null);
   const projectButtonRef = useRef<HTMLButtonElement | null>(null);
   const projectMenuRef = useRef<HTMLDivElement | null>(null);
   const activeProject = useMemo(
-    () => projects.find((project) => project.id === activeProjectId) ?? null,
-    [activeProjectId, projects]
+    () => projects.find((project) => project.path === activeProjectPath) ?? null,
+    [activeProjectPath, projects]
   );
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const [working, setWorking] = useState(false);
@@ -122,8 +122,8 @@ export function TopNav() {
     }
   }
 
-  async function handleProjectChange(projectId: string) {
-    if (!uid || projectId === activeProjectId) {
+  async function handleProjectChange(projectPath: string) {
+    if (!uid || projectPath === activeProjectPath) {
       setOpenMenu(null);
       return;
     }
@@ -132,7 +132,7 @@ export function TopNav() {
     setProjectMenuError(null);
 
     try {
-      await setActiveProjectForUser(uid, projectId);
+      await setActiveProjectForUser(uid, projectPath);
       emitProjectsChanged();
       router.push("/timeline");
     } catch (error) {
@@ -310,14 +310,14 @@ export function TopNav() {
                       </div>
                     ) : (
                       projects.map((project) => {
-                        const isActiveProject = project.id === activeProjectId;
+                        const isActiveProject = project.path === activeProjectPath;
 
                         return (
                           <button
-                            key={project.id}
+                            key={project.path}
                             type="button"
                             disabled={working}
-                            onClick={() => void handleProjectChange(project.id)}
+                            onClick={() => void handleProjectChange(project.path)}
                             className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm transition ${
                               isActiveProject
                                 ? "bg-zinc-950 text-white"

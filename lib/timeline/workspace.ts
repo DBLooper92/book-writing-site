@@ -19,6 +19,8 @@ export type TimelineWorkspaceLinkScopeFilter =
   | "continuity";
 
 export type TimelineWorkspaceFilters = {
+  bookIds: string[];
+  chapterIds: string[];
   search: string;
   status: TimelineWorkspaceStatusFilter;
   eventType: TimelineWorkspaceTypeFilter;
@@ -88,6 +90,8 @@ export const TIMELINE_WORKSPACE_LINK_SCOPE_OPTIONS: ReadonlyArray<{
 
 export function createEmptyTimelineWorkspaceFilters(): TimelineWorkspaceFilters {
   return {
+    bookIds: [],
+    chapterIds: [],
     search: "",
     status: "all",
     eventType: "all",
@@ -98,6 +102,8 @@ export function createEmptyTimelineWorkspaceFilters(): TimelineWorkspaceFilters 
 
 export function hasActiveTimelineWorkspaceFilters(filters: TimelineWorkspaceFilters) {
   return (
+    filters.bookIds.length > 0 ||
+    filters.chapterIds.length > 0 ||
     filters.search.trim().length > 0 ||
     filters.status !== "all" ||
     filters.eventType !== "all" ||
@@ -604,6 +610,17 @@ function matchesTimelineWorkspaceFilters(
   timelineEvent: TimelineEvent,
   filters: TimelineWorkspaceFilters
 ) {
+  if (filters.bookIds.length > 0 && !hasAnyOverlap(timelineEvent.bookIds, filters.bookIds)) {
+    return false;
+  }
+
+  if (
+    filters.chapterIds.length > 0 &&
+    !hasAnyOverlap(timelineEvent.chapterIds, filters.chapterIds)
+  ) {
+    return false;
+  }
+
   if (filters.status !== "all" && timelineEvent.status !== filters.status) {
     return false;
   }
@@ -631,6 +648,11 @@ function matchesTimelineWorkspaceFilters(
   }
 
   return true;
+}
+
+function hasAnyOverlap(values: ReadonlyArray<string>, candidates: ReadonlyArray<string>) {
+  const candidateSet = new Set(candidates);
+  return values.some((value) => candidateSet.has(value));
 }
 
 function matchesLinkScope(

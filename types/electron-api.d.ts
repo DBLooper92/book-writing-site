@@ -5,6 +5,7 @@ import type {
   AiJobSummary,
   AiMultiEventJobRecord,
   BrainDumpPreviewResult,
+  MultiEventJobReviewState,
   TimelineBrainDumpProjectContext,
 } from "@/types/ai-brain-dump";
 
@@ -84,6 +85,8 @@ export type BookBibleElectronApi = {
     revealProject(projectPath?: string | null): Promise<void>;
   };
   project: {
+    backupCurrent(): Promise<{ canceled: boolean; filePath: string | null }>;
+    deleteCurrent(): Promise<void>;
     close(): Promise<void>;
     getCurrent(): Promise<DesktopCurrentProject | null>;
     getCurrentSync(): DesktopCurrentProject | null;
@@ -235,10 +238,16 @@ export type BookBibleElectronApi = {
     }): Promise<BrainDumpPreviewResult>;
     startMultiEventTimelineBrainDumpJob(input: {
       brainDumpText: string;
+      timelineInsertionItemId?: string;
       projectContext?: TimelineBrainDumpProjectContext;
+      projectTitle?: string;
     }): Promise<{ jobId: string; status: string }>;
     listJobs(): Promise<AiJobSummary[]>;
     getJobStatus(jobId: string): Promise<AiMultiEventJobRecord | null>;
+    updateJobReviewState(input: {
+      jobId: string;
+      reviewState: MultiEventJobReviewState | null;
+    }): Promise<AiMultiEventJobRecord | null>;
     cancelJob(jobId: string): Promise<AiMultiEventJobRecord | null>;
     subscribeJobs(listener: () => void): () => void;
     runBrainDumpValidationSuite(input?: {

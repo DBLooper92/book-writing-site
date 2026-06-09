@@ -4,17 +4,17 @@ import type { UserProject } from "@/lib/data/projects";
 
 type ProjectSelectProps = {
   projects: UserProject[];
-  activeProjectId: string | null;
+  activeProjectPath: string | null;
   loading: boolean;
   disabled?: boolean;
   compact?: boolean;
   label?: string;
-  onChange: (projectId: string) => void;
+  onChange: (projectPath: string) => void;
 };
 
 export function ProjectSelect({
   projects,
-  activeProjectId,
+  activeProjectPath,
   loading,
   disabled = false,
   compact = false,
@@ -29,7 +29,7 @@ export function ProjectSelect({
         {label}
       </span>
       <select
-        value={activeProjectId ?? ""}
+        value={activeProjectPath ?? ""}
         disabled={selectDisabled}
         onChange={(event) => onChange(event.target.value)}
         className={`h-10 rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500 ${
@@ -38,11 +38,11 @@ export function ProjectSelect({
       >
         {projects.length === 0 ? (
           <option value="">No projects yet</option>
-        ) : activeProjectId ? null : (
+        ) : activeProjectPath ? null : (
           <option value="">Select a project</option>
         )}
         {projects.map((project) => (
-          <option key={project.id} value={project.id}>
+          <option key={project.path} value={project.path}>
             {project.title}
           </option>
         ))}

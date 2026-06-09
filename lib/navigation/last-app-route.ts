@@ -65,10 +65,11 @@ export async function resolvePostSignInPath(uid: string) {
   let activeProjectId = storedActiveProjectId;
 
   if (!activeProjectId || !availableProjectIds.has(activeProjectId)) {
-    activeProjectId = projects[0]?.id ?? null;
+    const fallbackProject = projects[0] ?? null;
+    activeProjectId = fallbackProject?.id ?? null;
 
-    if (activeProjectId) {
-      await setActiveProjectForUser(uid, activeProjectId);
+    if (fallbackProject?.path) {
+      await setActiveProjectForUser(uid, fallbackProject.path);
     }
   }
 

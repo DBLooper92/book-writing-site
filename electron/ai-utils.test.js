@@ -1,13 +1,20 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildBrainDumpNormalizationSystemPrompt,
+  buildBrainDumpNormalizationUserPrompt,
   buildMultiTimelineBrainDumpSystemPrompt,
+  buildMultiTimelineBrainDumpReviewSystemPrompt,
+  buildMultiTimelineBrainDumpReviewUserPrompt,
   buildMultiTimelineBrainDumpUserPrompt,
   buildTimelineBrainDumpUserPrompt,
   extractFirstJsonObject,
   extractJsonObjectsFromText,
+  getBrainDumpEntityCreateTitle,
+  normalizeBrainDumpNormalizationOutput,
   normalizeMultiTimelineBrainDumpChunkCandidates,
   normalizeMultiTimelineBrainDumpChunkOutput,
+  splitBrainDumpIntoParagraphBlocks,
   splitTextIntoChunks,
 } from "./ai-utils";
 
@@ -62,6 +69,7 @@ describe("ai-utils brain dump helpers", () => {
   it("includes shape instructions and user text in the prompt", () => {
     const prompt = buildTimelineBrainDumpUserPrompt({
       brainDumpText: "Mara arrives before dawn at the canal safehouse.",
+      projectTitle: "NeuroVerse Series",
       projectContext: {
         insertionContext: {
           helperText: "Keep the draft inside the selected gap.",
@@ -88,10 +96,30 @@ describe("ai-utils brain dump helpers", () => {
 
     expect(prompt).toContain("Return JSON with this shape:");
     expect(prompt).toContain("Mara arrives before dawn at the canal safehouse.");
+    expect(prompt).toContain("Project title: NeuroVerse Series");
     expect(prompt).toContain("\"event\"");
     expect(prompt).toContain("\"entities\"");
     expect(prompt).toContain("Treat the last Before event and the first After event as hard boundaries");
     expect(prompt).toContain("Gap between arrival and alarm");
+  });
+
+  it("builds a normalization prompt that groups paragraphs into sections", () => {
+    const sourceText = "Premise line.\n\nMilo is a mechanic.\n\nThe ship leaves at night.";
+    const paragraphBlocks = splitBrainDumpIntoParagraphBlocks(sourceText);
+    const prompt = buildBrainDumpNormalizationUserPrompt({
+      chunkText: sourceText,
+      paragraphBlocks,
+      projectTitle: "NeuroVerse Series",
+    });
+
+    expect(buildBrainDumpNormalizationSystemPrompt()).toContain(
+      "Every source paragraph must be assigned to exactly one section"
+    );
+    expect(prompt).toContain("Paragraph source text:");
+    expect(prompt).toContain("P1: Premise line.");
+    expect(prompt).toContain("P2: Milo is a mechanic.");
+    expect(prompt).toContain("P3: The ship leaves at night.");
+    expect(prompt).toContain("manuscript_structure");
   });
 
   it("treats one-sided multi-event insertion context as a valid anchor", () => {
@@ -118,6 +146,106 @@ describe("ai-utils brain dump helpers", () => {
     expect(prompt).toContain("Treat the last Before event as the anchor. Draft events after it.");
     expect(prompt).toContain("return event drafts even when the nearby timeline context is sparse");
     expect(prompt).toContain("Do not return a single bare event object");
+  });
+
+  it("teaches the multi-event prompt to preserve manuscript structure", () => {
+    const prompt = buildMultiTimelineBrainDumpUserPrompt({
+      chunkText: "Book 1 begins, then Book 2 follows as novella 2.",
+      projectTitle: "NeuroVerse Series",
+    });
+
+    expect(prompt).toContain("Project title: NeuroVerse Series");
+    expect(prompt).toContain("manuscript structure");
+    expect(prompt).toContain("suggestedAction");
+    expect(prompt).toContain("suggestedCreateFields");
+    expect(prompt).toContain("For book entities, use a descriptive working title");
+    expect(prompt).toContain(
+      "For chapter entities, use them only when the chunk clearly describes a chapter-scale unit or explicit chapter marker."
+    );
+    expect(prompt).toContain("For distinct named people, places, factions, technologies, books, chapters, and scenes, prefer link or create.");
+  });
+
+  it("can build a compact multi-event prompt without the raw chunk text", () => {
+    const prompt = buildMultiTimelineBrainDumpUserPrompt({
+      chunkText: "A slow chapter that is at risk of timing out.",
+      includeChunkText: false,
+      normalizedSections: [
+        {
+          sectionType: "events",
+          label: "Events",
+          paragraphIds: ["P1"],
+          paragraphs: [{ paragraphId: "P1", text: "A slow chapter that is at risk of timing out." }],
+          confidence: "high",
+          notes: "",
+        },
+      ],
+    });
+
+    expect(prompt).toContain("Chunk text omitted in this fallback pass");
+  });
+
+  it("builds a second-pass review prompt for weak drafts", () => {
+    const systemPrompt = buildMultiTimelineBrainDumpReviewSystemPrompt();
+    const userPrompt = buildMultiTimelineBrainDumpReviewUserPrompt({
+      chunkText: "The old man becomes important again when the prison escape begins.",
+      draft: {
+        event: {
+          title: "Story",
+          summary: "Something happens.",
+        },
+        entities: [],
+      },
+      projectTitle: "NeuroVerse Series",
+      reviewReasons: ["Generic title", "Thin summary"],
+    });
+
+    expect(systemPrompt).toContain("second-pass reviewer");
+    expect(systemPrompt).toContain("Keep the underlying beat faithful");
+    expect(systemPrompt).toContain("Do not infer year values from series premise");
+    expect(userPrompt).toContain("Review reasons: Generic title; Thin summary");
+    expect(userPrompt).toContain("Rewrite the draft in place");
+    expect(userPrompt).toContain("Original extracted draft:");
+    expect(userPrompt).toContain("The old man becomes important again");
+    expect(userPrompt).toContain("Do not infer year values from series premise");
+  });
+
+  it("normalizes section output into exact paragraph references", () => {
+    const paragraphs = splitBrainDumpIntoParagraphBlocks(
+      "Premise line.\n\nMilo is a mechanic.\n\nThe ship leaves at night."
+    );
+    const normalized = normalizeBrainDumpNormalizationOutput(
+      {
+        sections: [
+          { sectionType: "premise", label: "Premise", paragraphIds: ["P1"], confidence: "high" },
+          { sectionType: "characters", label: "Cast", paragraphIds: ["P2"], confidence: "high" },
+        ],
+      },
+      paragraphs
+    );
+
+    expect(normalized.sections.map((section) => section.sectionType)).toEqual([
+      "premise",
+      "characters",
+      "other",
+    ]);
+    expect(normalized.sections[0].paragraphs[0].text).toBe("Premise line.");
+    expect(normalized.sections[1].paragraphs[0].text).toBe("Milo is a mechanic.");
+    expect(normalized.sections[2].paragraphIds).toEqual(["P3"]);
+    expect(normalized.warnings).toContain("Recovered 1 paragraph the model did not classify.");
+  });
+
+  it("prefers an explicit suggested create title when provided by the model", () => {
+    expect(
+      getBrainDumpEntityCreateTitle(
+        {
+          mention: "story",
+          suggestedCreateFields: {
+            titleOrName: "NeuroVerse Book 1: The Gauntlet",
+          },
+        },
+        "fallback"
+      )
+    ).toBe("NeuroVerse Book 1: The Gauntlet");
   });
 
   it("extracts every complete json object from mixed text", () => {

@@ -27,6 +27,8 @@ contextBridge.exposeInMainWorld("bookBible", {
     revealProject: (projectPath) => ipcRenderer.invoke("launcher:reveal-project", projectPath),
   },
   project: {
+    backupCurrent: () => ipcRenderer.invoke("project:backup-current"),
+    deleteCurrent: () => ipcRenderer.invoke("project:delete-current"),
     close: () => ipcRenderer.invoke("project:close"),
     getCurrent: () => ipcRenderer.invoke("project:get-current"),
     getCurrentSync: () => ipcRenderer.sendSync("project:get-current-sync"),
@@ -76,6 +78,7 @@ contextBridge.exposeInMainWorld("bookBible", {
       ipcRenderer.invoke("ai:start-multi-event-timeline-job", input),
     listJobs: () => ipcRenderer.invoke("ai:list-jobs"),
     getJobStatus: (jobId) => ipcRenderer.invoke("ai:get-job-status", jobId),
+    updateJobReviewState: (input) => ipcRenderer.invoke("ai:update-job-review-state", input),
     cancelJob: (jobId) => ipcRenderer.invoke("ai:cancel-job", jobId),
     subscribeJobs: createSubscription("ai:jobs:changed"),
     runBrainDumpValidationSuite: (input) =>

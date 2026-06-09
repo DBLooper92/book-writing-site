@@ -41,3 +41,8 @@ Durable decisions for this desktop repository.
 
 - Decision: Recover malformed-but-usable multi-event BrainDump chunk output when it contains clear event drafts, and surface the recovery as a warning.
 - Why: Raw model output can drift from the requested envelope or truncate under dense input; preserving valid drafts is safer than silently losing story beats.
+
+## D-009
+
+- Decision: Keep a dedicated Scroll presentation for the timeline workspace alongside the existing visual chronology view, while reusing the same insertion/composer and edit sidebars.
+- Why: Authors need a distraction-light reading pass for event descriptions without losing the same create, edit, and AI insertion workflows already wired into the timeline.

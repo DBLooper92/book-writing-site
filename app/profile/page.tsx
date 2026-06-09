@@ -1,13 +1,16 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { useActiveProject } from "@/hooks/use-active-project";
 import { PageShell } from "@/components/layout/page-shell";
 import {
   type OpenAiUsageRangePreset,
   type OpenAiUsageScope,
   useOpenAiDashboard,
 } from "@/hooks/use-openai-dashboard";
+import { deleteProjectForUser } from "@/lib/data/projects";
 
 const RANGE_OPTIONS: Array<{
   description: string;
@@ -76,6 +79,8 @@ function getKeyScopeLabel(scope: OpenAiUsageScope, dashboardKeys: string[]) {
 }
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const { activeProject, activeProjectId, uid } = useActiveProject();
   const [rangePreset, setRangePreset] = useState<OpenAiUsageRangePreset>("30d");
   const [scope, setScope] = useState<OpenAiUsageScope>("all");
   const { config, dashboard, error: dashboardError, loading, refresh } = useOpenAiDashboard(
@@ -87,6 +92,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [adding, setAdding] = useState(false);
   const [removingKeyId, setRemovingKeyId] = useState<string | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [backingUpProject, setBackingUpProject] = useState(false);
+  const [deletingProject, setDeletingProject] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -116,6 +124,11 @@ export default function ProfilePage() {
       setScope("all");
     }
   }, [keys, scope]);
+
+  const canDeleteProject =
+    Boolean(activeProjectId) &&
+    deleteConfirmText.trim().toUpperCase() === "CONFIRM" &&
+    !deletingProject;
 
   async function saveActiveKey() {
     const normalizedKey = apiKey.trim();
@@ -212,6 +225,58 @@ export default function ProfilePage() {
     }
   }
 
+  async function deleteCurrentProject() {
+    if (!activeProjectId) {
+      setActionError("No active project is available to delete.");
+      return;
+    }
+
+    if (deleteConfirmText.trim().toUpperCase() !== "CONFIRM") {
+      setActionError('Type CONFIRM exactly to enable project deletion.');
+      return;
+    }
+
+    setDeletingProject(true);
+    setActionError(null);
+    setMessage(null);
+
+    try {
+      await deleteProjectForUser(uid ?? "", activeProjectId);
+      setMessage("Project deleted. Returning to launcher...");
+      setDeleteConfirmText("");
+      router.replace("/");
+    } catch (nextError) {
+      setActionError(nextError instanceof Error ? nextError.message : "Unable to delete project.");
+    } finally {
+      setDeletingProject(false);
+    }
+  }
+
+  async function backupCurrentProject() {
+    if (!activeProjectId) {
+      setActionError("No active project is available to back up.");
+      return;
+    }
+
+    setBackingUpProject(true);
+    setActionError(null);
+    setMessage(null);
+
+    try {
+      const result = await window.bookBible.project.backupCurrent();
+
+      if (result.canceled) {
+        return;
+      }
+
+      setMessage(`Backup saved to ${result.filePath}.`);
+    } catch (nextError) {
+      setActionError(nextError instanceof Error ? nextError.message : "Unable to back up project.");
+    } finally {
+      setBackingUpProject(false);
+    }
+  }
+
   const keyScopeOptions = useMemo(
     () => [
       { description: "Everything stored locally", label: "All keys", value: "all" as const },
@@ -232,8 +297,8 @@ export default function ProfilePage() {
   return (
     <PageShell
       eyebrow="Profile"
-      title="Profile, Keys & Usage"
-      description="Manage encrypted OpenAI keys locally, then review spend, token volume, and request counts by key and by time range. Usage data is written to the app backend so it does not live in project files."
+      title="Profile, Keys, Usage & Project Delete"
+      description="Manage encrypted OpenAI keys locally, review spend, token volume, and request counts by key and by time range, and delete the current project with a typed confirmation when you are ready to start fresh. Usage data is written to the app backend so it does not live in project files."
     >
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.25fr)]">
         <section className="relative overflow-hidden rounded-[2rem] border border-zinc-200 bg-[linear-gradient(180deg,#1f2937_0%,#111827_100%)] p-6 text-zinc-100 shadow-[0_20px_80px_rgba(15,23,42,0.18)]">
@@ -660,6 +725,78 @@ export default function ProfilePage() {
           ) : null}
         </section>
       </div>
+
+      <section className="mt-6 rounded-[2rem] border border-rose-200 bg-gradient-to-br from-rose-50 to-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-600">
+              Dangerous action
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-rose-950">
+              Delete current project
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-rose-900/80">
+              This permanently deletes the active project folder and everything stored inside it:
+              canon records, exports, inbox items, proposals, attachments, and AI job files. It does
+              not delete the separate app-level API usage ledger or encrypted key vault. Use the
+              backup button below to choose a save location and archive the project first if you
+              might want any of the data later.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-rose-200 bg-white px-4 py-3 text-right">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-500">
+              Active project
+            </p>
+            <p className="mt-1 text-sm font-medium text-rose-950">
+              {activeProject?.title ?? "No active project"}
+            </p>
+            <p className="mt-1 text-xs text-rose-600">
+              {activeProject?.path ?? "There is nothing selected right now."}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-end">
+          <label className="block">
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">
+              Type CONFIRM to enable deletion
+            </span>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(event) => setDeleteConfirmText(event.target.value)}
+              placeholder="CONFIRM"
+              autoComplete="off"
+              spellCheck={false}
+              className="h-12 w-full rounded-2xl border border-rose-200 bg-white px-4 text-sm text-rose-950 outline-none transition placeholder:text-rose-300 focus:border-rose-400 focus:bg-rose-50"
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={() => void backupCurrentProject()}
+            disabled={!activeProjectId || backingUpProject || deletingProject}
+            className="inline-flex h-12 items-center justify-center rounded-full border border-zinc-300 bg-white px-5 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {backingUpProject ? "Backing up..." : "Back up project"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void deleteCurrentProject()}
+            disabled={!canDeleteProject}
+            className="inline-flex h-12 items-center justify-center rounded-full bg-rose-600 px-5 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {deletingProject ? "Deleting..." : "Delete project forever"}
+          </button>
+        </div>
+
+        <p className="mt-3 text-xs leading-5 text-rose-700">
+          This action cannot be undone. If you need to keep anything, back up the project folder
+          first and save the archive somewhere outside the project.
+        </p>
+      </section>
     </PageShell>
   );
 }

@@ -83,11 +83,14 @@ export default function HomePage() {
 
     syncRefresh();
     void loadLauncher();
-    const poller = window.setInterval(syncRefresh, 1000);
+    const unsubscribeProject = window.bookBible.project.subscribe(() => {
+      syncRefresh();
+      void loadLauncher();
+    });
 
     return () => {
       cancelled = true;
-      window.clearInterval(poller);
+      unsubscribeProject();
     };
   }, []);
 

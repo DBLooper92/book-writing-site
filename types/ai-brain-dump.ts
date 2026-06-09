@@ -99,10 +99,29 @@ export type AiTimelineCreateDraftState = {
   resolutions: BrainDumpResolution[];
 };
 
+export type TimelineBrainDumpReviewResolutionState = {
+  action: "" | "create" | "ignore" | "link";
+  linkedId: string;
+  touched: boolean;
+};
+
+export type TimelineSingleEventBrainDumpReviewState = {
+  brainDumpText: string;
+  createdAt: string;
+  initialValues: TimelineEventFormValues;
+  insertionItemId: string | null;
+  preview: BrainDumpPreviewResult;
+  projectContext: TimelineBrainDumpProjectContext | null;
+  resolutionStateBySuggestionId: Record<string, TimelineBrainDumpReviewResolutionState>;
+  savedAt: string;
+  status: "pending" | "applied";
+};
+
 export type MultiEventBrainDumpEventDraft = {
   draftId: string;
   entitySuggestions: BrainDumpEntitySuggestion[];
   prefill: TimelineEventFormValues;
+  sourceTitle?: string | null;
   suggestedPredecessorDraftIds: string[];
   suggestedSuccessorDraftIds: string[];
   warnings: string[];
@@ -147,6 +166,28 @@ export type MultiEventApplyReport = {
     createdTimelineEventId: string;
     draftId: string;
   }>;
+};
+
+export type MultiEventDraftReviewResolutionState = {
+  action: "" | "create" | "ignore" | "link";
+  linkedId: string;
+  touched: boolean;
+};
+
+export type MultiEventDraftReviewState = {
+  draftValues: TimelineEventFormValues;
+  predecessorDraftIds: string[];
+  resolutionsBySuggestionId: Record<string, MultiEventDraftReviewResolutionState>;
+  skipped: boolean;
+  successorDraftIds: string[];
+};
+
+export type MultiEventJobReviewState = {
+  appliedAt: string | null;
+  draftStateById: Record<string, MultiEventDraftReviewState>;
+  savedAt: string;
+  selectedDraftId: string | null;
+  status: "pending" | "applied";
 };
 
 export type AiJobStatus =
@@ -200,8 +241,11 @@ export type AiMultiEventJobRecord = AiJobSummary & {
   input?: {
     brainDumpText?: string;
     projectContext?: TimelineBrainDumpProjectContext | null;
+    projectTitle?: string | null;
+    timelineInsertionItemId?: string | null;
   };
   progress: AiJobProgress;
+  reviewState?: MultiEventJobReviewState | null;
   result: MultiEventBrainDumpPreviewResult | null;
   warnings: string[];
 };

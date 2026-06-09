@@ -32,7 +32,7 @@ The shortcut launches:
 scripts\launch-book-bible-desktop-dev.ps1
 ```
 
-It prepends the portable Node/npm folder to `PATH`, uses the tracked icon at `build/icon.ico`, and keeps the PowerShell window open so launch errors stay visible.
+It prepends the portable Node/npm folder to `PATH`, uses the tracked icon at `build/icon.ico`, keeps the PowerShell window open so launch errors stay visible, starts the app on the launcher instead of restoring the last project automatically, and chooses a free local port so Next.js and Electron stay on the same URL through `scripts/start-dev.js`.
 
 ## What Is In Git
 

@@ -15,6 +15,8 @@ This file documents the state of the desktop app as it exists now.
 - multi-event brain dump parsing now recovers the first valid JSON object or array from mixed model output instead of skipping the whole chunk on extra prose or multiple blobs
 - timeline-launched multi-event brain dump jobs stay anchored in the timeline gap, lock the insertion notch while running, then show editable generated event drafts inline for review and apply
 - timeline BrainDump insertion controls animate running jobs and pending-review calls to action in place, so authors can spot build/review states without leaving the chronology
+- timeline workspace now includes a centered Timeline/Scroll toggle; Scroll mode shows description-only event sections with inline description editing and compact insertion pluses while keeping the same create/edit workflows
+- timeline workspace now offers book and chapter filters in the Scroll view left rail, with chapter options scoped to the selected books
 - timeline brain dump jobs now write a per-job `.ai-jobs/<jobId>.log.ndjson` sidecar with the generated prompt, raw chunk response, and completion/failure summary for debugging zero-draft runs
 - multi-event brain dump chunk parsing now recovers useful drafts when a model returns a bare single-event object, top-level event array, or multiple complete event objects inside an otherwise malformed response
 - multi-event brain dump chunk calls use a larger output budget so dense chunks can return several event drafts without truncating midway through JSON

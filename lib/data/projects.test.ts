@@ -14,11 +14,13 @@ describe("desktop project sync helpers", () => {
           listRecentProjectsSync: () => [
             {
               id: "hard-time",
+              path: "C:/Projects/hard-time",
               title: "Hard Time",
               missing: false,
             },
             {
               id: "digital-prison",
+              path: "C:/Projects/digital-prison",
               title: "Digital Prison",
               missing: true,
             },
@@ -27,6 +29,7 @@ describe("desktop project sync helpers", () => {
         project: {
           getCurrentSync: () => ({
             id: "hard-time",
+            path: "C:/Projects/hard-time",
           }),
         },
       },
@@ -35,6 +38,7 @@ describe("desktop project sync helpers", () => {
     expect(listUserProjectsSync("local-desktop")).toEqual([
       {
         id: "hard-time",
+        path: "C:/Projects/hard-time",
         title: "Hard Time",
         slug: "hard-time",
         summary: "Local desktop project.",
@@ -42,6 +46,7 @@ describe("desktop project sync helpers", () => {
       },
       {
         id: "digital-prison",
+        path: "C:/Projects/digital-prison",
         title: "Digital Prison",
         slug: "digital-prison",
         summary: "Project folder is missing.",

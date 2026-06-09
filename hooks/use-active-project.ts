@@ -2,23 +2,22 @@
 
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { useUserProjects } from "@/hooks/use-user-projects";
-import { getActiveProjectIdSync, listUserProjectsSync } from "@/lib/data/projects";
 
 export function useActiveProject() {
   const { user, uid, loading: authLoading } = useAuthUser();
-  const { projects, activeProjectId, loading: projectsLoading } = useUserProjects(uid);
-  const syncProjects = uid ? listUserProjectsSync(uid) : [];
-  const syncActiveProjectId = uid ? getActiveProjectIdSync(uid) : null;
+  const { projects, activeProjectId, activeProjectPath, loading: projectsLoading } =
+    useUserProjects(uid);
   const activeProject =
-    (syncProjects.find((project) => project.id === syncActiveProjectId) ??
-      projects.find((project) => project.id === activeProjectId) ??
-      null);
+    projects.find((project) => project.path === activeProjectPath) ??
+    projects.find((project) => project.id === activeProjectId) ??
+    null;
 
   return {
     user,
     uid,
-    activeProjectId: syncActiveProjectId ?? activeProjectId,
+    activeProjectId,
+    activeProjectPath,
     activeProject,
-    loading: authLoading || (!syncActiveProjectId && projectsLoading),
+    loading: authLoading || projectsLoading,
   };
 }

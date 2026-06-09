@@ -43,9 +43,15 @@ const {
   upsertOpenAiKey,
 } = require("./openai-store");
 const {
+  buildBrainDumpNormalizationSystemPrompt,
+  buildBrainDumpNormalizationUserPrompt,
   buildMultiTimelineBrainDumpSystemPrompt,
+  buildMultiTimelineBrainDumpReviewSystemPrompt,
+  buildMultiTimelineBrainDumpReviewUserPrompt,
   buildMultiTimelineBrainDumpUserPrompt,
+  normalizeBrainDumpNormalizationOutput,
   splitTextIntoChunks,
+  splitBrainDumpIntoParagraphBlocks,
   buildTimelineBrainDumpSystemPrompt,
   buildTimelineBrainDumpUserPrompt,
   buildSummarySystemPrompt,
@@ -53,7 +59,9 @@ const {
   extractFirstJsonObject,
   extractJsonObjectsFromText,
   extractOpenAiResponseText,
+  getBrainDumpEntityCreateTitle,
   normalizeMultiTimelineBrainDumpChunkCandidates,
+  normalizeBrainDumpEntityAction,
 } = require("./ai-utils");
 const { buildValidationFixtures } = require("./brain-dump-validation-fixtures");
 const { HARD_TIME_INFERENCE_NOTES, buildHardTimeBrainDumpRegressionFixtures } = require("./hard-time-brain-dump-regression-fixtures");
@@ -68,7 +76,20 @@ const OPENAI_DEFAULT_RETRY_COUNT = 3;
 const OPENAI_DEFAULT_RETRY_DELAY_MS = 1000;
 const OPENAI_DEFAULT_TIMEOUT_MS = 90000;
 const OPENAI_MAX_TIMEOUT_MS = 240000;
-const MULTI_BRAIN_DUMP_MAX_CHARS = 3600;
+const MULTI_BRAIN_DUMP_MAX_CHARS = 4000;
+const MULTI_BRAIN_DUMP_NORMALIZATION_MAX_OUTPUT_TOKENS = 1600;
+const MULTI_BRAIN_DUMP_NORMALIZATION_TIMEOUT_MS = 90000;
+const MULTI_BRAIN_DUMP_NORMALIZATION_RETRIES = 1;
+const MULTI_BRAIN_DUMP_EXTRACTION_MAX_OUTPUT_TOKENS = 3600;
+const MULTI_BRAIN_DUMP_EXTRACTION_TIMEOUT_MS = 100000;
+const MULTI_BRAIN_DUMP_EXTRACTION_RETRIES = 1;
+const MULTI_BRAIN_DUMP_EXTRACTION_COMPACT_MAX_OUTPUT_TOKENS = 2200;
+const MULTI_BRAIN_DUMP_EXTRACTION_COMPACT_TIMEOUT_MS = 80000;
+const MULTI_BRAIN_DUMP_EXTRACTION_COMPACT_RETRIES = 0;
+const MULTI_BRAIN_DUMP_REVIEW_MAX_OUTPUT_TOKENS = 1800;
+const MULTI_BRAIN_DUMP_REVIEW_TIMEOUT_MS = 90000;
+const MULTI_BRAIN_DUMP_REVIEW_RETRIES = 1;
+const MULTI_BRAIN_DUMP_REVIEW_MAX_REPROCESS = 12;
 const RUN_VALIDATION_SUITE_CLI = process.argv.includes("--run-validation-suite");
 const RUN_DIGITAL_PRISON_BRAIN_DUMP_CLI = process.argv.includes(
   "--run-digital-prison-brain-dumps"
@@ -78,6 +99,8 @@ const RUN_DIGITAL_PRISON_UI_CLI = process.env.BOOK_BIBLE_RUN_DIGITAL_PRISON_UI =
 const RUN_HARD_TIME_UI_REGRESSION_CLI =
   process.argv.includes("--run-hard-time-ui-regression") ||
   process.env.BOOK_BIBLE_RUN_HARD_TIME_UI_REGRESSION === "1";
+const SKIP_RESTORE_CURRENT_PROJECT_ON_STARTUP =
+  process.env.BOOK_BIBLE_SKIP_RESTORE_CURRENT_PROJECT === "1";
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -110,6 +133,7 @@ function getSettingsPath() {
 
 function createDefaultAppSettings() {
   return {
+    currentProjectId: null,
     currentProjectPath: null,
     recentProjects: [],
     windowBounds: null,
@@ -134,6 +158,10 @@ function normalizeAppSettings(settings) {
   return {
     ...defaults,
     ...(settings ?? {}),
+    currentProjectId:
+      typeof settings?.currentProjectId === "string" && settings.currentProjectId.trim()
+        ? settings.currentProjectId.trim()
+        : null,
     ai: {
       openai: {
         apiKeyEncrypted:
@@ -208,6 +236,85 @@ function getDefaultProjectsRoot() {
 
 function buildProjectFolderSlug(baseTitle) {
   return slugify(baseTitle) || "project";
+}
+
+function formatFileTimestamp(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, "0");
+
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+  ].join("-") + `_${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
+}
+
+function buildProjectBackupDefaultPath(projectRuntime) {
+  const slug = buildProjectFolderSlug(projectRuntime.manifest?.slug || projectRuntime.manifest?.title);
+  const fileName = `${slug}-backup-${formatFileTimestamp()}.zip`;
+
+  return path.join(app.getPath("documents"), fileName);
+}
+
+function escapePowerShellSingleQuotedString(value) {
+  return String(value).replace(/'/g, "''");
+}
+
+function isPathInsideDirectory(candidatePath, directoryPath) {
+  const relativePath = path.relative(directoryPath, candidatePath);
+
+  return relativePath === "" || (!relativePath.startsWith("..") && !path.isAbsolute(relativePath));
+}
+
+function runPowerShellCommand(command) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      "powershell.exe",
+      ["-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command],
+      { windowsHide: true }
+    );
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    child.on("error", (error) => {
+      reject(error);
+    });
+
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve({ stderr, stdout });
+        return;
+      }
+
+      reject(new Error(stderr.trim() || stdout.trim() || `Backup command failed with exit code ${code}.`));
+    });
+  });
+}
+
+async function createProjectBackupArchive(projectPath, destinationPath) {
+  const resolvedProjectPath = path.resolve(projectPath);
+  const resolvedDestinationPath = path.resolve(destinationPath);
+  const destinationDirectory = path.dirname(resolvedDestinationPath);
+
+  ensureDirectory(destinationDirectory);
+
+  const script = [
+    "$ErrorActionPreference = 'Stop';",
+    `$source = '${escapePowerShellSingleQuotedString(resolvedProjectPath)}';`,
+    `$destination = '${escapePowerShellSingleQuotedString(resolvedDestinationPath)}';`,
+    "if (Test-Path -LiteralPath $destination) { Remove-Item -LiteralPath $destination -Force }",
+    "Compress-Archive -LiteralPath $source -DestinationPath $destination -Force",
+  ].join(" ");
+
+  await runPowerShellCommand(script);
+  return resolvedDestinationPath;
 }
 
 function getUniqueProjectFolderPath(title) {
@@ -381,6 +488,7 @@ function rememberRecentProject(projectRuntime) {
 
     return {
       ...settings,
+      currentProjectId: projectRuntime.projectId,
       currentProjectPath: projectRuntime.projectPath,
       recentProjects: nextRecents,
     };
@@ -390,8 +498,58 @@ function rememberRecentProject(projectRuntime) {
 function clearCurrentProjectSetting() {
   updateAppSettings((settings) => ({
     ...settings,
+    currentProjectId: null,
     currentProjectPath: null,
   }));
+}
+
+function resolveStartupProjectPath(settings) {
+  const currentProjectPath =
+    typeof settings?.currentProjectPath === "string" ? settings.currentProjectPath.trim() : "";
+  const currentProjectId =
+    typeof settings?.currentProjectId === "string" ? settings.currentProjectId.trim() : "";
+  const recentProjects = Array.isArray(settings?.recentProjects) ? settings.recentProjects : [];
+
+  if (currentProjectPath && fs.existsSync(currentProjectPath)) {
+    return currentProjectPath;
+  }
+
+  const pathFromCurrentProjectId = currentProjectId
+    ? recentProjects.find(
+        (recentProject) => recentProject.id === currentProjectId && fs.existsSync(recentProject.path)
+      )?.path ?? null
+    : null;
+
+  if (pathFromCurrentProjectId) {
+    updateAppSettings((currentSettings) => ({
+      ...currentSettings,
+      currentProjectId,
+      currentProjectPath: pathFromCurrentProjectId,
+    }));
+    return pathFromCurrentProjectId;
+  }
+
+  const fallbackRecentProject =
+    recentProjects.find((recentProject) => fs.existsSync(recentProject.path)) ?? null;
+
+  if (fallbackRecentProject) {
+    updateAppSettings((currentSettings) => ({
+      ...currentSettings,
+      currentProjectId: fallbackRecentProject.id,
+      currentProjectPath: fallbackRecentProject.path,
+    }));
+    return fallbackRecentProject.path;
+  }
+
+  if (currentProjectPath || currentProjectId) {
+    updateAppSettings((currentSettings) => ({
+      ...currentSettings,
+      currentProjectId: null,
+      currentProjectPath: null,
+    }));
+  }
+
+  return null;
 }
 
 function stopDraftsWatcher() {
@@ -421,6 +579,15 @@ function startDraftsWatcher(projectRuntime) {
   draftsWatcher.on("unlink", notify);
 }
 
+function removeRecentProjectPath(projectPath) {
+  updateAppSettings((settings) => ({
+    ...settings,
+    recentProjects: (settings.recentProjects ?? []).filter(
+      (recentProject) => recentProject.path !== projectPath
+    ),
+  }));
+}
+
 function closeCurrentProject() {
   stopDraftsWatcher();
 
@@ -431,6 +598,46 @@ function closeCurrentProject() {
   currentProjectRuntime = null;
   clearCurrentProjectSetting();
   sendRendererEvent("project:changed");
+}
+
+function deleteProjectFolder(projectPath) {
+  const resolvedProjectPath = path.resolve(projectPath);
+
+  if (!fs.existsSync(resolvedProjectPath)) {
+    throw new Error("Project folder does not exist.");
+  }
+
+  const manifestPath = path.join(resolvedProjectPath, "project.json");
+
+  if (!fs.existsSync(manifestPath)) {
+    throw new Error("Refusing to delete a folder that is not a project root.");
+  }
+
+  const resolvedProjectsRoot = path.resolve(DEFAULT_PROJECTS_ROOT);
+
+  if (resolvedProjectPath === resolvedProjectsRoot) {
+    throw new Error("Refusing to delete the projects root folder.");
+  }
+
+  fs.rmSync(resolvedProjectPath, { force: true, recursive: true });
+}
+
+function deleteCurrentProject() {
+  const projectRuntime = ensureCurrentProjectRuntime();
+  const projectPath = projectRuntime.projectPath;
+
+  stopDraftsWatcher();
+
+  if (projectRuntime.db) {
+    projectRuntime.db.close();
+  }
+
+  currentProjectRuntime = null;
+  removeRecentProjectPath(projectPath);
+  clearCurrentProjectSetting();
+  deleteProjectFolder(projectPath);
+  sendRendererEvent("project:changed");
+  sendRendererEvent("drafts:changed");
 }
 
 function openProjectAtPath(projectPath) {
@@ -1253,6 +1460,606 @@ function asStringArray(value) {
   );
 }
 
+const GENERIC_BRAIN_DUMP_TITLES = new Set([
+  "story",
+  "story beat",
+  "story event",
+  "book",
+  "book event",
+  "chapter",
+  "chapter event",
+  "scene",
+  "scene event",
+  "event",
+  "new event",
+  "untitled",
+  "setup",
+  "introduction",
+  "development",
+  "worldbuilding",
+  "summary",
+  "plot",
+  "arc",
+  "part",
+  "act",
+  "beat",
+]);
+
+function isGenericBrainDumpTitle(title) {
+  const normalized = normalizeKey(title);
+
+  if (!normalized) {
+    return true;
+  }
+
+  if (GENERIC_BRAIN_DUMP_TITLES.has(normalized)) {
+    return true;
+  }
+
+  if (/^(book|chapter|scene|part|act|volume)\s+\d+$/i.test(normalized)) {
+    return true;
+  }
+
+  if (/^(book|chapter|scene|part|act|volume)\s+(one|two|three|four|five|six|seven|eight|nine|ten)$/i.test(normalized)) {
+    return true;
+  }
+
+  return false;
+}
+
+function hasExplicitYearLikeText(rawText) {
+  const text = String(rawText ?? "");
+
+  return /\b(1[5-9]\d{2}|20\d{2})\b/.test(text) || /\b\d{4}\s*-\s*\d{4}\b/.test(text);
+}
+
+function hasSupportedYearContext(projectContext, sourceText) {
+  return (
+    hasExplicitYearLikeText(sourceText) ||
+    Boolean(asString(projectContext?.yearStart)) ||
+    Boolean(asString(projectContext?.yearEnd))
+  );
+}
+
+function sanitizeBrainDumpDraftChronology(draft, sourceText, projectContext) {
+  if (!draft || typeof draft !== "object") {
+    return {
+      draft,
+      warning: null,
+    };
+  }
+
+  if (hasSupportedYearContext(projectContext, sourceText)) {
+    return {
+      draft,
+      warning: null,
+    };
+  }
+
+  const nextPrefill = {
+    ...draft.prefill,
+  };
+  const removedFields = [];
+
+  if (asString(nextPrefill.yearStart)) {
+    nextPrefill.yearStart = "";
+    removedFields.push("yearStart");
+  }
+
+  if (asString(nextPrefill.yearEnd)) {
+    nextPrefill.yearEnd = "";
+    removedFields.push("yearEnd");
+  }
+
+  if (asString(nextPrefill.chronologyOrder)) {
+    nextPrefill.chronologyOrder = "";
+    removedFields.push("chronologyOrder");
+  }
+
+  if (asString(nextPrefill.displayDateLabel) && hasExplicitYearLikeText(nextPrefill.displayDateLabel)) {
+    nextPrefill.displayDateLabel = "";
+    removedFields.push("displayDateLabel");
+  }
+
+  if (removedFields.length === 0) {
+    return {
+      draft,
+      warning: null,
+    };
+  }
+
+  return {
+    draft: {
+      ...draft,
+      prefill: nextPrefill,
+      warnings: [
+        ...asStringArray(draft.warnings),
+        `Removed unsupported chronology fields (${removedFields.join(", ")}) because the source chunk did not explicitly ground them.`,
+      ],
+    },
+    warning: `Removed unsupported chronology fields (${removedFields.join(", ")}).`,
+  };
+}
+
+function countBrainDumpEntityActions(entitySuggestions) {
+  return (Array.isArray(entitySuggestions) ? entitySuggestions : []).reduce(
+    (totals, suggestion) => {
+      const action = String(suggestion?.suggestedAction ?? "").trim().toLowerCase();
+
+      if (action === "link") {
+        totals.link += 1;
+      } else if (action === "create") {
+        totals.create += 1;
+      } else if (action === "ambiguous") {
+        totals.ambiguous += 1;
+      } else if (action === "unresolved") {
+        totals.unresolved += 1;
+      } else if (action === "ignore") {
+        totals.ignore += 1;
+      }
+
+      return totals;
+    },
+    {
+      ambiguous: 0,
+      create: 0,
+      ignore: 0,
+      link: 0,
+      unresolved: 0,
+    }
+  );
+}
+
+function scoreBrainDumpDraftForReview(draft, chunkText, duplicateTitleCount = 1) {
+  const reasons = [];
+  let score = 0;
+  const title = asString(draft?.prefill?.title);
+  const summary = asString(draft?.prefill?.summary);
+  const description = asString(draft?.prefill?.description);
+  const entitySuggestions = Array.isArray(draft?.entitySuggestions) ? draft.entitySuggestions : [];
+  const entityActionTotals = countBrainDumpEntityActions(entitySuggestions);
+  const warningCount = Array.isArray(draft?.warnings) ? draft.warnings.length : 0;
+  const hasDateLikeText = hasExplicitYearLikeText(chunkText);
+  const hasYearFields = Boolean(asString(draft?.prefill?.yearStart) || asString(draft?.prefill?.yearEnd));
+
+  if (isGenericBrainDumpTitle(title)) {
+    score += 3;
+    reasons.push("Generic or placeholder-like title.");
+  }
+
+  if (summary.length < 110) {
+    score += 2;
+    reasons.push("Thin summary.");
+  }
+
+  if (description.length < 180) {
+    score += 1;
+    reasons.push("Short description.");
+  }
+
+  if (entitySuggestions.length === 0) {
+    score += 1;
+    reasons.push("No entity suggestions were attached.");
+  } else {
+    const unresolvedRatio = (entityActionTotals.unresolved + entityActionTotals.ambiguous) / entitySuggestions.length;
+
+    if (unresolvedRatio >= 0.7) {
+      score += 2;
+      reasons.push("Most entity suggestions remain unresolved or ambiguous.");
+    } else if (unresolvedRatio >= 0.45) {
+      score += 1;
+      reasons.push("Several entity suggestions remain unresolved or ambiguous.");
+    }
+
+    if (
+      entityActionTotals.link === 0 &&
+      entityActionTotals.create > 0 &&
+      entitySuggestions.length >= 3
+    ) {
+      score += 1;
+      reasons.push("Suggestions are heavily create-oriented with little reuse.");
+    }
+  }
+
+  if (warningCount > 0) {
+    score += 2;
+    reasons.push("The draft already carries AI warnings.");
+  }
+
+  if (duplicateTitleCount > 1) {
+    score += 2;
+    reasons.push("A duplicate or near-duplicate title appears in this chunk.");
+  }
+
+  if (hasDateLikeText && !asString(draft?.prefill?.yearStart) && !asString(draft?.prefill?.yearEnd)) {
+    score += 1;
+    reasons.push("Source text includes explicit year-like text, but the draft has no year fields.");
+  }
+
+  if (hasYearFields && !hasDateLikeText) {
+    score += 2;
+    reasons.push("The draft contains year fields without explicit year support in the chunk.");
+  }
+
+  if (asString(draft?.prefill?.eventType) === "other" && isGenericBrainDumpTitle(title)) {
+    score += 1;
+    reasons.push("A generic title also landed in the fallback event type.");
+  }
+
+  return {
+    reasons,
+    score,
+    shouldReview: score >= 2,
+  };
+}
+
+function buildBrainDumpTitleFrequencyMap(drafts) {
+  const frequency = new Map();
+
+  for (const draft of Array.isArray(drafts) ? drafts : []) {
+    const key = normalizeKey(draft?.prefill?.title);
+
+    if (!key) {
+      continue;
+    }
+
+    frequency.set(key, (frequency.get(key) ?? 0) + 1);
+  }
+
+  return frequency;
+}
+
+function buildBrainDumpDuplicateTitleWarnings(drafts) {
+  const seen = new Map();
+
+  for (const draft of Array.isArray(drafts) ? drafts : []) {
+    const title = asString(draft?.prefill?.title);
+    const key = normalizeKey(title);
+
+    if (!key) {
+      continue;
+    }
+
+    const entry = seen.get(key) ?? {
+      count: 0,
+      title,
+    };
+
+    entry.count += 1;
+    if (!entry.title && title) {
+      entry.title = title;
+    }
+    seen.set(key, entry);
+  }
+
+  return Array.from(seen.values())
+    .filter((entry) => entry.count > 1)
+    .map((entry) =>
+      entry.title
+        ? `Multiple drafts still share the title "${entry.title}". Review them for merge or relabeling.`
+      : "Multiple drafts still share the same normalized title. Review them for merge or relabeling."
+    );
+}
+
+async function normalizeBrainDumpChunkSections(
+  projectRuntime,
+  jobId,
+  chunkIndex,
+  chunkTotal,
+  chunkText,
+  projectContext,
+  signal
+) {
+  const paragraphBlocks = splitBrainDumpIntoParagraphBlocks(chunkText);
+  const settings = readAppSettings();
+  const apiKey = getStoredOpenAiApiKey(settings);
+  const model = settings.ai.openai.defaultModel || DEFAULT_OPENAI_MODEL;
+  const requestInput = buildBrainDumpNormalizationUserPrompt({
+    chunkIndex,
+    chunkText,
+    chunkTotal,
+    paragraphBlocks,
+    projectTitle: asString(projectRuntime.manifest?.title),
+  });
+
+  appendAiJobLogEntry(projectRuntime, jobId, {
+    event: "chunk_normalization_request",
+    chunkIndex,
+    chunkTotal,
+    paragraphCount: paragraphBlocks.length,
+    requestInput,
+  });
+
+  const { payload, telemetry } = await callOpenAiResponsesApi({
+    apiKey,
+    input: requestInput,
+    instructions: buildBrainDumpNormalizationSystemPrompt(),
+    maxOutputTokens: MULTI_BRAIN_DUMP_NORMALIZATION_MAX_OUTPUT_TOKENS,
+    model,
+    requestType: "brain_dump_normalization",
+    retries: MULTI_BRAIN_DUMP_NORMALIZATION_RETRIES,
+    timeoutMs: MULTI_BRAIN_DUMP_NORMALIZATION_TIMEOUT_MS,
+    signal,
+  });
+
+  const rawText = extractOpenAiResponseText(payload);
+  const parsedCandidates = extractJsonObjectsFromText(rawText);
+  const parsed = parsedCandidates[0] ?? null;
+  let normalized = {
+    sections: [],
+    warnings: [],
+  };
+
+  if (!parsed) {
+    normalized = {
+      sections: paragraphBlocks.length
+        ? [
+            {
+              confidence: "low",
+              label: "Unclassified source text",
+              notes: "Fallback section created because normalization returned invalid JSON.",
+              paragraphIds: paragraphBlocks.map((paragraph) => paragraph.paragraphId),
+              paragraphs: paragraphBlocks,
+              sectionType: "other",
+            },
+          ]
+        : [],
+      warnings: [`Chunk ${chunkIndex} normalization returned invalid JSON and used a fallback section.`],
+    };
+  } else {
+    normalized = normalizeBrainDumpNormalizationOutput(parsed, paragraphBlocks);
+  }
+
+  appendAiJobLogEntry(projectRuntime, jobId, {
+    event: "chunk_normalization_response",
+    chunkIndex,
+    chunkTotal,
+    responseText: rawText,
+    parsedResponse: parsed,
+    normalizedSectionCount: normalized.sections.length,
+    warningCount: normalized.warnings.length,
+    telemetry: {
+      attempts: telemetry?.attempts ?? 1,
+      category: telemetry?.category ?? "unknown",
+      durationMs: telemetry?.durationMs ?? 0,
+      outputTokens: telemetry?.outputTokens ?? 0,
+      promptTokens: telemetry?.promptTokens ?? 0,
+      retriesUsed: telemetry?.retriesUsed ?? 0,
+      totalTokens: telemetry?.totalTokens ?? 0,
+    },
+  });
+
+  return {
+    paragraphBlocks,
+    sections: normalized.sections,
+    warnings: normalized.warnings,
+  };
+}
+
+async function extractBrainDumpChunkDraftsOnce({
+  projectRuntime,
+  jobId,
+  chunkIndex,
+  chunkTotal,
+  chunkText,
+  normalizedSource,
+  projectContext,
+  signal,
+  includeChunkText = true,
+  maxOutputTokens = MULTI_BRAIN_DUMP_EXTRACTION_MAX_OUTPUT_TOKENS,
+  requestVariant = "full",
+  retries = MULTI_BRAIN_DUMP_EXTRACTION_RETRIES,
+  timeoutMs = MULTI_BRAIN_DUMP_EXTRACTION_TIMEOUT_MS,
+}) {
+  const settings = readAppSettings();
+  const apiKey = getStoredOpenAiApiKey(settings);
+  const model = settings.ai.openai.defaultModel || DEFAULT_OPENAI_MODEL;
+  const requestInput = buildMultiTimelineBrainDumpUserPrompt({
+    chunkIndex,
+    chunkText,
+    chunkTotal,
+    includeChunkText,
+    normalizedSections: normalizedSource.sections,
+    projectContext: projectContext ?? null,
+    projectTitle: asString(projectRuntime.manifest?.title),
+  });
+
+  appendAiJobLogEntry(projectRuntime, jobId, {
+    event: "chunk_request",
+    chunkChars: chunkText.length,
+    chunkIndex,
+    chunkTotal,
+    includeChunkText,
+    normalizedSectionCount: normalizedSource.sections.length,
+    requestInput,
+    requestVariant,
+  });
+
+  try {
+    const { payload, telemetry } = await callOpenAiResponsesApi({
+      apiKey,
+      input: requestInput,
+      instructions: buildMultiTimelineBrainDumpSystemPrompt(),
+      maxOutputTokens,
+      model,
+      requestType: "timeline_brain_dump_chunk",
+      retries,
+      timeoutMs,
+      signal,
+    });
+    const rawText = extractOpenAiResponseText(payload);
+    const parsedCandidates = extractJsonObjectsFromText(rawText);
+    const parsed = parsedCandidates[0] ?? null;
+    let normalizedChunk = null;
+    let chunkDrafts = [];
+    let chunkWarnings = [];
+
+    if (!parsed) {
+      chunkWarnings = [
+        ...normalizedSource.warnings,
+        `Chunk ${chunkIndex} returned invalid JSON and was skipped.`,
+      ];
+    } else {
+      normalizedChunk = normalizeMultiTimelineBrainDumpChunkCandidates(parsedCandidates);
+      chunkDrafts = normalizeMultiEventDrafts(projectRuntime, normalizedChunk.events, projectContext);
+      chunkWarnings = [...normalizedSource.warnings, ...normalizedChunk.warnings];
+    }
+
+    appendAiJobLogEntry(projectRuntime, jobId, {
+      event: "chunk_response",
+      chunkIndex,
+      chunkTotal,
+      extractedEventCount: chunkDrafts.length,
+      extractedLinkCount: normalizedChunk?.links.length ?? 0,
+      includeChunkText,
+      normalizedSectionCount: normalizedSource.sections.length,
+      parsedResponse: parsed,
+      requestVariant,
+      responseText: rawText,
+      warningCount: chunkWarnings.length,
+      telemetry: {
+        attempts: telemetry?.attempts ?? 1,
+        category: telemetry?.category ?? "unknown",
+        durationMs: telemetry?.durationMs ?? 0,
+        outputTokens: telemetry?.outputTokens ?? 0,
+        promptTokens: telemetry?.promptTokens ?? 0,
+        retriesUsed: telemetry?.retriesUsed ?? 0,
+        totalTokens: telemetry?.totalTokens ?? 0,
+      },
+    });
+
+    return {
+      chunkDrafts,
+      chunkWarnings,
+      links: normalizedChunk?.links ?? [],
+      parsed,
+      rawText,
+      telemetry,
+    };
+  } catch (error) {
+    const telemetry = error?.telemetry ?? null;
+    appendAiJobLogEntry(projectRuntime, jobId, {
+      event: "chunk_response",
+      chunkIndex,
+      chunkTotal,
+      errorCategory: error?.category ?? "unknown",
+      errorMessage: error?.message ?? String(error),
+      includeChunkText,
+      normalizedSectionCount: normalizedSource.sections.length,
+      requestVariant,
+      responseText: null,
+      parsedResponse: null,
+      warningCount: normalizedSource.warnings.length,
+      telemetry: telemetry
+        ? {
+            attempts: telemetry.attempts ?? 1,
+            category: telemetry.category ?? "unknown",
+            durationMs: telemetry.durationMs ?? 0,
+            outputTokens: telemetry.outputTokens ?? 0,
+            promptTokens: telemetry.promptTokens ?? 0,
+            retriesUsed: telemetry.retriesUsed ?? 0,
+            totalTokens: telemetry.totalTokens ?? 0,
+          }
+        : null,
+    });
+
+    throw error;
+  }
+}
+
+async function extractBrainDumpChunkDraftsWithFallback({
+  projectRuntime,
+  jobId,
+  chunkIndex,
+  chunkTotal,
+  chunkText,
+  normalizedSource,
+  projectContext,
+  signal,
+}) {
+  try {
+    return await extractBrainDumpChunkDraftsOnce({
+      projectRuntime,
+      jobId,
+      chunkIndex,
+      chunkTotal,
+      chunkText,
+      normalizedSource,
+      projectContext,
+      signal,
+      includeChunkText: true,
+      maxOutputTokens: MULTI_BRAIN_DUMP_EXTRACTION_MAX_OUTPUT_TOKENS,
+      requestVariant: "full",
+      retries: MULTI_BRAIN_DUMP_EXTRACTION_RETRIES,
+      timeoutMs: MULTI_BRAIN_DUMP_EXTRACTION_TIMEOUT_MS,
+    });
+  } catch (error) {
+    if (error?.category !== "timeout") {
+      throw error;
+    }
+  }
+
+  const fallbackWarning = `Chunk ${chunkIndex} timed out on the first pass and was retried with a compact prompt.`;
+
+  return extractBrainDumpChunkDraftsOnce({
+    projectRuntime,
+    jobId,
+    chunkIndex,
+    chunkTotal,
+    chunkText,
+    normalizedSource,
+    projectContext,
+    signal,
+    includeChunkText: false,
+    maxOutputTokens: MULTI_BRAIN_DUMP_EXTRACTION_COMPACT_MAX_OUTPUT_TOKENS,
+    requestVariant: "compact-timeout-retry",
+    retries: MULTI_BRAIN_DUMP_EXTRACTION_COMPACT_RETRIES,
+    timeoutMs: MULTI_BRAIN_DUMP_EXTRACTION_COMPACT_TIMEOUT_MS,
+  })
+    .then((result) => ({
+      ...result,
+      requestVariant: "compact-timeout-retry",
+      chunkWarnings: [...result.chunkWarnings, fallbackWarning],
+    }))
+    .catch((error) => {
+      if (error?.category !== "timeout") {
+        throw error;
+      }
+
+      appendAiJobLogEntry(projectRuntime, jobId, {
+        event: "chunk_timeout_skip",
+        chunkIndex,
+        chunkTotal,
+        errorCategory: error?.category ?? "unknown",
+        errorMessage: error?.message ?? String(error),
+        normalizedSectionCount: normalizedSource.sections.length,
+        requestVariant: "compact-timeout-retry",
+      });
+
+      return {
+        chunkDrafts: [],
+        chunkWarnings: [
+          ...normalizedSource.warnings,
+          fallbackWarning,
+          `Chunk ${chunkIndex} timed out after a compact retry and was skipped.`,
+        ],
+        links: [],
+        parsed: null,
+        rawText: "",
+        requestVariant: "compact-timeout-retry",
+        telemetry: error?.telemetry ?? {
+          attempts: 1,
+          category: "timeout",
+          durationMs: 0,
+          outputTokens: 0,
+          promptTokens: 0,
+          retriesUsed: 0,
+          totalTokens: 0,
+        },
+      };
+  });
+}
+
 function buildDefaultTimelineEventPrefill(projectContext) {
   return {
     title: "",
@@ -1385,11 +2192,109 @@ function getTargetRecordMatches(projectRuntime, target, mention) {
   };
 }
 
+const SPECIFIC_BRAIN_DUMP_ENTITY_TARGETS = new Set([
+  "book",
+  "chapter",
+  "scene",
+  "character",
+  "location",
+  "faction",
+  "culture",
+  "religion",
+  "technology",
+  "era",
+  "plotThread",
+]);
+
+const GENERIC_BRAIN_DUMP_ENTITY_MENTIONS = new Set([
+  "a character",
+  "another character",
+  "another person",
+  "chapter",
+  "crew",
+  "event",
+  "guy",
+  "individual",
+  "main character",
+  "man",
+  "new character",
+  "old man",
+  "old woman",
+  "person",
+  "scene",
+  "someone",
+  "somebody",
+  "story",
+  "the crew",
+  "the main character",
+  "the scene",
+  "the ship",
+  "the station",
+  "the story",
+  "the team",
+  "the old man",
+  "the old woman",
+  "thing",
+  "woman",
+]);
+
+function isLikelySpecificEntityMention(target, mention) {
+  if (!SPECIFIC_BRAIN_DUMP_ENTITY_TARGETS.has(target)) {
+    return false;
+  }
+
+  const normalized = normalizeMatchKey(mention);
+
+  if (!normalized || GENERIC_BRAIN_DUMP_ENTITY_MENTIONS.has(normalized)) {
+    return false;
+  }
+
+  if (/^(old|young|middle-aged)\s+(man|woman|boy|girl|person|guy|kid|child)$/i.test(normalized)) {
+    return false;
+  }
+
+  const rawMention = String(mention ?? "").trim();
+  const tokens = toKeyTokens(rawMention);
+  const hasProperNounSignal =
+    /\b[A-Z][\w'’-]*\b/.test(rawMention) || /[A-Z]{2,}/.test(rawMention) || /[-]/.test(rawMention);
+
+  if (target === "character") {
+    return (
+      hasProperNounSignal ||
+      tokens.length >= 2 ||
+      (tokens.length >= 1 && rawMention.length >= 4)
+    );
+  }
+
+  if (target === "technology") {
+    return (
+      hasProperNounSignal ||
+      tokens.length >= 2 ||
+      (tokens.length >= 1 && rawMention.length >= 5)
+    );
+  }
+
+  if (target === "location" || target === "faction" || target === "culture" || target === "religion") {
+    return hasProperNounSignal || tokens.length >= 2 || rawMention.length >= 5;
+  }
+
+  if (target === "book" || target === "chapter" || target === "scene" || target === "era") {
+    return hasProperNounSignal || tokens.length >= 2 || rawMention.length >= 5;
+  }
+
+  if (target === "plotThread") {
+    return hasProperNounSignal || tokens.length >= 2;
+  }
+
+  return false;
+}
+
 function buildEntitySuggestion(projectRuntime, entity, index, idPrefix = "") {
   const target = String(entity?.target ?? "").trim();
   const mention = asString(entity?.mention);
   const confidence = normalizeConfidence(entity?.confidence);
   const reason = asString(entity?.reason) || "Derived from the brain dump.";
+  const aiSuggestedAction = normalizeBrainDumpEntityAction(entity?.suggestedAction);
 
   if (!SUPPORTED_BRAIN_DUMP_TARGETS.has(target)) {
     return null;
@@ -1415,7 +2320,24 @@ function buildEntitySuggestion(projectRuntime, entity, index, idPrefix = "") {
     suggestedAction = "link";
   } else if (exactCandidates.length > 1 || fuzzyCandidates.length > 0) {
     suggestedAction = "ambiguous";
-  } else if (confidence === "medium" || confidence === "high" || confidence === "confirmed") {
+  } else if (aiSuggestedAction === "ignore") {
+    suggestedAction = "ignore";
+  } else if (aiSuggestedAction === "create") {
+    suggestedAction = "create";
+  } else if (
+    aiSuggestedAction === "link" ||
+    aiSuggestedAction === "ambiguous" ||
+    aiSuggestedAction === "unresolved"
+  ) {
+    if (isLikelySpecificEntityMention(target, mention) && (confidence === "high" || confidence === "confirmed")) {
+      suggestedAction = "create";
+    } else {
+      suggestedAction =
+        aiSuggestedAction === "link" || aiSuggestedAction === "ambiguous" ? "unresolved" : aiSuggestedAction;
+    }
+  } else if (
+    confidence === "medium" || confidence === "high" || confidence === "confirmed"
+  ) {
     suggestedAction = "create";
   } else {
     suggestedAction = "unresolved";
@@ -1430,10 +2352,14 @@ function buildEntitySuggestion(projectRuntime, entity, index, idPrefix = "") {
     suggestedAction,
     candidates: nonEmptyCandidates,
     suggestedCreateFields: {
-      titleOrName: mention || `${target} ${index + 1}`,
-      summary: asString(entity?.summary),
-      description: asString(entity?.description),
-      publicWikiSummary: asString(entity?.summary),
+      titleOrName: getBrainDumpEntityCreateTitle(entity, `${target} ${index + 1}`),
+      summary: asString(entity?.suggestedCreateFields?.summary) || asString(entity?.summary),
+      description:
+        asString(entity?.suggestedCreateFields?.description) || asString(entity?.description),
+      publicWikiSummary:
+        asString(entity?.suggestedCreateFields?.publicWikiSummary) ||
+        asString(entity?.suggestedCreateFields?.summary) ||
+        asString(entity?.summary),
     },
   };
 }
@@ -1452,6 +2378,7 @@ async function previewTimelineBrainDump(projectRuntime, input) {
     apiKey,
     input: buildTimelineBrainDumpUserPrompt({
       brainDumpText,
+      projectTitle: asString(projectRuntime.manifest?.title),
       projectContext: input?.projectContext ?? null,
     }),
     instructions: buildTimelineBrainDumpSystemPrompt(),
@@ -1584,6 +2511,17 @@ function updateAiJobRecord(projectRuntime, jobId, updater) {
   return updated;
 }
 
+function updateAiJobReviewState(projectRuntime, jobId, reviewState) {
+  return updateAiJobRecord(projectRuntime, jobId, (current) => ({
+    ...current,
+    reviewState: reviewState
+      ? {
+          ...reviewState,
+        }
+      : null,
+  }));
+}
+
 function markStaleJobs(projectRuntime) {
   const jobs = listAiJobRecords(projectRuntime);
 
@@ -1599,7 +2537,12 @@ function markStaleJobs(projectRuntime) {
   });
 }
 
-function createAiJobRecord({ brainDumpText, projectContext }) {
+function createAiJobRecord({
+  brainDumpText,
+  projectContext,
+  projectTitle,
+  timelineInsertionItemId,
+}) {
   const now = new Date().toISOString();
   const id = `ai-job-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   return {
@@ -1612,6 +2555,8 @@ function createAiJobRecord({ brainDumpText, projectContext }) {
     input: {
       brainDumpText,
       projectContext: projectContext ?? null,
+      projectTitle: projectTitle ?? null,
+      timelineInsertionItemId: timelineInsertionItemId ?? null,
     },
     progress: {
       totalChunks: 0,
@@ -1630,13 +2575,19 @@ function createAiJobRecord({ brainDumpText, projectContext }) {
 
 async function startMultiEventTimelineBrainDumpJob(projectRuntime, input) {
   const brainDumpText = asString(input?.brainDumpText);
+  const timelineInsertionItemId = asString(input?.timelineInsertionItemId).trim();
 
   if (!brainDumpText) {
     throw new Error("Brain dump text is required.");
   }
 
   const projectContext = input?.projectContext ?? null;
-  const jobRecord = createAiJobRecord({ brainDumpText, projectContext });
+  const jobRecord = createAiJobRecord({
+    brainDumpText,
+    projectContext,
+    projectTitle: projectRuntime.manifest?.title ?? null,
+    timelineInsertionItemId: timelineInsertionItemId || null,
+  });
   writeAiJobRecord(projectRuntime, jobRecord);
   appendAiJobLogEntry(projectRuntime, jobRecord.id, {
     event: "job_created",
@@ -1721,36 +2672,56 @@ function buildDraftId(index) {
   return `draft-event-${index + 1}`;
 }
 
+function buildMultiEventDraftFromNormalized(
+  projectRuntime,
+  normalized,
+  draftId,
+  sourceTitle = "",
+  warnings = []
+) {
+  const entitySuggestions = normalized.entities
+    .map((entity, entityIndex) =>
+      buildEntitySuggestion(projectRuntime, entity, entityIndex, `${draftId}-`)
+    )
+    .filter(Boolean);
+
+  return {
+    draftId,
+    prefill: normalized.prefill,
+    entitySuggestions,
+    sourceTitle: asString(sourceTitle) || normalized.prefill.title,
+    suggestedPredecessorDraftIds: [],
+    suggestedSuccessorDraftIds: [],
+    warnings: Array.isArray(warnings) ? [...warnings] : [],
+  };
+}
+
 function normalizeMultiEventDrafts(projectRuntime, extractedEvents, projectContext) {
-  const drafts = extractedEvents.map((entry, index) => {
+  return extractedEvents.map((entry, index) => {
     const normalized = normalizeTimelineBrainDumpOutput(entry ?? {}, projectContext ?? null);
     const draftId = buildDraftId(index);
-    const entitySuggestions = normalized.entities
-      .map((entity, entityIndex) => buildEntitySuggestion(projectRuntime, entity, entityIndex, `${draftId}-`))
-      .filter(Boolean);
-
-    return {
-      draftId,
-      prefill: normalized.prefill,
-      entitySuggestions,
-      suggestedPredecessorDraftIds: [],
-      suggestedSuccessorDraftIds: [],
-      warnings: [],
-    };
+    return buildMultiEventDraftFromNormalized(projectRuntime, normalized, draftId);
   });
-
-  return drafts;
 }
 
 function applySuggestedLinksByTitle(drafts, links) {
   const byTitle = new Map();
 
-  drafts.forEach((draft) => {
-    const key = normalizeKey(draft.prefill.title);
+  const registerTitle = (title, draftId) => {
+    const key = normalizeKey(title);
 
-    if (key) {
-      byTitle.set(key, draft.draftId);
+    if (!key) {
+      return;
     }
+
+    if (!byTitle.has(key)) {
+      byTitle.set(key, draftId);
+    }
+  };
+
+  drafts.forEach((draft) => {
+    registerTitle(draft.prefill.title, draft.draftId);
+    registerTitle(draft.sourceTitle, draft.draftId);
   });
 
   links.forEach((link) => {
@@ -1808,6 +2779,204 @@ function dedupeDraftsByIdentity(drafts) {
   }));
 }
 
+function buildBrainDumpDraftPromptPayload(draft) {
+  return {
+    event: draft?.prefill ?? {},
+    entities: Array.isArray(draft?.entitySuggestions)
+      ? draft.entitySuggestions.map(({ candidates, id, ...suggestion }) => suggestion)
+      : [],
+    warnings: Array.isArray(draft?.warnings) ? draft.warnings : [],
+  };
+}
+
+async function refineBrainDumpDraft(projectRuntime, draft, reviewContext, signal) {
+  const settings = readAppSettings();
+  const apiKey = getStoredOpenAiApiKey(settings);
+  const model = settings.ai.openai.defaultModel || DEFAULT_OPENAI_MODEL;
+  const requestInput = buildMultiTimelineBrainDumpReviewUserPrompt({
+    chunkText: reviewContext?.chunkText ?? "",
+    draft: buildBrainDumpDraftPromptPayload(draft),
+    normalizedSections: reviewContext?.normalizedSections ?? [],
+    projectContext: reviewContext?.projectContext ?? null,
+    projectTitle: asString(projectRuntime.manifest?.title),
+    reviewReasons: reviewContext?.reviewReasons ?? [],
+  });
+
+  appendAiJobLogEntry(projectRuntime, reviewContext.jobId, {
+    event: "draft_review_request",
+    chunkIndex: reviewContext.chunkIndex,
+    draftId: draft.draftId,
+    reviewReasons: reviewContext?.reviewReasons ?? [],
+    requestInput,
+  });
+
+  const { payload, telemetry } = await callOpenAiResponsesApi({
+    apiKey,
+    input: requestInput,
+    instructions: buildMultiTimelineBrainDumpReviewSystemPrompt(),
+    maxOutputTokens: MULTI_BRAIN_DUMP_REVIEW_MAX_OUTPUT_TOKENS,
+    model,
+    requestType: "timeline_brain_dump_review",
+    retries: MULTI_BRAIN_DUMP_REVIEW_RETRIES,
+    timeoutMs: MULTI_BRAIN_DUMP_REVIEW_TIMEOUT_MS,
+    signal,
+  });
+  const rawText = extractOpenAiResponseText(payload);
+  const parsedCandidates = extractJsonObjectsFromText(rawText);
+  const parsed = parsedCandidates[0] ?? null;
+  let refinedDraft = draft;
+  let warning = null;
+
+  if (!parsed) {
+    warning = `Draft ${draft.draftId} review returned invalid JSON and was left unchanged.`;
+  } else {
+    const normalized = normalizeTimelineBrainDumpOutput(
+      parsed,
+      reviewContext?.projectContext ?? null
+    );
+    refinedDraft = buildMultiEventDraftFromNormalized(
+      projectRuntime,
+      normalized,
+      draft.draftId,
+      draft.sourceTitle ?? draft.prefill.title,
+      [
+        ...draft.warnings,
+        ...asStringArray(parsed?.warnings),
+        `Refined by internal review for: ${(reviewContext?.reviewReasons ?? []).join("; ")}`,
+      ]
+    );
+  }
+
+  appendAiJobLogEntry(projectRuntime, reviewContext.jobId, {
+    event: "draft_review_response",
+    chunkIndex: reviewContext.chunkIndex,
+    draftId: draft.draftId,
+    responseText: rawText,
+    parsedResponse: parsed,
+    warning,
+    telemetry: {
+      attempts: telemetry?.attempts ?? 1,
+      category: telemetry?.category ?? "unknown",
+      durationMs: telemetry?.durationMs ?? 0,
+      outputTokens: telemetry?.outputTokens ?? 0,
+      promptTokens: telemetry?.promptTokens ?? 0,
+      retriesUsed: telemetry?.retriesUsed ?? 0,
+      totalTokens: telemetry?.totalTokens ?? 0,
+    },
+  });
+
+  if (warning) {
+    return {
+      draft,
+      warning,
+    };
+  }
+
+  return {
+    draft: refinedDraft,
+    warning: null,
+  };
+}
+
+async function reviewBrainDumpChunkDrafts(projectRuntime, chunkResult, projectContext, jobId, signal) {
+  if (!Array.isArray(chunkResult?.drafts) || chunkResult.drafts.length === 0) {
+    return {
+      ...chunkResult,
+      reviewedCount: 0,
+    };
+  }
+
+  const titleFrequency = buildBrainDumpTitleFrequencyMap(chunkResult.drafts);
+  const scoredDrafts = chunkResult.drafts
+    .map((draft, index) => {
+      const titleKey = normalizeKey(draft?.prefill?.title);
+      const duplicateTitleCount = titleKey ? titleFrequency.get(titleKey) ?? 1 : 1;
+      const assessment = scoreBrainDumpDraftForReview(
+        draft,
+        chunkResult?.chunkText ?? "",
+        duplicateTitleCount
+      );
+
+      return {
+        draft,
+        duplicateTitleCount,
+        index,
+        ...assessment,
+      };
+    })
+    .filter((item) => item.shouldReview)
+    .sort((left, right) => right.score - left.score || left.index - right.index);
+
+  const selectedDrafts = scoredDrafts.slice(0, MULTI_BRAIN_DUMP_REVIEW_MAX_REPROCESS);
+
+  if (selectedDrafts.length === 0) {
+    return {
+      ...chunkResult,
+      reviewedCount: 0,
+    };
+  }
+
+  const reviewedDrafts = [...chunkResult.drafts];
+  const reviewWarnings = [];
+  let reviewedCount = 0;
+
+  if (scoredDrafts.length > selectedDrafts.length) {
+    reviewWarnings.push(
+      `Skipped ${scoredDrafts.length - selectedDrafts.length} additional weak draft${
+        scoredDrafts.length - selectedDrafts.length === 1 ? "" : "s"
+      } in this chunk because the review cap was reached.`
+    );
+  }
+
+  for (const item of selectedDrafts) {
+    if (signal?.aborted) {
+      break;
+    }
+
+    const result = await refineBrainDumpDraft(
+      projectRuntime,
+      reviewedDrafts[item.index],
+      {
+        chunkIndex: chunkResult.chunkIndex,
+        chunkText: chunkResult.chunkText,
+        jobId,
+        normalizedSections: chunkResult.normalizedSections ?? [],
+        projectContext,
+        reviewReasons: item.reasons,
+      },
+      signal
+    );
+
+    reviewedDrafts[item.index] = result.draft;
+    reviewedCount += 1;
+
+    if (result.warning) {
+      reviewWarnings.push(result.warning);
+    }
+  }
+
+  const sanitizedDrafts = reviewedDrafts.map((draft) => {
+    const sanitized = sanitizeBrainDumpDraftChronology(
+      draft,
+      chunkResult.chunkText,
+      projectContext
+    );
+
+    if (sanitized.warning) {
+      reviewWarnings.push(sanitized.warning);
+    }
+
+    return sanitized.draft;
+  });
+
+  return {
+    ...chunkResult,
+    drafts: sanitizedDrafts,
+    reviewedCount,
+    warnings: [...chunkResult.warnings, ...reviewWarnings],
+  };
+}
+
 async function runMultiEventTimelineBrainDumpJob(projectRuntime, jobId, projectContext, signal) {
   try {
     const job = readAiJobRecord(projectRuntime, jobId);
@@ -1839,12 +3008,19 @@ async function runMultiEventTimelineBrainDumpJob(projectRuntime, jobId, projectC
     },
   }));
 
-    const settings = readAppSettings();
-    const apiKey = getStoredOpenAiApiKey(settings);
-    const model = settings.ai.openai.defaultModel || DEFAULT_OPENAI_MODEL;
-    const extractedEvents = [];
-    const extractedLinks = [];
     const warnings = extractQuestionLikeWarnings(job.input?.brainDumpText ?? "");
+    const warningSet = new Set(warnings);
+    const chunkResults = [];
+    const addWarnings = (nextWarnings) => {
+      for (const warning of Array.isArray(nextWarnings) ? nextWarnings : []) {
+        if (!warning || warningSet.has(warning)) {
+          continue;
+        }
+
+        warningSet.add(warning);
+        warnings.push(warning);
+      }
+    };
 
     for (let index = 0; index < chunks.length; index += 1) {
       if (signal?.aborted) {
@@ -1857,64 +3033,64 @@ async function runMultiEventTimelineBrainDumpJob(projectRuntime, jobId, projectC
       }
 
       const chunkText = chunks[index];
-      const requestInput = buildMultiTimelineBrainDumpUserPrompt({
+      updateAiJobRecord(projectRuntime, jobId, (current) => ({
+        ...current,
+        progress: {
+          ...current.progress,
+          completedChunks: index,
+          currentStep: "normalizing",
+          totalChunks: chunks.length,
+        },
+      }));
+
+      const normalizedSource = await normalizeBrainDumpChunkSections(
+        projectRuntime,
+        jobId,
+        index + 1,
+        chunks.length,
+        chunkText,
+        projectContext,
+        signal
+      );
+      addWarnings(normalizedSource.warnings);
+
+      updateAiJobRecord(projectRuntime, jobId, (current) => ({
+        ...current,
+        progress: {
+          ...current.progress,
+          completedChunks: index,
+          currentStep: "extracting",
+          totalChunks: chunks.length,
+        },
+        warnings,
+      }));
+
+      const extractionResult = await extractBrainDumpChunkDraftsWithFallback({
         chunkIndex: index + 1,
         chunkText,
         chunkTotal: chunks.length,
+        normalizedSource,
         projectContext: projectContext ?? null,
-      });
-
-      appendAiJobLogEntry(projectRuntime, jobId, {
-        event: "chunk_request",
-        chunkIndex: index + 1,
-        chunkTotal: chunks.length,
-        chunkChars: chunkText.length,
-        requestInput,
-      });
-
-      const { payload, telemetry } = await callOpenAiResponsesApi({
-        apiKey,
-        input: requestInput,
-        instructions: systemPrompt,
-        maxOutputTokens: 5200,
-        model,
-        requestType: "timeline_brain_dump_chunk",
-        retries: 4,
-        timeoutMs: 140000,
+        projectRuntime,
+        jobId,
         signal,
       });
-      const rawText = extractOpenAiResponseText(payload);
-      const parsedCandidates = extractJsonObjectsFromText(rawText);
-      const parsed = parsedCandidates[0] ?? null;
-      let normalizedChunk = null;
+      const {
+        chunkDrafts,
+        chunkWarnings,
+        links,
+        telemetry,
+      } = extractionResult;
 
-      if (!parsed) {
-        warnings.push(`Chunk ${index + 1} returned invalid JSON and was skipped.`);
-      } else {
-        normalizedChunk = normalizeMultiTimelineBrainDumpChunkCandidates(parsedCandidates);
-        extractedEvents.push(...normalizedChunk.events);
-        extractedLinks.push(...normalizedChunk.links);
-        warnings.push(...normalizedChunk.warnings);
-      }
+      addWarnings(chunkWarnings);
 
-      appendAiJobLogEntry(projectRuntime, jobId, {
-        event: "chunk_response",
+      chunkResults.push({
         chunkIndex: index + 1,
-        chunkTotal: chunks.length,
-        responseText: rawText,
-        parsedResponse: parsed,
-        extractedEventCount: normalizedChunk?.events.length ?? 0,
-        extractedLinkCount: normalizedChunk?.links.length ?? 0,
-        warningCount: warnings.length,
-        telemetry: {
-          attempts: telemetry?.attempts ?? 1,
-          category: telemetry?.category ?? "unknown",
-          durationMs: telemetry?.durationMs ?? 0,
-          outputTokens: telemetry?.outputTokens ?? 0,
-          promptTokens: telemetry?.promptTokens ?? 0,
-          retriesUsed: telemetry?.retriesUsed ?? 0,
-          totalTokens: telemetry?.totalTokens ?? 0,
-        },
+        chunkText,
+        drafts: chunkDrafts,
+        links,
+        warnings: chunkWarnings,
+        normalizedSections: normalizedSource.sections,
       });
 
       updateAiJobRecord(projectRuntime, jobId, (current) => ({
@@ -1945,8 +3121,58 @@ async function runMultiEventTimelineBrainDumpJob(projectRuntime, jobId, projectC
       }));
     }
 
-    const drafts = normalizeMultiEventDrafts(projectRuntime, extractedEvents, projectContext);
+    updateAiJobRecord(projectRuntime, jobId, (current) => ({
+      ...current,
+      progress: {
+        ...current.progress,
+        completedChunks: chunks.length,
+        currentStep: "reviewing",
+        totalChunks: chunks.length,
+      },
+      warnings,
+    }));
+
+    const reviewedChunkResults = [];
+    let reviewedDraftCount = 0;
+
+    for (const chunkResult of chunkResults) {
+      if (signal?.aborted) {
+        updateAiJobRecord(projectRuntime, jobId, (current) => ({
+          ...current,
+          finishedAt: new Date().toISOString(),
+          status: "canceled",
+        }));
+        return;
+      }
+
+      const reviewedChunkResult = await reviewBrainDumpChunkDrafts(
+        projectRuntime,
+        chunkResult,
+        projectContext,
+        jobId,
+        signal
+      );
+
+      reviewedChunkResults.push(reviewedChunkResult);
+      reviewedDraftCount += reviewedChunkResult.reviewedCount ?? 0;
+      addWarnings(reviewedChunkResult.warnings);
+
+      updateAiJobRecord(projectRuntime, jobId, (current) => ({
+        ...current,
+        progress: {
+          ...current.progress,
+          completedChunks: chunks.length,
+          currentStep: "reviewing",
+          totalChunks: chunks.length,
+        },
+        warnings,
+      }));
+    }
+
+    const drafts = reviewedChunkResults.flatMap((chunkResult) => chunkResult.drafts);
+    const extractedLinks = reviewedChunkResults.flatMap((chunkResult) => chunkResult.links);
     applySuggestedLinksByTitle(drafts, extractedLinks);
+    addWarnings(buildBrainDumpDuplicateTitleWarnings(drafts));
     const dedupedDrafts = dedupeDraftsByIdentity(drafts);
     const completionEvent =
       dedupedDrafts.length === 0 ? "job_completed_no_events" : "job_completed";
@@ -1956,6 +3182,7 @@ async function runMultiEventTimelineBrainDumpJob(projectRuntime, jobId, projectC
       draftCount: dedupedDrafts.length,
       warningCount: warnings.length,
       linkCount: extractedLinks.length,
+      reviewedDraftCount,
     });
 
     updateAiJobRecord(projectRuntime, jobId, (current) => ({
@@ -4200,6 +5427,33 @@ function registerIpcHandlers() {
     closeCurrentProject();
   });
 
+  ipcMain.handle("project:delete-current", async () => {
+    deleteCurrentProject();
+  });
+
+  ipcMain.handle("project:backup-current", async () => {
+    const projectRuntime = ensureCurrentProjectRuntime();
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: buildProjectBackupDefaultPath(projectRuntime),
+      filters: [{ extensions: ["zip"], name: "Zip archive" }],
+      title: "Back up current project",
+    });
+
+    if (canceled || !filePath) {
+      return { canceled: true, filePath: null };
+    }
+
+    const resolvedBackupPath = path.resolve(filePath);
+
+    if (isPathInsideDirectory(resolvedBackupPath, projectRuntime.projectPath)) {
+      throw new Error("Choose a backup location outside the project folder.");
+    }
+
+    await createProjectBackupArchive(projectRuntime.projectPath, resolvedBackupPath);
+
+    return { canceled: false, filePath: resolvedBackupPath };
+  });
+
   ipcMain.handle("project:rename", async (_event, title) => {
     const projectRuntime = ensureCurrentProjectRuntime();
     const normalizedTitle = String(title ?? "").trim();
@@ -4525,6 +5779,17 @@ function registerIpcHandlers() {
     return getAiJobStatus(projectRuntime, String(jobId ?? ""));
   });
 
+  ipcMain.handle("ai:update-job-review-state", async (_event, input) => {
+    const projectRuntime = ensureCurrentProjectRuntime();
+    const jobId = String(input?.jobId ?? "");
+
+    if (!jobId) {
+      throw new Error("Job id is required.");
+    }
+
+    return updateAiJobReviewState(projectRuntime, jobId, input?.reviewState ?? null);
+  });
+
   ipcMain.handle("ai:cancel-job", async (_event, jobId) => {
     const projectRuntime = ensureCurrentProjectRuntime();
     return cancelAiJob(projectRuntime, String(jobId ?? ""));
@@ -4585,7 +5850,7 @@ app.whenReady().then(async () => {
   ) {
     try {
       const settings = readAppSettings();
-      const projectPath = settings.currentProjectPath;
+      const projectPath = resolveStartupProjectPath(settings);
 
       if (typeof projectPath !== "string" || !projectPath.trim()) {
         throw new Error("No current project path is configured.");
@@ -4629,7 +5894,7 @@ app.whenReady().then(async () => {
   if (RUN_DIGITAL_PRISON_UI_CLI) {
     try {
       const settings = readAppSettings();
-      const projectPath = settings.currentProjectPath;
+      const projectPath = resolveStartupProjectPath(settings);
 
       if (typeof projectPath !== "string" || !projectPath.trim()) {
         throw new Error("No current project path is configured.");
@@ -4663,7 +5928,8 @@ app.whenReady().then(async () => {
       return;
     } catch (error) {
       const debugPath = path.join(
-        readAppSettings().currentProjectPath || path.join(DEFAULT_PROJECTS_ROOT, "digital-prison"),
+        resolveStartupProjectPath(readAppSettings()) ||
+          path.join(DEFAULT_PROJECTS_ROOT, "digital-prison"),
         "exports",
         "ai-validation",
         "digital-prison-ui-debug.json"
@@ -4710,7 +5976,7 @@ app.whenReady().then(async () => {
   if (RUN_HARD_TIME_UI_REGRESSION_CLI) {
     try {
       const settings = readAppSettings();
-      const projectPath = settings.currentProjectPath;
+      const projectPath = resolveStartupProjectPath(settings);
 
       if (typeof projectPath !== "string" || !projectPath.trim()) {
         throw new Error("No current project path is configured.");
@@ -4741,9 +6007,13 @@ app.whenReady().then(async () => {
     }
   }
 
-  const { currentProjectPath } = readAppSettings();
+  const currentProjectPath = resolveStartupProjectPath(readAppSettings());
 
-  if (currentProjectPath && fs.existsSync(currentProjectPath)) {
+  if (
+    !SKIP_RESTORE_CURRENT_PROJECT_ON_STARTUP &&
+    currentProjectPath &&
+    fs.existsSync(currentProjectPath)
+  ) {
     try {
       openProjectAtPath(currentProjectPath);
     } catch {

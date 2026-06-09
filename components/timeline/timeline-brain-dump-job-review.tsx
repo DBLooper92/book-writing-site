@@ -49,6 +49,10 @@ export function TimelineBrainDumpJobReview({
   uid,
 }: TimelineBrainDumpJobReviewProps) {
   const drafts = useMemo(() => job.result?.events ?? [], [job.result?.events]);
+  const sourceQuestionNotes = useMemo(
+    () => extractQuestionLikeNoteLines(job.input?.brainDumpText ?? ""),
+    [job.input?.brainDumpText]
+  );
   const [draftStateById, setDraftStateById] = useState<Record<string, DraftReviewState>>({});
   const [expandedDraftId, setExpandedDraftId] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
@@ -56,31 +60,38 @@ export function TimelineBrainDumpJobReview({
   const [postApplyWarnings, setPostApplyWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const initializedJobIdRef = useRef<string | null>(null);
+  const lastSavedReviewSnapshotRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (job.status !== "completed" || initializedJobIdRef.current === job.id) {
       return;
     }
 
-    const nextState = Object.fromEntries(
-      drafts.map((draft) => [
-        draft.draftId,
-        {
-          draftValues: draft.prefill,
-          predecessorDraftIds: [...draft.suggestedPredecessorDraftIds],
-          resolutionsBySuggestionId: buildInitialResolutionState(draft.entitySuggestions),
-          skipped: false,
-          successorDraftIds: [...draft.suggestedSuccessorDraftIds],
-        } satisfies DraftReviewState,
-      ])
-    );
+    const nextSelectedDraftId =
+      job.reviewState?.selectedDraftId && drafts.some((draft) => draft.draftId === job.reviewState?.selectedDraftId)
+        ? job.reviewState.selectedDraftId
+        : drafts[0]?.draftId ?? null;
+    const nextState = buildInitialDraftReviewState(drafts, job.reviewState?.draftStateById ?? null);
 
     setDraftStateById(nextState);
-    setExpandedDraftId(drafts[0]?.draftId ?? null);
+    setExpandedDraftId(nextSelectedDraftId);
     setApplyReport(null);
     setPostApplyWarnings([]);
     initializedJobIdRef.current = job.id;
-  }, [drafts, job.id, job.status]);
+    lastSavedReviewSnapshotRef.current = buildReviewSnapshotKey(
+      job.id,
+      nextSelectedDraftId,
+      nextState,
+      job.reviewState?.status ?? "pending"
+    );
+  }, [
+    drafts,
+    job.id,
+    job.reviewState?.draftStateById,
+    job.reviewState?.selectedDraftId,
+    job.reviewState?.status,
+    job.status,
+  ]);
 
   const totalUnresolvedCount = useMemo(() => {
     return drafts.reduce((count, draft) => {
@@ -111,6 +122,51 @@ export function TimelineBrainDumpJobReview({
       };
     });
   }
+
+  useEffect(() => {
+    if (job.status !== "completed" || initializedJobIdRef.current !== job.id) {
+      return;
+    }
+    if (job.reviewState?.status === "applied") {
+      return;
+    }
+
+    const nextSnapshotKey = buildReviewSnapshotKey(job.id, expandedDraftId, draftStateById, "pending");
+
+    if (lastSavedReviewSnapshotRef.current === nextSnapshotKey) {
+      return;
+    }
+
+    const saveTimer = window.setTimeout(() => {
+      void window.bookBible.ai
+        .updateJobReviewState({
+          jobId: job.id,
+          reviewState: serializeJobReviewState({
+            appliedAt: job.reviewState?.appliedAt ?? null,
+            draftStateById,
+            savedAt: new Date().toISOString(),
+            selectedDraftId: expandedDraftId,
+            status: "pending",
+          }),
+        })
+        .then((updated) => {
+          if (updated) {
+            lastSavedReviewSnapshotRef.current = nextSnapshotKey;
+          }
+        });
+    }, 300);
+
+    return () => {
+      window.clearTimeout(saveTimer);
+    };
+  }, [
+    draftStateById,
+    expandedDraftId,
+    job.id,
+    job.reviewState?.appliedAt,
+    job.reviewState?.status,
+    job.status,
+  ]);
 
   async function handleApplyReviewedEvents() {
     const report: MultiEventApplyReport = {
@@ -261,6 +317,23 @@ export function TimelineBrainDumpJobReview({
       setPostApplyWarnings(relationWarnings);
 
       if (report.success.length > 0 && report.failed.length === 0) {
+        const appliedReviewState = serializeJobReviewState({
+          appliedAt: new Date().toISOString(),
+          draftStateById,
+          savedAt: new Date().toISOString(),
+          selectedDraftId: expandedDraftId,
+          status: "applied",
+        });
+        await window.bookBible.ai.updateJobReviewState({
+          jobId: job.id,
+          reviewState: appliedReviewState,
+        });
+        lastSavedReviewSnapshotRef.current = buildReviewSnapshotKey(
+          job.id,
+          expandedDraftId,
+          draftStateById,
+          "applied"
+        );
         await onApproved();
       }
     } finally {
@@ -349,7 +422,25 @@ export function TimelineBrainDumpJobReview({
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
                 Job notes
               </p>
-              {job.warnings.join(" ")}
+              {sourceQuestionNotes.length > 0 ? (
+                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+                  <p className="leading-6">
+                    {sourceQuestionNotes.length} source note{sourceQuestionNotes.length === 1 ? "" : "s"} were captured from the raw brain dump.
+                    They are raw author commentary, not canon, and you can disregard them unless you want to turn one into a draft.
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {sourceQuestionNotes.map((note, index) => (
+                      <li key={`${index}-${note}`} className="leading-6">
+                        <span className="mr-2 inline-flex rounded-full border border-amber-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-800">
+                          Note {index + 1}
+                        </span>
+                        {note}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {job.warnings.length > 0 ? <p className="mt-3 text-sm leading-6">{job.warnings.join(" ")}</p> : null}
             </div>
           ) : null}
 
@@ -971,6 +1062,29 @@ function getDraftAttentionItems(
   return items;
 }
 
+function extractQuestionLikeNoteLines(rawText: string) {
+  const text = String(rawText ?? "").trim();
+
+  if (!text) {
+    return [];
+  }
+
+  const lines = text
+    .split(/\n+/g)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines.filter((line) => {
+    const normalized = line.toLowerCase();
+    return (
+      normalized.includes("?") ||
+      normalized.includes("does this work") ||
+      normalized.startsWith("question:") ||
+      normalized.includes("open question")
+    );
+  });
+}
+
 function buildResolutions(
   suggestions: BrainDumpEntitySuggestion[],
   resolutionsBySuggestionId: Record<string, ReviewResolutionState>
@@ -1002,4 +1116,84 @@ function buildResolutions(
 
 function unique(values: string[]) {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function buildInitialDraftReviewState(
+  drafts: MultiEventBrainDumpEventDraft[],
+  savedDraftStateById: Record<string, DraftReviewState> | null
+) {
+  return Object.fromEntries(
+    drafts.map((draft) => {
+      const savedDraftState = savedDraftStateById?.[draft.draftId];
+
+      if (savedDraftState) {
+        return [
+          draft.draftId,
+          cloneDraftReviewState(savedDraftState),
+        ] as const;
+      }
+
+      return [
+        draft.draftId,
+        {
+          draftValues: draft.prefill,
+          predecessorDraftIds: [...draft.suggestedPredecessorDraftIds],
+          resolutionsBySuggestionId: buildInitialResolutionState(draft.entitySuggestions),
+          skipped: false,
+          successorDraftIds: [...draft.suggestedSuccessorDraftIds],
+        } satisfies DraftReviewState,
+      ] as const;
+    })
+  ) as Record<string, DraftReviewState>;
+}
+
+function cloneDraftReviewState(state: DraftReviewState): DraftReviewState {
+  return {
+    draftValues: state.draftValues,
+    predecessorDraftIds: [...state.predecessorDraftIds],
+    resolutionsBySuggestionId: Object.fromEntries(
+      Object.entries(state.resolutionsBySuggestionId).map(([suggestionId, resolution]) => [
+        suggestionId,
+        { ...resolution },
+      ])
+    ),
+    skipped: state.skipped,
+    successorDraftIds: [...state.successorDraftIds],
+  };
+}
+
+function buildReviewSnapshotKey(
+  jobId: string,
+  selectedDraftId: string | null,
+  draftStateById: Record<string, DraftReviewState>,
+  status: "pending" | "applied"
+) {
+  return JSON.stringify({
+    draftStateById,
+    jobId,
+    selectedDraftId,
+    status,
+  });
+}
+
+function serializeJobReviewState({
+  appliedAt,
+  draftStateById,
+  savedAt,
+  selectedDraftId,
+  status,
+}: {
+  appliedAt: string | null;
+  draftStateById: Record<string, DraftReviewState>;
+  savedAt: string;
+  selectedDraftId: string | null;
+  status: "pending" | "applied";
+}) {
+  return {
+    appliedAt,
+    draftStateById,
+    savedAt,
+    selectedDraftId,
+    status,
+  };
 }

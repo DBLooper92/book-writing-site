@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { TimelineBrainDumpJobReview } from "@/components/timeline/timeline-brain-dump-job-review";
@@ -21,6 +21,11 @@ import {
   type TimelineLayoutGapItem,
   type TimelineLayoutInsertionItem,
 } from "@/lib/timeline/layout";
+import type { TimelineReferenceOption } from "@/lib/timeline/references";
+import {
+  loadPendingSingleReviewMap,
+  savePendingSingleReviewMap,
+} from "@/lib/timeline/pending-single-review";
 import {
   buildTimelineCreateHref,
   buildTimelineCreateInitialValuesFromSearchParams,
@@ -33,10 +38,12 @@ import {
   type TimelineWorkspaceFilters,
   type TimelineWorkspaceStats,
 } from "@/lib/timeline/workspace";
+import type { TimelineWorkspaceViewMode } from "@/components/timeline/timeline-workspace-controls";
 import type {
   AiMultiEventJobRecord,
   AiTimelineCreateDraftState,
   TimelineBrainDumpInsertionContext,
+  TimelineSingleEventBrainDumpReviewState,
 } from "@/types/ai-brain-dump";
 import type { TimelineEvent, TimelineEventFormValues } from "@/types/timeline-event";
 
@@ -69,6 +76,7 @@ export function TimelineWorkspaceVisual({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filtersPinned, setFiltersPinned] = useState(false);
+  const [viewMode, setViewMode] = useState<TimelineWorkspaceViewMode>("timeline");
   const [requestedSelectedEventId, setRequestedSelectedEventId] = useState<string | null>(null);
   const [viewerEventId, setViewerEventId] = useState<string | null>(null);
   const [localComposerState, setLocalComposerState] = useState<
@@ -87,6 +95,7 @@ export function TimelineWorkspaceVisual({
     insertionContext: TimelineBrainDumpInsertionContext | null;
     initialValuesOverride?: TimelineEventFormValues | null;
     insertionItem: TimelineLayoutInsertionItem | null;
+    pendingSingleReviewState?: TimelineSingleEventBrainDumpReviewState | null;
     source: "local" | "url";
   } | null>(null);
   const [activeBrainDumpJob, setActiveBrainDumpJob] = useState<{
@@ -94,7 +103,22 @@ export function TimelineWorkspaceVisual({
     job: AiMultiEventJobRecord | null;
     jobId: string;
   } | null>(null);
+  const [restoredBrainDumpJobsByInsertionItemId, setRestoredBrainDumpJobsByInsertionItemId] =
+    useState<Record<string, AiMultiEventJobRecord>>({});
+  const [pendingSingleReviewByInsertionItemId, setPendingSingleReviewByInsertionItemId] =
+    useState<Record<string, TimelineSingleEventBrainDumpReviewState>>({});
+  const pendingSingleReviewHydratedRef = useRef(false);
+  const pendingSingleReviewLoadTokenRef = useRef(0);
+  const visibleRestoredBrainDumpJobsByInsertionItemId = useMemo(
+    () => (uid && activeProjectId ? restoredBrainDumpJobsByInsertionItemId : {}),
+    [activeProjectId, restoredBrainDumpJobsByInsertionItemId, uid]
+  );
+  const visiblePendingSingleReviewByInsertionItemId = useMemo(
+    () => (uid && activeProjectId ? pendingSingleReviewByInsertionItemId : {}),
+    [activeProjectId, pendingSingleReviewByInsertionItemId, uid]
+  );
   const eventRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const insertionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const knownTimelineEventIds = new Set(timelineEvents.map((timelineEvent) => timelineEvent.id));
   const formOptions = useTimelineFormOptions();
   const layout = buildTimelineLayoutModel(timelineEvents);
@@ -109,6 +133,7 @@ export function TimelineWorkspaceVisual({
         insertionContext: null,
         initialValuesOverride: buildTimelineCreateInitialValuesFromSearchParams(searchParams),
         insertionItem: null,
+        pendingSingleReviewState: null,
         source: "url" as const,
       }
     : null;
@@ -141,14 +166,32 @@ export function TimelineWorkspaceVisual({
       new Map(formOptions.chapterOptions.map((option) => [option.value, option.label] as const)),
     [formOptions.chapterOptions]
   );
+  const visibleChapterFilterOptions = useMemo(
+    () => buildVisibleChapterFilterOptions(formOptions.chapterOptions, filters.bookIds),
+    [filters.bookIds, formOptions.chapterOptions]
+  );
+  const pendingInsertionItemIds = useMemo(() => {
+    const pendingIds = new Set([
+      ...Object.keys(visibleRestoredBrainDumpJobsByInsertionItemId),
+      ...Object.keys(visiblePendingSingleReviewByInsertionItemId),
+    ]);
+
+    return layout.items
+      .filter((item): item is TimelineLayoutInsertionItem => item.kind === "notch")
+      .map((item) => item.id)
+      .filter((itemId) => pendingIds.has(itemId));
+  }, [layout.items, visiblePendingSingleReviewByInsertionItemId, visibleRestoredBrainDumpJobsByInsertionItemId]);
+  const firstPendingInsertionItemId = pendingInsertionItemIds[0] ?? null;
+
+  const activeBrainDumpJobId = activeBrainDumpJob?.jobId ?? null;
 
   useEffect(() => {
-    if (!activeBrainDumpJob) {
+    if (!activeBrainDumpJobId) {
       return;
     }
 
     let cancelled = false;
-    const jobId = activeBrainDumpJob.jobId;
+    const jobId = activeBrainDumpJobId;
 
     async function loadJob() {
       try {
@@ -178,7 +221,102 @@ export function TimelineWorkspaceVisual({
       cancelled = true;
       unsubscribe();
     };
-  }, [activeBrainDumpJob?.jobId]);
+  }, [activeBrainDumpJobId]);
+
+  useEffect(() => {
+    if (!uid || !activeProjectId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadPersistedBrainDumpJobs() {
+      try {
+        const jobSummaries = await window.bookBible.ai.listJobs();
+        const jobRecords = await Promise.all(
+          jobSummaries.map((summary) => window.bookBible.ai.getJobStatus(summary.id))
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        const nextJobsByInsertionItemId = Object.fromEntries(
+          jobRecords
+            .filter(
+              (job): job is AiMultiEventJobRecord => {
+                if (!job) {
+                  return false;
+                }
+
+                const insertionItemId = job.input?.timelineInsertionItemId;
+
+                return (
+                  typeof insertionItemId === "string" &&
+                  insertionItemId.trim().length > 0 &&
+                  (job.status === "queued" ||
+                    job.status === "running" ||
+                    job.status === "failed" ||
+                    (job.status === "completed" &&
+                      Boolean(job.result?.events?.length) &&
+                      job.reviewState?.status !== "applied"))
+                );
+              }
+            )
+            .map((job) => [job.input!.timelineInsertionItemId!, job])
+        ) as Record<string, AiMultiEventJobRecord>;
+
+        setRestoredBrainDumpJobsByInsertionItemId(nextJobsByInsertionItemId);
+      } catch {
+        if (!cancelled) {
+          setRestoredBrainDumpJobsByInsertionItemId({});
+        }
+      }
+    }
+
+    void loadPersistedBrainDumpJobs();
+    const unsubscribeJobs = window.bookBible.ai.subscribeJobs(() => {
+      void loadPersistedBrainDumpJobs();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribeJobs();
+    };
+  }, [activeProjectId, uid]);
+
+  useEffect(() => {
+    pendingSingleReviewLoadTokenRef.current += 1;
+    const loadToken = pendingSingleReviewLoadTokenRef.current;
+    pendingSingleReviewHydratedRef.current = false;
+
+    const frame = window.requestAnimationFrame(() => {
+      if (pendingSingleReviewLoadTokenRef.current !== loadToken) {
+        return;
+      }
+
+      if (!uid || !activeProjectId) {
+        setPendingSingleReviewByInsertionItemId({});
+        pendingSingleReviewHydratedRef.current = false;
+        return;
+      }
+
+      setPendingSingleReviewByInsertionItemId(loadPendingSingleReviewMap(activeProjectId));
+      pendingSingleReviewHydratedRef.current = true;
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [activeProjectId, uid]);
+
+  useEffect(() => {
+    if (!uid || !activeProjectId || !pendingSingleReviewHydratedRef.current) {
+      return;
+    }
+
+    savePendingSingleReviewMap(activeProjectId, pendingSingleReviewByInsertionItemId);
+  }, [activeProjectId, pendingSingleReviewByInsertionItemId, uid]);
 
   function registerEventRef(eventId: string, node: HTMLDivElement | null) {
     if (node) {
@@ -189,9 +327,25 @@ export function TimelineWorkspaceVisual({
     eventRefs.current.delete(eventId);
   }
 
+  function registerInsertionRef(insertionItemId: string, node: HTMLDivElement | null) {
+    if (node) {
+      insertionRefs.current.set(insertionItemId, node);
+      return;
+    }
+
+    insertionRefs.current.delete(insertionItemId);
+  }
+
   function focusEvent(eventId: string) {
     setRequestedSelectedEventId(eventId);
     eventRefs.current.get(eventId)?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }
+
+  function focusPendingInsertionItem(insertionItemId: string) {
+    insertionRefs.current.get(insertionItemId)?.scrollIntoView({
       behavior: "smooth",
       block: "center",
     });
@@ -309,91 +463,79 @@ export function TimelineWorkspaceVisual({
     });
   }
 
+  function handlePendingSingleReviewStateChange(
+    insertionItemId: string,
+    state: TimelineSingleEventBrainDumpReviewState | null
+  ) {
+    setPendingSingleReviewByInsertionItemId((current) => {
+      if (!state) {
+        if (!(insertionItemId in current)) {
+          return current;
+        }
+
+        const next = { ...current };
+        delete next[insertionItemId];
+        return next;
+      }
+
+      return {
+        ...current,
+        [insertionItemId]: state,
+      };
+    });
+  }
+
+  function openPendingSingleReview(
+    insertionItem: TimelineLayoutInsertionItem,
+    state: TimelineSingleEventBrainDumpReviewState
+  ) {
+    const insertionContext = buildInsertionBrainDumpContext(orderedTimelineEvents, insertionItem);
+
+    setLocalCreateFlowState({
+      createMode: "aiSingle",
+      insertionContext,
+      initialValuesOverride: state.initialValues,
+      insertionItem,
+      source: "local",
+      pendingSingleReviewState: state,
+    });
+  }
+
   async function handleTimelineBrainDumpApproved() {
     setActiveBrainDumpJob(null);
     await onRefreshTimelineEvents();
   }
 
-  const filterBarClassName = filtersPinned
-    ? "xl:sticky xl:top-0 xl:z-20 xl:shadow-[0_18px_45px_-36px_rgba(24,24,27,0.55)]"
-    : "";
+  function handleToggleBookFilter(bookId: string) {
+    const nextBookIds = toggleTimelineFilterValue(filters.bookIds, bookId);
+    const nextChapterIds = pruneChapterFiltersToSelectedBooks(
+      filters.chapterIds,
+      nextBookIds,
+      formOptions.chapterOptions
+    );
+
+    onChange({
+      bookIds: nextBookIds,
+      chapterIds: nextChapterIds,
+    });
+  }
+
+  function handleToggleChapterFilter(chapterId: string) {
+    onChange({
+      chapterIds: toggleTimelineFilterValue(filters.chapterIds, chapterId),
+    });
+  }
+
+  const isScrollMode = viewMode === "scroll";
+  const filterBarClassName =
+    !isScrollMode && filtersPinned
+      ? "xl:sticky xl:top-0 xl:z-20 xl:shadow-[0_18px_45px_-36px_rgba(24,24,27,0.55)]"
+      : "";
 
   return (
     <>
-      <section className="grid flex-1 xl:grid-cols-[22rem_minmax(0,1fr)] xl:overflow-hidden">
-        <aside className="border-b border-zinc-200 bg-[#fafaf8] xl:h-full xl:overflow-hidden xl:border-b-0 xl:border-r xl:shadow-[20px_0_40px_-32px_rgba(24,24,27,0.55)]">
-          <div className="flex h-full flex-col xl:sticky xl:top-0 xl:overflow-y-auto">
-            <div className="border-b border-zinc-200 px-5 py-5 sm:px-6">
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <QuickMapStat label="Total events" value={String(stats.totalEvents)} />
-                <QuickMapStat label="Showing now" value={String(stats.visibleEvents)} />
-              </div>
-              <div className="mt-3">
-                <QuickMapStat
-                  label="Chronology range"
-                  value={formatChronologySpan(timelineEvents)}
-                  fullWidth
-                />
-              </div>
-            </div>
-
-            <div className="flex-1">
-              {layout.quickNavItems.length > 0 ? (
-                <div className="border-b border-zinc-200">
-                  {layout.quickNavItems.map((quickNavItem, index) => {
-                    const isSelected = quickNavItem.eventId === selectedEventId;
-
-                    return (
-                      <button
-                        key={quickNavItem.eventId}
-                        type="button"
-                        onClick={() => focusEvent(quickNavItem.eventId)}
-                        className={`w-full border-t border-zinc-200 px-5 py-4 text-left transition ${
-                          isSelected
-                            ? "bg-zinc-950 text-white"
-                            : index % 2 === 0
-                              ? "bg-white text-zinc-700 hover:bg-zinc-100"
-                              : "bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
-                        }`}
-                      >
-                        <div className="min-w-0">
-                          <p
-                            className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${
-                              isSelected ? "text-white/70" : "text-zinc-500"
-                            }`}
-                          >
-                            Block {quickNavItem.position}
-                          </p>
-                          <p
-                            className={`mt-2 truncate text-sm font-semibold tracking-tight ${
-                              isSelected ? "text-white" : "text-zinc-950"
-                            }`}
-                          >
-                            {quickNavItem.title}
-                          </p>
-                          <p
-                            className={`mt-2 text-[11px] uppercase tracking-[0.18em] ${
-                              isSelected ? "text-white/65" : "text-zinc-500"
-                            }`}
-                          >
-                            {quickNavItem.chronologyLabel}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-3xl border border-dashed border-zinc-300 bg-white px-4 py-5 text-sm leading-6 text-zinc-600">
-                  No visible blocks yet. Create a timeline event or loosen the filters to rebuild
-                  the quick map.
-                </div>
-              )}
-            </div>
-          </div>
-        </aside>
-
-        <section className="min-h-0 bg-[linear-gradient(180deg,#fcfcfb_0%,#f8f8f6_100%)] xl:overflow-y-auto">
+      {isScrollMode ? (
+        <section className="flex min-h-[calc(100vh-6rem)] flex-1 flex-col bg-[linear-gradient(180deg,#fcfbf7_0%,#f6f3ec_100%)]">
           <div className={filterBarClassName}>
             <TimelineWorkspaceControls
               filters={filters}
@@ -401,104 +543,379 @@ export function TimelineWorkspaceVisual({
               visibleCount={stats.visibleEvents}
               hasActiveFilters={hasActiveFilters}
               pinned={filtersPinned}
+              viewMode={viewMode}
               onChange={onChange}
               onReset={onReset}
               onTogglePinned={() => setFiltersPinned((current) => !current)}
+              onViewModeChange={setViewMode}
             />
           </div>
 
-          <div className="space-y-6 p-4 sm:p-6 xl:p-8">
-            <div className="flex flex-wrap justify-end gap-3">
-              <Link
-                href={buildTimelineCreateHref({ createMode: "manual" })}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Create timeline event
-              </Link>
+          <div className="grid flex-1 xl:grid-cols-[19rem_minmax(0,1fr)]">
+            <aside className="border-b border-zinc-200 bg-[#fafaf8] xl:border-b-0 xl:border-r xl:shadow-[20px_0_40px_-32px_rgba(24,24,27,0.55)]">
+              <div className="flex h-full flex-col px-5 py-5 sm:px-6 xl:min-h-0 xl:overflow-y-auto">
+                <div className="border-b border-zinc-200 pb-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                    Books and chapters
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-600">
+                    Focus the reading stream by the manuscript sources attached to each event.
+                  </p>
+
+                  {formOptions.loading ? (
+                    <p className="mt-4 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
+                      Loading book and chapter filters...
+                    </p>
+                  ) : formOptions.error ? (
+                    <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                      Book and chapter filters could not be loaded right now.
+                    </p>
+                  ) : (
+                    <div className="mt-4 space-y-4">
+                      <FilterGroup
+                        emptyLabel="No books available."
+                        items={formOptions.bookOptions}
+                        label="Books"
+                        selectedIds={filters.bookIds}
+                        onToggle={handleToggleBookFilter}
+                      />
+
+                      <FilterGroup
+                        emptyLabel={
+                          filters.bookIds.length > 0
+                            ? "No chapters in the selected books."
+                            : "No chapters available."
+                        }
+                        items={visibleChapterFilterOptions}
+                        label="Chapters"
+                        selectedIds={filters.chapterIds}
+                        onToggle={handleToggleChapterFilter}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </aside>
+
+            <div className="min-w-0 px-4 py-6 sm:px-6 xl:px-8 xl:py-8">
+              <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm leading-6 text-zinc-600">
+                    {stats.totalEvents === 0
+                      ? `No timeline events exist in ${activeProjectTitle} yet.`
+                      : timelineEvents.length === 0
+                        ? "No timeline events match the current filters."
+                        : `Reading ${timelineEvents.length} event description${timelineEvents.length === 1 ? "" : "s"} in chronological order.`}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      href={buildTimelineCreateHref({ createMode: "manual" })}
+                      className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-900 transition hover:bg-zinc-50"
+                    >
+                      Create event
+                    </Link>
+                  </div>
+                </div>
+
+                {stats.totalEvents === 0 ? (
+                  <TimelineStateCard>
+                    No timeline events exist in {activeProjectTitle} yet. Use the insertion plus at
+                    the top to start the chronology.
+                  </TimelineStateCard>
+                ) : null}
+
+                {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
+                  <TimelineStateCard>
+                    No timeline events match the current filters. Switch back to Timeline mode or
+                    reset the filters to bring descriptions back into view.
+                  </TimelineStateCard>
+                ) : null}
+
+                {timelineEvents.length > 0 || stats.totalEvents === 0 ? (
+                  <div className="overflow-hidden rounded-[2rem] border border-zinc-200/80 bg-white/70 shadow-[0_24px_70px_-52px_rgba(24,24,27,0.55)]">
+                    <div className="px-5 py-4 sm:px-6">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                        Scroll mode
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-zinc-600">
+                        A stripped reading view for draft-style review and inline description edits.
+                      </p>
+                    </div>
+
+                    <div className="border-t border-zinc-200/80">
+                      {layout.items
+                        .filter(
+                          (
+                            item
+                          ): item is TimelineLayoutEventItem | TimelineLayoutInsertionItem =>
+                            item.kind !== "gap"
+                        )
+                        .map((item) => {
+                          if (item.kind === "notch") {
+                            const pendingSingleReviewState =
+                              visiblePendingSingleReviewByInsertionItemId[item.id] ?? null;
+
+                            return (
+                              <TimelineInsertionRow
+                                key={item.id}
+                                activeJob={
+                                  activeBrainDumpJob?.insertionItemId === item.id
+                                    ? activeBrainDumpJob.job
+                                    : visibleRestoredBrainDumpJobsByInsertionItemId[item.id] ?? null
+                                }
+                                activeProjectId={activeProjectId}
+                                compact
+                                insertionRef={(node) => registerInsertionRef(item.id, node)}
+                                insertionItem={item}
+                                pendingSingleReviewState={pendingSingleReviewState}
+                                onApproved={handleTimelineBrainDumpApproved}
+                                onOpenPendingSingleReview={() =>
+                                  pendingSingleReviewState
+                                    ? openPendingSingleReview(item, pendingSingleReviewState)
+                                    : undefined
+                                }
+                                onJobReplaced={(jobId, job) =>
+                                  setActiveBrainDumpJob({
+                                    insertionItemId: item.id,
+                                    job,
+                                    jobId,
+                                  })
+                                }
+                                onOpenComposer={(nextInsertionItem) =>
+                                  setLocalCreateFlowState({
+                                    createMode: "chooser",
+                                    insertionContext: buildInsertionBrainDumpContext(
+                                      orderedTimelineEvents,
+                                      nextInsertionItem
+                                    ),
+                                    initialValuesOverride: null,
+                                    insertionItem: nextInsertionItem,
+                                    source: "local",
+                                  })
+                                }
+                                uid={uid}
+                              />
+                            );
+                          }
+
+                          return (
+                            <TimelineScrollEventSection
+                              key={item.id}
+                              onEditDescription={handleUpdateEventCardSummaryDescription}
+                              onEditEvent={openEditComposer}
+                              timelineEvent={item.timelineEvent}
+                            />
+                          );
+                        })}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
+          </div>
+        </section>
+      ) : (
+        <section className="grid flex-1 xl:grid-cols-[22rem_minmax(0,1fr)] xl:overflow-hidden">
+          <aside className="border-b border-zinc-200 bg-[#fafaf8] xl:h-full xl:overflow-hidden xl:border-b-0 xl:border-r xl:shadow-[20px_0_40px_-32px_rgba(24,24,27,0.55)]">
+            <div className="flex h-full flex-col xl:sticky xl:top-0 xl:overflow-y-auto">
+            <div className="border-b border-zinc-200 px-5 py-5 sm:px-6">
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <QuickMapStat label="Total events" value={String(stats.totalEvents)} />
+                <QuickMapStat label="Showing now" value={String(stats.visibleEvents)} />
+              </div>
+                <div className="mt-3">
+                  <QuickMapStat
+                    label="Chronology range"
+                    value={formatChronologySpan(timelineEvents)}
+                    fullWidth
+                  />
+                </div>
+              </div>
 
-            {stats.totalEvents === 0 ? (
-              <TimelineStateCard>
-                No timeline events exist in {activeProjectTitle} yet. Use the create button or the
-                first insertion notch below to start the chronology.
-              </TimelineStateCard>
-            ) : null}
-
-            {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
-              <TimelineStateCard>
-                No timeline events match the current filters. Reset or adjust the filters to bring
-                blocks back into view.
-              </TimelineStateCard>
-            ) : null}
-
-            {(stats.totalEvents === 0 || timelineEvents.length > 0) && (
-              <section className="pb-8">
-                <div className="relative">
-                  <div className="absolute bottom-10 left-6 top-10 w-px bg-linear-to-b from-zinc-300 via-zinc-200 to-zinc-300 md:left-1/2 md:-translate-x-1/2" />
-
-                  <div className="space-y-5 md:space-y-6">
-                    {layout.items.map((item) => {
-                      if (item.kind === "event") {
-                        return (
-                        <TimelineEventRow
-                          chapterLabelsById={chapterLabelsById}
-                          key={item.id}
-                          bookLabelsById={bookLabelsById}
-                          eventItem={item}
-                          isSelected={item.timelineEvent.id === selectedEventId}
-                          onSaveSummaryDescription={handleUpdateEventCardSummaryDescription}
-                          onSelect={focusEvent}
-                          onView={openViewer}
-                          registerRef={registerEventRef}
-                        />
-                        );
-                      }
-
-                      if (item.kind === "gap") {
-                        return <TimelineGapRow key={item.id} gapItem={item} />;
-                      }
+              <div className="flex-1">
+                {layout.quickNavItems.length > 0 ? (
+                  <div className="border-b border-zinc-200">
+                    {layout.quickNavItems.map((quickNavItem, index) => {
+                      const isSelected = quickNavItem.eventId === selectedEventId;
 
                       return (
-                        <TimelineInsertionRow
-                          key={item.id}
-                          activeJob={
-                            activeBrainDumpJob?.insertionItemId === item.id
-                              ? activeBrainDumpJob.job
-                              : null
-                          }
-                          activeProjectId={activeProjectId}
-                          insertionItem={item}
-                          onApproved={handleTimelineBrainDumpApproved}
-                          onJobReplaced={(jobId, job) =>
-                            setActiveBrainDumpJob({
-                              insertionItemId: item.id,
-                              job,
-                              jobId,
-                            })
-                          }
-                          onOpenComposer={(nextInsertionItem) =>
-                            setLocalCreateFlowState({
-                              createMode: "chooser",
-                              insertionContext: buildInsertionBrainDumpContext(
-                                orderedTimelineEvents,
-                                nextInsertionItem
-                              ),
-                              initialValuesOverride: null,
-                              insertionItem: nextInsertionItem,
-                              source: "local",
-                            })
-                          }
-                          uid={uid}
-                        />
+                        <button
+                          key={quickNavItem.eventId}
+                          type="button"
+                          onClick={() => focusEvent(quickNavItem.eventId)}
+                          className={`w-full border-t border-zinc-200 px-5 py-4 text-left transition ${
+                            isSelected
+                              ? "bg-zinc-950 text-white"
+                              : index % 2 === 0
+                                ? "bg-white text-zinc-700 hover:bg-zinc-100"
+                                : "bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <p
+                              className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${
+                                isSelected ? "text-white/70" : "text-zinc-500"
+                              }`}
+                            >
+                              Block {quickNavItem.position}
+                            </p>
+                            <p
+                              className={`mt-2 truncate text-sm font-semibold tracking-tight ${
+                                isSelected ? "text-white" : "text-zinc-950"
+                              }`}
+                            >
+                              {quickNavItem.title}
+                            </p>
+                            <p
+                              className={`mt-2 text-[11px] uppercase tracking-[0.18em] ${
+                                isSelected ? "text-white/65" : "text-zinc-500"
+                              }`}
+                            >
+                              {quickNavItem.chronologyLabel}
+                            </p>
+                          </div>
+                        </button>
                       );
                     })}
                   </div>
-                </div>
-              </section>
-            )}
-          </div>
+                ) : (
+                  <div className="rounded-3xl border border-dashed border-zinc-300 bg-white px-4 py-5 text-sm leading-6 text-zinc-600">
+                    No visible blocks yet. Create a timeline event or loosen the filters to
+                    rebuild the quick map.
+                  </div>
+                )}
+              </div>
+            </div>
+          </aside>
+
+          <section className="min-h-0 bg-[linear-gradient(180deg,#fcfcfb_0%,#f8f8f6_100%)] xl:overflow-y-auto">
+            <div className={filterBarClassName}>
+              <TimelineWorkspaceControls
+                filters={filters}
+                totalCount={stats.totalEvents}
+                visibleCount={stats.visibleEvents}
+                hasActiveFilters={hasActiveFilters}
+                pinned={filtersPinned}
+                viewMode={viewMode}
+                onChange={onChange}
+                onReset={onReset}
+                onTogglePinned={() => setFiltersPinned((current) => !current)}
+                onViewModeChange={setViewMode}
+              />
+            </div>
+
+            <div className="space-y-6 p-4 sm:p-6 xl:p-8">
+              <div className="flex flex-wrap justify-end gap-3">
+                {firstPendingInsertionItemId ? (
+                  <button
+                    type="button"
+                    onClick={() => focusPendingInsertionItem(firstPendingInsertionItemId)}
+                    className="inline-flex h-11 items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-4 text-sm font-medium text-amber-900 transition hover:bg-amber-100"
+                  >
+                    Go To Pending Event
+                  </button>
+                ) : null}
+                <Link
+                  href={buildTimelineCreateHref({ createMode: "manual" })}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Create timeline event
+                </Link>
+              </div>
+
+              {stats.totalEvents === 0 ? (
+                <TimelineStateCard>
+                  No timeline events exist in {activeProjectTitle} yet. Use the create button or
+                  the first insertion notch below to start the chronology.
+                </TimelineStateCard>
+              ) : null}
+
+              {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
+                <TimelineStateCard>
+                  No timeline events match the current filters. Reset or adjust the filters to
+                  bring blocks back into view.
+                </TimelineStateCard>
+              ) : null}
+
+              {(stats.totalEvents === 0 || timelineEvents.length > 0) && (
+                <section className="pb-8">
+                  <div className="relative">
+                    <div className="absolute bottom-10 left-6 top-10 w-px bg-linear-to-b from-zinc-300 via-zinc-200 to-zinc-300 md:left-1/2 md:-translate-x-1/2" />
+
+                    <div className="space-y-5 md:space-y-6">
+                      {layout.items.map((item) => {
+                        if (item.kind === "event") {
+                          return (
+                            <TimelineEventRow
+                              chapterLabelsById={chapterLabelsById}
+                              key={item.id}
+                              bookLabelsById={bookLabelsById}
+                              eventItem={item}
+                              isSelected={item.timelineEvent.id === selectedEventId}
+                              onSaveSummaryDescription={handleUpdateEventCardSummaryDescription}
+                              onSelect={focusEvent}
+                              onView={openViewer}
+                              registerRef={registerEventRef}
+                            />
+                          );
+                        }
+
+                        if (item.kind === "gap") {
+                          return <TimelineGapRow key={item.id} gapItem={item} />;
+                        }
+
+                        const pendingSingleReviewState =
+                          visiblePendingSingleReviewByInsertionItemId[item.id] ?? null;
+
+                        return (
+                          <TimelineInsertionRow
+                            key={item.id}
+                            activeJob={
+                              activeBrainDumpJob?.insertionItemId === item.id
+                                ? activeBrainDumpJob.job
+                                : visibleRestoredBrainDumpJobsByInsertionItemId[item.id] ?? null
+                            }
+                            activeProjectId={activeProjectId}
+                            insertionRef={(node) => registerInsertionRef(item.id, node)}
+                            insertionItem={item}
+                            pendingSingleReviewState={pendingSingleReviewState}
+                            onApproved={handleTimelineBrainDumpApproved}
+                            onOpenPendingSingleReview={() =>
+                              pendingSingleReviewState
+                                ? openPendingSingleReview(item, pendingSingleReviewState)
+                                : undefined
+                            }
+                            onJobReplaced={(jobId, job) =>
+                              setActiveBrainDumpJob({
+                                insertionItemId: item.id,
+                                job,
+                                jobId,
+                              })
+                            }
+                            onOpenComposer={(nextInsertionItem) =>
+                              setLocalCreateFlowState({
+                                createMode: "chooser",
+                                insertionContext: buildInsertionBrainDumpContext(
+                                  orderedTimelineEvents,
+                                  nextInsertionItem
+                                ),
+                                initialValuesOverride: null,
+                                insertionItem: nextInsertionItem,
+                                source: "local",
+                              })
+                            }
+                            uid={uid}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                </section>
+              )}
+            </div>
+          </section>
         </section>
-      </section>
+      )}
 
       {composerState ? (
         <TimelineEventComposerSheet
@@ -516,23 +933,26 @@ export function TimelineWorkspaceVisual({
         />
       ) : null}
 
-      {createFlowState ? (
+        {createFlowState ? (
           <TimelineCreateModeLightbox
-          initialValues={
-            createFlowState.initialValuesOverride ??
-            buildInsertionInitialValuesForCreateFlow(createFlowState.insertionItem ?? null)
-          }
-          insertionContext={createFlowState.insertionContext ?? null}
-          initialMode={createFlowState.createMode}
-          open
-          onClose={closeCreateFlow}
-          onManual={(nextInitialValues) => openCreateComposerFromFlow(nextInitialValues, null)}
-          onMultiJobStarted={(jobId) => void handleMultiBrainDumpJobStarted(jobId)}
-          onUseAiDraft={(draftState, nextInitialValues) =>
-            openCreateComposerFromFlow(nextInitialValues, draftState)
-          }
-        />
-      ) : null}
+            initialValues={
+              createFlowState.initialValuesOverride ??
+              buildInsertionInitialValuesForCreateFlow(createFlowState.insertionItem ?? null)
+            }
+            insertionContext={createFlowState.insertionContext ?? null}
+            resumeSingleReviewState={createFlowState.pendingSingleReviewState ?? null}
+            timelineInsertionItemId={createFlowState.insertionItem?.id ?? null}
+            initialMode={createFlowState.createMode}
+            open
+            onClose={closeCreateFlow}
+            onManual={(nextInitialValues) => openCreateComposerFromFlow(nextInitialValues, null)}
+            onMultiJobStarted={(jobId) => void handleMultiBrainDumpJobStarted(jobId)}
+            onSingleReviewStateChange={handlePendingSingleReviewStateChange}
+            onUseAiDraft={(draftState, nextInitialValues) =>
+              openCreateComposerFromFlow(nextInitialValues, draftState)
+            }
+          />
+        ) : null}
 
       {viewingTimelineEvent && availableReferenceMaps && availableReferenceSets ? (
         <TimelineEventDetailLightbox
@@ -582,6 +1002,75 @@ function QuickMapStat({
       </p>
       <p className="mt-2 text-lg font-semibold tracking-tight text-zinc-950">{value}</p>
     </div>
+  );
+}
+
+function FilterGroup({
+  emptyLabel,
+  items,
+  label,
+  selectedIds,
+  onToggle,
+}: {
+  emptyLabel: string;
+  items: ReadonlyArray<TimelineReferenceOption>;
+  label: string;
+  selectedIds: string[];
+  onToggle: (value: string) => void;
+}) {
+  const selectedCount = selectedIds.length;
+
+  return (
+    <section className="rounded-3xl border border-zinc-200 bg-white px-4 py-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+          {label}
+        </p>
+        {selectedCount > 0 ? (
+          <span className="rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
+            {selectedCount}
+          </span>
+        ) : null}
+      </div>
+
+      {items.length > 0 ? (
+        <div className="mt-3 max-h-56 space-y-1 overflow-y-auto pr-1">
+          {items.map((item) => {
+            const checked = selectedIds.includes(item.value);
+
+            return (
+              <label
+                key={item.value}
+                className={`flex cursor-pointer items-start gap-3 rounded-2xl px-3 py-2 transition ${
+                  checked ? "bg-zinc-100" : "hover:bg-zinc-50"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggle(item.value)}
+                  className="mt-1 h-4 w-4 rounded border-zinc-300 text-zinc-950 focus:ring-zinc-950"
+                />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium text-zinc-900">
+                    {item.label}
+                  </span>
+                  {item.meta ? (
+                    <span className="mt-0.5 block truncate text-[11px] uppercase tracking-[0.14em] text-zinc-500">
+                      {item.meta}
+                    </span>
+                  ) : null}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-3 py-3 text-sm leading-6 text-zinc-600">
+          {emptyLabel}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -681,6 +1170,61 @@ function buildInsertionBrainDumpContext(
   };
 }
 
+function toggleTimelineFilterValue(values: string[], value: string) {
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+function pruneChapterFiltersToSelectedBooks(
+  selectedChapterIds: string[],
+  selectedBookIds: string[],
+  chapterOptions: TimelineReferenceOption[]
+) {
+  if (selectedBookIds.length === 0) {
+    return selectedChapterIds;
+  }
+
+  const allowedChapterIds = new Set(
+    chapterOptions
+      .filter((option) => {
+        const bookId = getChapterOptionBookId(option);
+        return bookId ? selectedBookIds.includes(bookId) : false;
+      })
+      .map((option) => option.value)
+  );
+
+  return selectedChapterIds.filter((chapterId) => allowedChapterIds.has(chapterId));
+}
+
+function buildVisibleChapterFilterOptions(
+  chapterOptions: TimelineReferenceOption[],
+  selectedBookIds: string[]
+) {
+  if (selectedBookIds.length === 0) {
+    return chapterOptions;
+  }
+
+  const selectedBookIdSet = new Set(selectedBookIds);
+
+  return chapterOptions.filter((option) => {
+    const bookId = getChapterOptionBookId(option);
+    return bookId ? selectedBookIdSet.has(bookId) : false;
+  });
+}
+
+function getChapterOptionBookId(option: TimelineReferenceOption) {
+  const meta = option.meta?.trim();
+
+  if (!meta) {
+    return null;
+  }
+
+  if (!meta.startsWith("Book: ")) {
+    return null;
+  }
+
+  return meta.slice("Book: ".length).trim() || null;
+}
+
 function TimelineEventRow({
   chapterLabelsById,
   bookLabelsById,
@@ -763,93 +1307,197 @@ function TimelineGapRow({ gapItem }: { gapItem: TimelineLayoutGapItem }) {
 function TimelineInsertionRow({
   activeJob,
   activeProjectId,
+  compact = false,
   insertionItem,
+  insertionRef,
+  pendingSingleReviewState,
   onApproved,
+  onOpenPendingSingleReview,
   onJobReplaced,
   onOpenComposer,
   uid,
 }: {
   activeJob: AiMultiEventJobRecord | null;
   activeProjectId: string;
+  compact?: boolean;
   insertionItem: TimelineLayoutInsertionItem;
+  insertionRef: (node: HTMLDivElement | null) => void;
+  pendingSingleReviewState: TimelineSingleEventBrainDumpReviewState | null;
   onApproved: () => Promise<void> | void;
+  onOpenPendingSingleReview: () => void;
   onJobReplaced: (jobId: string, job: AiMultiEventJobRecord | null) => void;
   onOpenComposer: (insertionItem: TimelineLayoutInsertionItem) => void;
   uid: string;
 }) {
   const [reviewLightboxOpen, setReviewLightboxOpen] = useState(false);
+  const [failureLightboxOpen, setFailureLightboxOpen] = useState(false);
   const isRunning = activeJob?.status === "queued" || activeJob?.status === "running";
   const hasExtractedDrafts = Boolean(activeJob?.result?.events?.length);
   const isPendingApproval = activeJob?.status === "completed" && hasExtractedDrafts;
   const needsRerun = activeJob?.status === "completed" && !hasExtractedDrafts;
+  const isFailed = activeJob?.status === "failed";
+  const hasPendingSingleReview = Boolean(pendingSingleReviewState);
   const statusLabel = isRunning
     ? "AI building"
-    : needsRerun
-      ? "Needs rerun"
-      : isPendingApproval
-      ? "Pending approval"
-      : "";
+    : isFailed
+      ? "Failed"
+      : needsRerun
+        ? "Needs rerun"
+        : isPendingApproval
+          ? "Pending approval"
+          : hasPendingSingleReview
+            ? "Pending review"
+          : "";
   const statusMessage = isRunning
     ? "Pending BrainDump: the AI is building events for this gap."
-    : needsRerun
-      ? "No drafts were extracted. Open the BrainDump review to rerun this gap."
-      : isPendingApproval
-      ? "Pending approval: review the generated events before inserting more here."
-      : insertionItem.helperText;
+    : isFailed
+      ? activeJob?.errorMessage ??
+        "This BrainDump failed. Open the error details to inspect the cause or rerun it."
+      : needsRerun
+        ? "No drafts were extracted. Open the BrainDump review to rerun this gap."
+        : isPendingApproval
+          ? "Pending approval: review the generated events before inserting more here."
+          : hasPendingSingleReview
+            ? "Pending review: reopen this single-event BrainDump to finish or apply it."
+            : insertionItem.helperText;
+
+  function handleActivateInsertion() {
+    if (hasPendingSingleReview) {
+      onOpenPendingSingleReview();
+      return;
+    }
+
+    if (isPendingApproval) {
+      setReviewLightboxOpen(true);
+      return;
+    }
+
+    if (needsRerun) {
+      setReviewLightboxOpen(true);
+      return;
+    }
+
+    if (isFailed) {
+      setFailureLightboxOpen(true);
+      return;
+    }
+
+    onOpenComposer(insertionItem);
+  }
 
   return (
-    <div className="relative grid gap-3 md:grid-cols-[minmax(0,1fr)_5rem_minmax(0,1fr)] md:items-center">
-      <div className="pl-16 text-left md:col-span-3 md:pl-0 md:text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-          {statusLabel || insertionItem.label}
-        </p>
-        <p className="mt-2 text-sm leading-6 text-zinc-600">{statusMessage}</p>
-      </div>
-
-      <div className="absolute left-6 top-1/2 flex -translate-x-1/2 -translate-y-1/2 justify-center md:static md:col-start-2 md:row-start-1 md:translate-x-0 md:translate-y-0">
-        <button
-          type="button"
-          onClick={() => {
-            if (isPendingApproval) {
-              setReviewLightboxOpen(true);
-              return;
+    <div
+      ref={insertionRef}
+      className={
+        compact
+          ? "relative flex items-center gap-3 px-5 py-4 sm:px-6"
+          : "relative grid gap-3 md:grid-cols-[minmax(0,1fr)_5rem_minmax(0,1fr)] md:items-center"
+      }
+    >
+      {compact ? (
+        <>
+          <button
+            type="button"
+            onClick={handleActivateInsertion}
+            disabled={isRunning}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-lg font-semibold shadow-sm transition ${
+              isRunning
+                ? "cursor-not-allowed border-sky-200 bg-sky-600 text-white"
+                : isFailed
+                  ? "timeline-failure-button border-rose-200 bg-rose-600 text-white hover:bg-rose-700"
+                  : isPendingApproval || needsRerun || hasPendingSingleReview
+                    ? "timeline-review-button border-amber-200 bg-amber-500 text-white hover:bg-amber-600"
+                    : "border-zinc-200 bg-white text-zinc-400 hover:text-zinc-700"
+            }`}
+            aria-label={
+              isRunning
+                ? "BrainDump building timeline events"
+                : isFailed
+                  ? "BrainDump failed. Open error details."
+                  : isPendingApproval || needsRerun || hasPendingSingleReview
+                    ? "Review pending BrainDump"
+                    : insertionItem.label
             }
+          >
+            {isRunning ? (
+              <TimelineLoadingDots />
+            ) : isFailed ? (
+              <TimelineFailureAttentionIcon />
+            ) : isPendingApproval || needsRerun || hasPendingSingleReview ? (
+              <TimelineReviewAttentionIcon />
+            ) : (
+              "+"
+            )}
+          </button>
 
-            if (needsRerun) {
-              setReviewLightboxOpen(true);
-              return;
-            }
+          <div className="h-px min-w-0 flex-1 bg-zinc-200/80" />
 
-            onOpenComposer(insertionItem);
-          }}
-          disabled={isRunning}
-          className={`flex h-11 w-11 items-center justify-center rounded-full border-4 border-white text-xl font-semibold shadow-sm transition ${
-            isRunning
-              ? "cursor-not-allowed bg-sky-600 text-white"
-              : isPendingApproval || needsRerun
-                ? "timeline-review-button bg-amber-500 text-white hover:bg-amber-600"
-                : "bg-zinc-950 text-white hover:bg-zinc-800"
-          }`}
-          aria-label={
-            isRunning
-              ? "BrainDump building timeline events"
-              : isPendingApproval || needsRerun
-                ? "Review pending BrainDump"
-                : insertionItem.label
-          }
-        >
-          {isRunning ? (
-            <TimelineLoadingDots />
-          ) : isPendingApproval || needsRerun ? (
-            <TimelineReviewAttentionIcon />
-          ) : (
-            "+"
-          )}
-        </button>
-      </div>
+          {statusLabel ? (
+            <p className="min-w-0 truncate text-xs uppercase tracking-[0.18em] text-zinc-500">
+              {statusLabel}
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <div className="pl-16 text-left md:col-span-3 md:pl-0 md:text-center">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                {statusLabel || insertionItem.label}
+              </p>
+              {isPendingApproval || needsRerun || hasPendingSingleReview ? (
+                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-900">
+                  Review pending
+                </span>
+              ) : isFailed ? (
+                <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-rose-900">
+                  Failed
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">{statusMessage}</p>
+          </div>
+
+          <div className="absolute left-6 top-1/2 flex -translate-x-1/2 -translate-y-1/2 justify-center md:static md:col-start-2 md:row-start-1 md:translate-x-0 md:translate-y-0">
+            <button
+              type="button"
+              onClick={handleActivateInsertion}
+              disabled={isRunning}
+              className={`flex h-11 w-11 items-center justify-center rounded-full border-4 border-white text-xl font-semibold shadow-sm transition ${
+                isRunning
+                  ? "cursor-not-allowed bg-sky-600 text-white"
+                  : isFailed
+                    ? "timeline-failure-button bg-rose-600 text-white hover:bg-rose-700"
+                    : isPendingApproval || needsRerun || hasPendingSingleReview
+                      ? "timeline-review-button bg-amber-500 text-white hover:bg-amber-600"
+                      : "bg-zinc-950 text-white hover:bg-zinc-800"
+              }`}
+              aria-label={
+                isRunning
+                  ? "BrainDump building timeline events"
+                  : isFailed
+                    ? "BrainDump failed. Open error details."
+                    : isPendingApproval || needsRerun || hasPendingSingleReview
+                      ? "Review pending BrainDump"
+                      : insertionItem.label
+              }
+            >
+              {isRunning ? (
+                <TimelineLoadingDots />
+              ) : isFailed ? (
+                <TimelineFailureAttentionIcon />
+              ) : isPendingApproval || needsRerun || hasPendingSingleReview ? (
+                <TimelineReviewAttentionIcon />
+              ) : (
+                "+"
+              )}
+            </button>
+          </div>
+        </>
+      )}
 
       {activeJob && isRunning ? (
-        <div className="pl-16 md:col-span-3 md:pl-0">
+        <div className={compact ? "pl-12" : "pl-16 md:col-span-3 md:pl-0"}>
           <TimelineBrainDumpJobReview
             activeProjectId={activeProjectId}
             job={activeJob}
@@ -872,7 +1520,216 @@ function TimelineInsertionRow({
           uid={uid}
         />
       ) : null}
+
+      {activeJob && isFailed && failureLightboxOpen ? (
+        <TimelineBrainDumpFailureLightbox
+          job={activeJob}
+          onClose={() => setFailureLightboxOpen(false)}
+          onJobReplaced={onJobReplaced}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function TimelineScrollEventSection({
+  onEditDescription,
+  onEditEvent,
+  timelineEvent,
+}: {
+  onEditDescription: (
+    timelineEventId: string,
+    payload: { summary: string; description: string }
+  ) => Promise<void>;
+  onEditEvent: (timelineEventId: string) => void;
+  timelineEvent: TimelineEvent;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [draftDescription, setDraftDescription] = useState(timelineEvent.description);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savingDescription, setSavingDescription] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const descriptionEditorRef = useRef<HTMLTextAreaElement | null>(null);
+  const normalizedDescription = timelineEvent.description.trim();
+
+  useEffect(() => {
+    setDraftDescription(timelineEvent.description);
+    setEditingDescription(false);
+    setMenuOpen(false);
+    setSaveError(null);
+  }, [timelineEvent.description, timelineEvent.id]);
+
+  useEffect(() => {
+    if (!menuOpen && !editingDescription) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+
+      if (containerRef.current?.contains(target) || menuButtonRef.current?.contains(target)) {
+        return;
+      }
+
+      setMenuOpen(false);
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        setEditingDescription(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [editingDescription, menuOpen]);
+
+  useEffect(() => {
+    if (!editingDescription) {
+      return;
+    }
+
+    const textarea = descriptionEditorRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = "0px";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [draftDescription, editingDescription]);
+
+  async function handleSaveDescription(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingDescription(true);
+    setSaveError(null);
+
+    try {
+      await onEditDescription(timelineEvent.id, {
+        summary: timelineEvent.summary,
+        description: draftDescription,
+      });
+      setEditingDescription(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Unable to update this description.");
+    } finally {
+      setSavingDescription(false);
+    }
+  }
+
+  return (
+    <article
+      ref={containerRef}
+      className="relative px-5 py-6 sm:px-6"
+    >
+      <div className="absolute right-4 top-4 z-20">
+        <button
+          ref={menuButtonRef}
+          type="button"
+          onClick={() => setMenuOpen((current) => !current)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-transparent text-zinc-500 transition hover:border-zinc-200 hover:bg-zinc-50 hover:text-zinc-800"
+          aria-label={`Event actions for ${timelineEvent.title}`}
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+        >
+          <DotsIcon />
+        </button>
+
+        {menuOpen ? (
+          <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-lg">
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                onEditEvent(timelineEvent.id);
+              }}
+              className="block w-full px-4 py-3 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
+            >
+              Edit Event
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                setEditingDescription(true);
+              }}
+              className="block w-full px-4 py-3 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
+            >
+              Edit Description
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      {editingDescription ? (
+        <form onSubmit={handleSaveDescription} className="pr-14">
+          <label className="block">
+            <span className="sr-only">Edit description</span>
+            <textarea
+              ref={descriptionEditorRef}
+              value={draftDescription}
+              onChange={(event) => setDraftDescription(event.target.value)}
+              className="min-h-40 w-full resize-none overflow-hidden rounded-3xl border border-zinc-200 bg-white px-4 py-4 font-serif text-[1.02rem] leading-8 text-zinc-900 outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-950/10"
+              placeholder="Write the event description."
+            />
+          </label>
+
+          {saveError ? (
+            <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {saveError}
+            </p>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="submit"
+              disabled={savingDescription}
+              className="inline-flex h-10 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {savingDescription ? "Saving..." : "Save description"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingDescription(false);
+                setDraftDescription(timelineEvent.description);
+                setSaveError(null);
+              }}
+              className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <p className="pr-14 font-serif text-[1.02rem] leading-8 text-zinc-900">
+          {normalizedDescription || "No description yet."}
+        </p>
+      )}
+    </article>
+  );
+}
+
+function DotsIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className="h-4 w-4 text-zinc-500"
+      fill="currentColor"
+    >
+      <circle cx="3" cy="8" r="1.25" />
+      <circle cx="8" cy="8" r="1.25" />
+      <circle cx="13" cy="8" r="1.25" />
+    </svg>
   );
 }
 
@@ -889,6 +1746,14 @@ function TimelineLoadingDots() {
 function TimelineReviewAttentionIcon() {
   return (
     <span className="timeline-review-mark" aria-hidden="true">
+      !
+    </span>
+  );
+}
+
+function TimelineFailureAttentionIcon() {
+  return (
+    <span className="timeline-failure-mark" aria-hidden="true">
       !
     </span>
   );
@@ -927,6 +1792,8 @@ function TimelineBrainDumpReviewLightbox({
       const started = await window.bookBible.ai.startMultiEventTimelineBrainDumpJob({
         brainDumpText,
         projectContext: job.input?.projectContext ?? undefined,
+        projectTitle: job.input?.projectTitle ?? undefined,
+        timelineInsertionItemId: job.input?.timelineInsertionItemId ?? undefined,
       });
       const nextJob = await window.bookBible.ai.getJobStatus(started.jobId);
       onJobReplaced(started.jobId, nextJob);
@@ -981,6 +1848,182 @@ function TimelineBrainDumpReviewLightbox({
               {rerunError}
             </p>
           ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimelineBrainDumpFailureLightbox({
+  job,
+  onClose,
+  onJobReplaced,
+}: {
+  job: AiMultiEventJobRecord;
+  onClose: () => void;
+  onJobReplaced: (jobId: string, job: AiMultiEventJobRecord | null) => void;
+}) {
+  const [rerunning, setRerunning] = useState(false);
+  const [rerunError, setRerunError] = useState<string | null>(null);
+
+  async function handleRerunBrainDump() {
+    const brainDumpText = job.input?.brainDumpText?.trim();
+
+    if (!brainDumpText) {
+      setRerunError("This failed job does not have source brain dump text available to rerun.");
+      return;
+    }
+
+    setRerunning(true);
+    setRerunError(null);
+
+    try {
+      const started = await window.bookBible.ai.startMultiEventTimelineBrainDumpJob({
+        brainDumpText,
+        projectContext: job.input?.projectContext ?? undefined,
+        projectTitle: job.input?.projectTitle ?? undefined,
+        timelineInsertionItemId: job.input?.timelineInsertionItemId ?? undefined,
+      });
+      const nextJob = await window.bookBible.ai.getJobStatus(started.jobId);
+      onJobReplaced(started.jobId, nextJob);
+      onClose();
+    } catch (error) {
+      setRerunError(error instanceof Error ? error.message : "Unable to rerun this BrainDump.");
+    } finally {
+      setRerunning(false);
+    }
+  }
+
+  const warningLines = Array.isArray(job.warnings) ? job.warnings : [];
+  const chunkMetrics = Array.isArray(job.chunkMetrics) ? job.chunkMetrics : [];
+
+  return (
+    <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
+      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
+
+      <div className="relative z-10 mx-auto w-full max-w-5xl rounded-4xl border border-rose-200 bg-[#fffdf9] shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-rose-200 bg-white px-6 py-5">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-500">
+              Timeline BrainDump
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-rose-950">
+              BrainDump failed
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-rose-900/80">
+              The job ran but stopped before it could finish the review/apply path. Inspect the
+              error and rerun from here if the source text is still correct.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-200 text-lg text-rose-700 transition hover:bg-rose-50"
+            aria-label="Close BrainDump failure details"
+          >
+            x
+          </button>
+        </div>
+
+        <div className="max-h-[calc(100vh-10rem)] overflow-y-auto px-6 py-6">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.6fr)]">
+            <section className="rounded-3xl border border-rose-200 bg-white p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-500">
+                Error details
+              </p>
+              <p className="mt-3 whitespace-pre-wrap rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-900">
+                {job.errorMessage ?? "No error message was captured for this failed job."}
+              </p>
+
+              {rerunError ? (
+                <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {rerunError}
+                </p>
+              ) : null}
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => void handleRerunBrainDump()}
+                  disabled={rerunning}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-rose-600 px-5 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {rerunning ? "Rerunning..." : "Rerun BrainDump"}
+                </button>
+
+                <Link
+                  href={`/ai-jobs/${job.id}`}
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 bg-white px-5 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-50"
+                >
+                  Open job page
+                </Link>
+              </div>
+            </section>
+
+            <aside className="space-y-4">
+              <div className="rounded-3xl border border-zinc-200 bg-white p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                  Job
+                </p>
+                <dl className="mt-4 space-y-3 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-zinc-500">Status</dt>
+                    <dd className="font-medium text-rose-700">{job.status}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-zinc-500">Failure category</dt>
+                    <dd className="font-medium text-zinc-950">{job.failureCategory ?? "unknown"}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-zinc-500">Attempts</dt>
+                    <dd className="font-medium text-zinc-950">{job.progress.totalAttempts ?? 0}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-zinc-500">Retries</dt>
+                    <dd className="font-medium text-zinc-950">{job.progress.totalRetries ?? 0}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              {warningLines.length > 0 ? (
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-700">
+                    Warnings
+                  </p>
+                  <ul className="mt-4 space-y-2 text-sm leading-6 text-amber-950">
+                    {warningLines.map((line, index) => (
+                      <li key={`${index}-${line}`}>• {line}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {chunkMetrics.length > 0 ? (
+                <div className="rounded-3xl border border-zinc-200 bg-white p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                    Chunk metrics
+                  </p>
+                  <div className="mt-4 space-y-3 text-sm">
+                    {chunkMetrics.map((metric) => (
+                      <div
+                        key={`${metric.chunkIndex}-${metric.category}`}
+                        className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3"
+                      >
+                        <p className="font-medium text-zinc-950">Chunk {metric.chunkIndex + 1}</p>
+                        <p className="mt-1 text-zinc-600">
+                          {metric.category}
+                          {typeof metric.durationMs === "number"
+                            ? ` · ${Math.round(metric.durationMs)} ms`
+                            : ""}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </aside>
+          </div>
         </div>
       </div>
     </div>
