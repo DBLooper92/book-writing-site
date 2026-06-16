@@ -31,6 +31,7 @@ const PAGE_HEIGHT = 1056;
 const PAGE_GAP = 24;
 const PAGE_MARGIN_X = 96;
 const PAGE_MARGIN_Y = 96;
+const PAGE_CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN_X * 2;
 const PAGE_CONTENT_HEIGHT = PAGE_HEIGHT - PAGE_MARGIN_Y * 2;
 const PAGE_FONT_SIZE = 16;
 const PAGE_LINE_HEIGHT = 32;
@@ -707,13 +708,12 @@ function ChapterDraftBlock({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [editorSelection, setEditorSelection] = useState({ start: 0, end: 0 });
   const [isEditorFocused, setIsEditorFocused] = useState(false);
-  const [pageWidth, setPageWidth] = useState(PAGE_WIDTH);
+  const [documentScale, setDocumentScale] = useState(1);
   const documentFrameRef = useRef<HTMLDivElement | null>(null);
   const saveTokenRef = useRef(0);
-  const pageContentWidth = Math.max(1, pageWidth - PAGE_MARGIN_X * 2);
   const manuscriptPages = useMemo(
-    () => paginateManuscriptText(draftText, CHAPTER_HEADING_RESERVED_LINES, pageContentWidth),
-    [draftText, pageContentWidth]
+    () => paginateManuscriptText(draftText, CHAPTER_HEADING_RESERVED_LINES),
+    [draftText]
   );
   const visiblePages = useMemo(
     () =>
@@ -725,6 +725,7 @@ function ChapterDraftBlock({
   const visiblePageCount = visiblePages.length;
   const visibleDocumentHeight =
     visiblePageCount * PAGE_HEIGHT + Math.max(0, visiblePageCount - 1) * PAGE_GAP;
+  const scaledDocumentHeight = visibleDocumentHeight * documentScale;
   const caretGeometry = useMemo(() => {
     if (!isEditorFocused || editorSelection.start !== editorSelection.end) {
       return null;
@@ -750,18 +751,18 @@ function ChapterDraftBlock({
       return;
     }
 
-    const updatePageWidth = (nextWidth: number) => {
+    const updateDocumentScale = (nextWidth: number) => {
       if (!Number.isFinite(nextWidth) || nextWidth <= 0) {
         return;
       }
 
-      const normalizedWidth = Math.min(PAGE_WIDTH, Math.max(1, nextWidth));
-      setPageWidth((currentWidth) =>
-        Math.abs(currentWidth - normalizedWidth) < 0.5 ? currentWidth : normalizedWidth
+      const nextScale = Math.min(1, Math.max(0.1, nextWidth / PAGE_WIDTH));
+      setDocumentScale((currentScale) =>
+        Math.abs(currentScale - nextScale) < 0.001 ? currentScale : nextScale
       );
     };
 
-    updatePageWidth(node.clientWidth);
+    updateDocumentScale(node.clientWidth);
 
     const resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -770,7 +771,7 @@ function ChapterDraftBlock({
         return;
       }
 
-      updatePageWidth(entry.contentRect.width);
+      updateDocumentScale(entry.contentRect.width);
     });
 
     resizeObserver.observe(node);
@@ -851,114 +852,131 @@ function ChapterDraftBlock({
 
       <div
         ref={documentFrameRef}
-        className="relative mx-auto"
+        className="relative mx-auto w-full"
         style={{
-          height: `${visibleDocumentHeight}px`,
+          height: `${scaledDocumentHeight}px`,
           maxWidth: `${PAGE_WIDTH}px`,
         }}
       >
-        <textarea
-          data-skip-auto-correct="true"
-          value={draftText}
-          onChange={(event) => {
-            if (saveError) {
-              setSaveError(null);
-            }
-
-            setDraftText(event.target.value);
-            syncEditorSelection(event.currentTarget);
-          }}
-          onFocus={(event) => {
-            setIsEditorFocused(true);
-            syncEditorSelection(event.currentTarget);
-          }}
-          onBlur={() => {
-            setIsEditorFocused(false);
-          }}
-          onSelect={(event) => {
-            syncEditorSelection(event.currentTarget);
-          }}
-          onKeyUp={(event) => {
-            syncEditorSelection(event.currentTarget);
-          }}
-          onKeyDown={(event) => {
-            if (event.nativeEvent.isComposing) {
-              return;
-            }
-
-            if (
-              event.key === "Enter" &&
-              !event.shiftKey &&
-              !event.altKey &&
-              !event.ctrlKey &&
-              !event.metaKey
-            ) {
-              event.preventDefault();
-
-              const target = event.currentTarget;
-              const selectionStart = target.selectionStart ?? draftText.length;
-              const selectionEnd = target.selectionEnd ?? draftText.length;
-              const paragraphIndentPrefix = getManuscriptParagraphIndentPrefix();
-              const insertion = `\n${paragraphIndentPrefix}`;
-
-              target.setRangeText(insertion, selectionStart, selectionEnd, "end");
-
-              if (saveError) {
-                setSaveError(null);
-              }
-
-              setDraftText(target.value);
-              syncEditorSelection(target);
-              return;
-            }
-
-            if (
-              (event.key === " " || event.code === "Space") &&
-              !event.altKey &&
-              !event.ctrlKey &&
-              !event.metaKey
-            ) {
-              const target = event.currentTarget;
-              const selectionStart = target.selectionStart;
-              const selectionEnd = target.selectionEnd;
-
-              if (
-                selectionStart !== null &&
-                selectionEnd !== null &&
-                selectionStart === selectionEnd &&
-                shouldSuppressSentenceSpaceInsertion(target.value, selectionStart)
-              ) {
-                event.preventDefault();
-              }
-            }
-          }}
-          aria-label={`Chapter ${chapter.chapterNumber ?? "?"} manuscript text`}
-          spellCheck={false}
-          className="manuscript-editor absolute left-0 top-0 z-10 w-full border-0 bg-transparent outline-none"
+        <div
+          className="absolute left-1/2 top-0"
           style={{
-            boxSizing: "border-box",
-            paddingLeft: `${PAGE_MARGIN_X}px`,
-            paddingRight: `${PAGE_MARGIN_X}px`,
-            paddingTop: `${PAGE_MARGIN_Y + PAGE_LINE_HEIGHT * CHAPTER_HEADING_RESERVED_LINES}px`,
-            paddingBottom: `${PAGE_MARGIN_Y}px`,
             height: `${visibleDocumentHeight}px`,
-            maxWidth: `${PAGE_WIDTH}px`,
-            color: "transparent",
-            caretColor: "transparent",
-            fontFamily: PAGE_FONT_FAMILY,
-            fontSize: `${PAGE_FONT_SIZE}px`,
-            lineHeight: `${PAGE_LINE_HEIGHT}px`,
-            whiteSpace: "pre-wrap",
-            overflowWrap: "break-word",
-            wordBreak: "normal",
-            fontVariantLigatures: "none",
-            tabSize: 4,
-            resize: "none",
-            overflow: "hidden",
-            appearance: "none",
+            transform: "translateX(-50%)",
+            width: `${PAGE_WIDTH}px`,
           }}
-        />
-        {visiblePages.map((page, index) => {
+        >
+          <div
+            className="relative"
+            style={{
+              height: `${visibleDocumentHeight}px`,
+              transform: `scale(${documentScale})`,
+              transformOrigin: "top center",
+              width: `${PAGE_WIDTH}px`,
+            }}
+          >
+            <textarea
+              data-skip-auto-correct="true"
+              value={draftText}
+              onChange={(event) => {
+                if (saveError) {
+                  setSaveError(null);
+                }
+
+                setDraftText(event.target.value);
+                syncEditorSelection(event.currentTarget);
+              }}
+              onFocus={(event) => {
+                setIsEditorFocused(true);
+                syncEditorSelection(event.currentTarget);
+              }}
+              onBlur={() => {
+                setIsEditorFocused(false);
+              }}
+              onSelect={(event) => {
+                syncEditorSelection(event.currentTarget);
+              }}
+              onKeyUp={(event) => {
+                syncEditorSelection(event.currentTarget);
+              }}
+              onKeyDown={(event) => {
+                if (event.nativeEvent.isComposing) {
+                  return;
+                }
+
+                if (
+                  event.key === "Enter" &&
+                  !event.shiftKey &&
+                  !event.altKey &&
+                  !event.ctrlKey &&
+                  !event.metaKey
+                ) {
+                  event.preventDefault();
+
+                  const target = event.currentTarget;
+                  const selectionStart = target.selectionStart ?? draftText.length;
+                  const selectionEnd = target.selectionEnd ?? draftText.length;
+                  const paragraphIndentPrefix = getManuscriptParagraphIndentPrefix();
+                  const insertion = `\n${paragraphIndentPrefix}`;
+
+                  target.setRangeText(insertion, selectionStart, selectionEnd, "end");
+
+                  if (saveError) {
+                    setSaveError(null);
+                  }
+
+                  setDraftText(target.value);
+                  syncEditorSelection(target);
+                  return;
+                }
+
+                if (
+                  (event.key === " " || event.code === "Space") &&
+                  !event.altKey &&
+                  !event.ctrlKey &&
+                  !event.metaKey
+                ) {
+                  const target = event.currentTarget;
+                  const selectionStart = target.selectionStart;
+                  const selectionEnd = target.selectionEnd;
+
+                  if (
+                    selectionStart !== null &&
+                    selectionEnd !== null &&
+                    selectionStart === selectionEnd &&
+                    shouldSuppressSentenceSpaceInsertion(target.value, selectionStart)
+                  ) {
+                    event.preventDefault();
+                  }
+                }
+              }}
+              aria-label={`Chapter ${chapter.chapterNumber ?? "?"} manuscript text`}
+              spellCheck={false}
+              className="manuscript-editor absolute left-0 top-0 z-10 w-full border-0 bg-transparent outline-none"
+              style={{
+                boxSizing: "border-box",
+                paddingLeft: `${PAGE_MARGIN_X}px`,
+                paddingRight: `${PAGE_MARGIN_X}px`,
+                paddingTop: `${PAGE_MARGIN_Y + PAGE_LINE_HEIGHT * CHAPTER_HEADING_RESERVED_LINES}px`,
+                paddingBottom: `${PAGE_MARGIN_Y}px`,
+                height: `${visibleDocumentHeight}px`,
+                maxWidth: `${PAGE_WIDTH}px`,
+                color: "transparent",
+                caretColor: "transparent",
+                fontFamily: PAGE_FONT_FAMILY,
+                fontSize: `${PAGE_FONT_SIZE}px`,
+                lineHeight: `${PAGE_LINE_HEIGHT}px`,
+                whiteSpace: "pre-wrap",
+                overflowWrap: "break-word",
+                wordBreak: "normal",
+                fontVariantLigatures: "none",
+                tabSize: 4,
+                resize: "none",
+                overflow: "hidden",
+                appearance: "none",
+              }}
+            />
+            {visiblePages.map((page, index) => {
           const isTrailingBlankPage = index === visiblePages.length - 1;
 
           return (
@@ -1080,7 +1098,9 @@ function ChapterDraftBlock({
               ) : null}
             </section>
           );
-        })}
+            })}
+          </div>
+        </div>
       </div>
 
       {saveError ? (
@@ -1535,10 +1555,9 @@ let manuscriptParagraphIndentPrefix: string | null = null;
 
 function paginateManuscriptText(
   text: string,
-  firstPageReservedLines = 0,
-  pageContentWidth = PAGE_WIDTH - PAGE_MARGIN_X * 2
+  firstPageReservedLines = 0
 ): ManuscriptPage[] {
-  const lines = layoutManuscriptLines(text, pageContentWidth);
+  const lines = layoutManuscriptLines(text);
 
   if (lines.length === 0) {
     return [];
@@ -1643,7 +1662,7 @@ function getManuscriptCaretGeometry(
   };
 }
 
-function layoutManuscriptLines(text: string, pageContentWidth: number): ManuscriptLine[] {
+function layoutManuscriptLines(text: string): ManuscriptLine[] {
   const normalizedText = text.replace(/\r\n?/g, "\n");
 
   if (!normalizedText) {
@@ -1672,8 +1691,7 @@ function layoutManuscriptLines(text: string, pageContentWidth: number): Manuscri
       ...wrapParagraphLines(
         paragraph,
         paragraphStartIndex,
-        index === firstContentParagraphIndex,
-        pageContentWidth
+        index === firstContentParagraphIndex
       )
     );
 
@@ -1690,8 +1708,7 @@ function layoutManuscriptLines(text: string, pageContentWidth: number): Manuscri
 function wrapParagraphLines(
   paragraph: string,
   paragraphStartIndex: number,
-  isChapterOpeningParagraph: boolean,
-  pageContentWidth: number
+  isChapterOpeningParagraph: boolean
 ): ManuscriptLine[] {
   if (!paragraph.trim()) {
     return [
@@ -1737,7 +1754,7 @@ function wrapParagraphLines(
   const currentLineWidth = () =>
     Math.max(
       1,
-      currentLineIsParagraphStart ? pageContentWidth - paragraphIndentWidth : pageContentWidth
+      currentLineIsParagraphStart ? PAGE_CONTENT_WIDTH - paragraphIndentWidth : PAGE_CONTENT_WIDTH
     );
 
   for (const wordMatch of words) {
@@ -1758,8 +1775,7 @@ function wrapParagraphLines(
       const brokenPieces = splitTextToFitWidth(
         currentLine,
         currentLineStartIndex === paragraphStartIndex,
-        paragraphIndentWidth,
-        pageContentWidth
+        paragraphIndentWidth
       );
       let pieceOffset = 0;
 
@@ -1801,7 +1817,7 @@ function wrapParagraphLines(
       continue;
     }
 
-    const brokenPieces = splitTextToFitWidth(currentLine, false, 0, pageContentWidth);
+    const brokenPieces = splitTextToFitWidth(currentLine, false, 0);
     let pieceOffset = 0;
 
     brokenPieces.forEach((piece) => {
@@ -1827,8 +1843,7 @@ function wrapParagraphLines(
 function splitTextToFitWidth(
   text: string,
   isParagraphStart: boolean,
-  paragraphIndentWidth = PAGE_PARAGRAPH_INDENT,
-  pageContentWidth = PAGE_WIDTH - PAGE_MARGIN_X * 2
+  paragraphIndentWidth = PAGE_PARAGRAPH_INDENT
 ): string[] {
   const characters = Array.from(text);
   const pieces: string[] = [];
@@ -1838,7 +1853,7 @@ function splitTextToFitWidth(
   while (remainingCharacters.length > 0) {
     const maxWidth = Math.max(
       1,
-      isFirstPiece ? pageContentWidth - paragraphIndentWidth : pageContentWidth
+      isFirstPiece ? PAGE_CONTENT_WIDTH - paragraphIndentWidth : PAGE_CONTENT_WIDTH
     );
     const pieceLength = fitCharacterCount(remainingCharacters, maxWidth);
 
