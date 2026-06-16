@@ -148,7 +148,7 @@ export function ChapterDraftWorkspace({
     for (const chapter of bookChapters) {
       offsets.set(chapter.id, runningPageNumber);
       runningPageNumber +=
-        pageCountsByChapterId[chapter.id] ?? getVisibleManuscriptPageCount(chapter.draftText);
+        pageCountsByChapterId[chapter.id] ?? getManuscriptPageCount(chapter.draftText);
     }
 
     return offsets;
@@ -715,14 +715,14 @@ function ChapterDraftBlock({
     () => paginateManuscriptText(draftText, CHAPTER_HEADING_RESERVED_LINES),
     [draftText]
   );
-  const visiblePages = useMemo(
-    () =>
-      manuscriptPages.length > 0
-        ? [...manuscriptPages, { lines: [] as ManuscriptLine[] }]
-        : [{ lines: [] as ManuscriptLine[] }],
+  const visibleManuscriptPages = useMemo(
+    () => (manuscriptPages.length > 0 ? manuscriptPages : [{ lines: [] as ManuscriptLine[] }]),
     [manuscriptPages]
   );
-  const visiblePageCount = visiblePages.length;
+  const hasDraftContent = draftText.trim().length > 0;
+  const hasNewChapterActionPage = isLastChapter && hasDraftContent;
+  const manuscriptPageCount = visibleManuscriptPages.length;
+  const visiblePageCount = manuscriptPageCount + (hasNewChapterActionPage ? 1 : 0);
   const visibleDocumentHeight =
     visiblePageCount * PAGE_HEIGHT + Math.max(0, visiblePageCount - 1) * PAGE_GAP;
   const scaledDocumentHeight = visibleDocumentHeight * documentScale;
@@ -733,7 +733,6 @@ function ChapterDraftBlock({
 
     return getManuscriptCaretGeometry(manuscriptPages, editorSelection.start);
   }, [editorSelection.end, editorSelection.start, isEditorFocused, manuscriptPages]);
-  const hasDraftContent = draftText.trim().length > 0;
   const chapterHeadingNumber =
     typeof chapter.chapterNumber === "number" ? `CHAPTER ${chapter.chapterNumber}` : "";
   const chapterHeadingTitle = chapter.title.trim();
@@ -782,8 +781,8 @@ function ChapterDraftBlock({
   }, []);
 
   useEffect(() => {
-    onPageCountChange(chapter.id, visiblePageCount);
-  }, [chapter.id, onPageCountChange, visiblePageCount]);
+    onPageCountChange(chapter.id, manuscriptPageCount);
+  }, [chapter.id, manuscriptPageCount, onPageCountChange]);
 
   useEffect(() => {
     if (draftText === savedText) {
@@ -976,114 +975,122 @@ function ChapterDraftBlock({
                 appearance: "none",
               }}
             />
-            {visiblePages.map((page, index) => {
-          const isTrailingBlankPage = index === visiblePages.length - 1;
+            {visibleManuscriptPages.map((page, index) => {
+              return (
+                <section
+                  key={`${chapter.id}-page-${index}`}
+                  className="pointer-events-none absolute left-0 right-0 overflow-hidden border border-zinc-200 bg-[#fffdf9] shadow-[0_14px_44px_-32px_rgba(24,24,27,0.42)]"
+                  style={{
+                    height: `${PAGE_HEIGHT}px`,
+                    top: `${index * (PAGE_HEIGHT + PAGE_GAP)}px`,
+                  }}
+                >
+                  <ManuscriptRunningHeader
+                    bookTitle={bookTitle}
+                    authorName={profileName}
+                    pageNumber={pageNumberOffset + index}
+                  />
 
-          return (
-            <section
-              key={`${chapter.id}-page-${index}`}
-              className="pointer-events-none absolute left-0 right-0 overflow-hidden border border-zinc-200 bg-[#fffdf9] shadow-[0_14px_44px_-32px_rgba(24,24,27,0.42)]"
-              style={{
-                height: `${PAGE_HEIGHT}px`,
-                top: `${index * (PAGE_HEIGHT + PAGE_GAP)}px`,
-              }}
-            >
-              <ManuscriptRunningHeader
-                bookTitle={bookTitle}
-                authorName={profileName}
-                pageNumber={pageNumberOffset + index}
-              />
-
-              <div
-                aria-hidden="true"
-                className="h-full px-24 text-zinc-950"
-                style={{
-                  boxSizing: "border-box",
-                  paddingTop:
-                    index === 0
-                      ? `${PAGE_MARGIN_Y + PAGE_LINE_HEIGHT * CHAPTER_HEADING_TOP_BLANK_LINES}px`
-                      : `${PAGE_MARGIN_Y}px`,
-                  paddingBottom: `${PAGE_MARGIN_Y}px`,
-                  fontFamily: PAGE_FONT_FAMILY,
-                  fontSize: `${PAGE_FONT_SIZE}px`,
-                  lineHeight: `${PAGE_LINE_HEIGHT}px`,
-                  textAlign: "left",
-                  whiteSpace: "pre-wrap",
-                  overflowWrap: "break-word",
-                  wordBreak: "normal",
-                  fontVariantLigatures: "none",
-                  tabSize: 4,
-                }}
-              >
-                {index === 0 ? (
                   <div
-                    className="flex flex-col items-center text-center"
+                    aria-hidden="true"
+                    className="h-full px-24 text-zinc-950"
                     style={{
-                      marginBottom: `${PAGE_LINE_HEIGHT * CHAPTER_HEADING_BOTTOM_BLANK_LINES}px`,
+                      boxSizing: "border-box",
+                      paddingTop:
+                        index === 0
+                          ? `${PAGE_MARGIN_Y + PAGE_LINE_HEIGHT * CHAPTER_HEADING_TOP_BLANK_LINES}px`
+                          : `${PAGE_MARGIN_Y}px`,
+                      paddingBottom: `${PAGE_MARGIN_Y}px`,
+                      fontFamily: PAGE_FONT_FAMILY,
+                      fontSize: `${PAGE_FONT_SIZE}px`,
+                      lineHeight: `${PAGE_LINE_HEIGHT}px`,
+                      textAlign: "left",
+                      whiteSpace: "pre-wrap",
+                      overflowWrap: "break-word",
+                      wordBreak: "normal",
+                      fontVariantLigatures: "none",
+                      tabSize: 4,
                     }}
                   >
-                    <p
-                      style={{
-                        margin: 0,
-                        minHeight: `${PAGE_LINE_HEIGHT}px`,
-                        fontSize: `${PAGE_FONT_SIZE - 1}px`,
-                        fontWeight: 600,
-                        letterSpacing: "0.18em",
-                        lineHeight: `${PAGE_LINE_HEIGHT}px`,
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      {chapterHeadingNumber}
-                    </p>
-                    <p
-                      style={{
-                        margin: 0,
-                        minHeight: `${PAGE_LINE_HEIGHT}px`,
-                        fontSize: `${PAGE_FONT_SIZE}px`,
-                        fontWeight: 400,
-                        lineHeight: `${PAGE_LINE_HEIGHT}px`,
-                      }}
-                    >
-                      {chapterHeadingTitle || "\u00A0"}
-                    </p>
+                    {index === 0 ? (
+                      <div
+                        className="flex flex-col items-center text-center"
+                        style={{
+                          marginBottom: `${PAGE_LINE_HEIGHT * CHAPTER_HEADING_BOTTOM_BLANK_LINES}px`,
+                        }}
+                      >
+                        <p
+                          style={{
+                            margin: 0,
+                            minHeight: `${PAGE_LINE_HEIGHT}px`,
+                            fontSize: `${PAGE_FONT_SIZE - 1}px`,
+                            fontWeight: 600,
+                            letterSpacing: "0.18em",
+                            lineHeight: `${PAGE_LINE_HEIGHT}px`,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {chapterHeadingNumber}
+                        </p>
+                        <p
+                          style={{
+                            margin: 0,
+                            minHeight: `${PAGE_LINE_HEIGHT}px`,
+                            fontSize: `${PAGE_FONT_SIZE}px`,
+                            fontWeight: 400,
+                            lineHeight: `${PAGE_LINE_HEIGHT}px`,
+                          }}
+                        >
+                          {chapterHeadingTitle || "\u00A0"}
+                        </p>
+                      </div>
+                    ) : null}
+
+                    {page.lines.map((line, lineIndex) => {
+                      const shouldIndentParagraph =
+                        line.isParagraphStart &&
+                        !line.isChapterOpeningParagraph &&
+                        !/^\s/.test(line.text);
+
+                      return (
+                        <div
+                          key={`${chapter.id}-page-${index}-line-${lineIndex}`}
+                          style={{
+                            margin: 0,
+                            minHeight: `${PAGE_LINE_HEIGHT}px`,
+                            textIndent: shouldIndentParagraph ? `${PAGE_PARAGRAPH_INDENT}px` : 0,
+                          }}
+                        >
+                          {line.text || "\u00A0"}
+                        </div>
+                      );
+                    })}
                   </div>
-                ) : null}
 
-                {page.lines.map((line, lineIndex) => {
-                  const shouldIndentParagraph =
-                    line.isParagraphStart &&
-                    !line.isChapterOpeningParagraph &&
-                    !/^\s/.test(line.text);
-
-                  return (
-                    <div
-                      key={`${chapter.id}-page-${index}-line-${lineIndex}`}
+                  {caretGeometry && caretGeometry.pageIndex === index ? (
+                    <span
+                      aria-hidden="true"
+                      className="manuscript-caret absolute z-20 rounded-full bg-zinc-950 shadow-[0_0_0_1px_rgba(255,253,249,0.72)]"
                       style={{
-                        margin: 0,
-                        minHeight: `${PAGE_LINE_HEIGHT}px`,
-                        textIndent: shouldIndentParagraph ? `${PAGE_PARAGRAPH_INDENT}px` : 0,
+                        left: `${caretGeometry.left}px`,
+                        top: `${caretGeometry.top}px`,
+                        width: "1.5px",
+                        height: `${caretGeometry.height}px`,
                       }}
-                    >
-                      {line.text || "\u00A0"}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {caretGeometry && caretGeometry.pageIndex === index ? (
-                <span
-                  aria-hidden="true"
-                  className="manuscript-caret absolute z-20 rounded-full bg-zinc-950 shadow-[0_0_0_1px_rgba(255,253,249,0.72)]"
-                  style={{
-                    left: `${caretGeometry.left}px`,
-                    top: `${caretGeometry.top}px`,
-                    width: "1.5px",
-                    height: `${caretGeometry.height}px`,
-                  }}
-                />
-              ) : null}
-
-              {isTrailingBlankPage && isLastChapter && hasDraftContent ? (
+                    />
+                  ) : null}
+                </section>
+              );
+            })}
+            {hasNewChapterActionPage ? (
+              <section
+                key={`${chapter.id}-new-chapter-action-page`}
+                className="pointer-events-none absolute left-0 right-0 overflow-hidden border border-zinc-200 bg-[#fffdf9] shadow-[0_14px_44px_-32px_rgba(24,24,27,0.42)]"
+                style={{
+                  height: `${PAGE_HEIGHT}px`,
+                  top: `${manuscriptPageCount * (PAGE_HEIGHT + PAGE_GAP)}px`,
+                }}
+              >
                 <button
                   type="button"
                   onClick={onCreateNextChapter}
@@ -1095,10 +1102,8 @@ function ChapterDraftBlock({
                   </span>
                   <span>Start a New Chapter</span>
                 </button>
-              ) : null}
-            </section>
-          );
-            })}
+              </section>
+            ) : null}
           </div>
         </div>
       </div>
@@ -1187,9 +1192,9 @@ function BlankChapterPage({
   );
 }
 
-function getVisibleManuscriptPageCount(text: string) {
+function getManuscriptPageCount(text: string) {
   const manuscriptPages = paginateManuscriptText(text, CHAPTER_HEADING_RESERVED_LINES);
-  return manuscriptPages.length > 0 ? manuscriptPages.length + 1 : 1;
+  return manuscriptPages.length > 0 ? manuscriptPages.length : 1;
 }
 
 function PenNameCreateLightbox({
