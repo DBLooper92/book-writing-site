@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { Chapter } from "@/types/chapter";
 
 type ChapterCardProps = {
@@ -37,6 +38,16 @@ export function ChapterCard({ chapter }: ChapterCardProps) {
         <span>Slug: {chapter.slug}</span>
         <span>Project: {chapter.projectId}</span>
         <span>POV: {chapter.pointOfViewCharacterId ?? "n/a"}</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={chapter.id}
+          entityLabel="chapter"
+          entityTitle={chapter.title}
+          redirectHref="/chapters"
+          tableName="chapters"
+        />
       </div>
     </article>
   );

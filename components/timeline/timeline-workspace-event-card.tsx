@@ -6,15 +6,21 @@ import { AiSummaryGenerator } from "@/components/ai/ai-summary-generator";
 import {
   formatTimelineEventBoundaryLabel,
 } from "@/lib/timeline/workspace";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
+import { hexToRgba } from "@/lib/timeline/bookmark-collections";
 import type { TimelineEvent } from "@/types/timeline-event";
 
 type TimelineWorkspaceEventCardProps = {
   chapterLabelsById?: ReadonlyMap<string, string>;
   bookLabelsById?: ReadonlyMap<string, string>;
+  onDelete?: ((timelineEvent: TimelineEvent) => Promise<void>) | null;
   onSaveSummaryDescription?: (
     timelineEventId: string,
     payload: { summary: string; description: string }
   ) => Promise<void>;
+  onOpenBookmarkCollectionPicker?: (timelineEvent: TimelineEvent) => void;
+  density?: number;
+  bookmarkAccentColor?: string | null;
   onView: (timelineEventId: string) => void;
   position: number;
   selected?: boolean;
@@ -24,7 +30,11 @@ type TimelineWorkspaceEventCardProps = {
 export function TimelineWorkspaceEventCard({
   chapterLabelsById = EMPTY_LABEL_MAP,
   bookLabelsById = EMPTY_LABEL_MAP,
+  onDelete,
   onSaveSummaryDescription,
+  onOpenBookmarkCollectionPicker,
+  density = 1,
+  bookmarkAccentColor,
   onView,
   position,
   selected = false,
@@ -36,6 +46,7 @@ export function TimelineWorkspaceEventCard({
   const [draftSummary, setDraftSummary] = useState(timelineEvent.summary);
   const [draftDescription, setDraftDescription] = useState(timelineEvent.description);
   const [savingSummaryDescription, setSavingSummaryDescription] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const linkedBooksLabel = formatLinkedRecordSummary(
     timelineEvent.bookIds,
@@ -50,9 +61,18 @@ export function TimelineWorkspaceEventCard({
     "Chapters"
   );
   const normalizedSummary = timelineEvent.summary.trim();
+  const isBookmarked = timelineEvent.tags.includes("bookmarked");
+  const hasBookmarkAccent = typeof bookmarkAccentColor === "string";
+  const bookmarkColor = bookmarkAccentColor ?? "#f59e0b";
+  const isCompactDensity = density < 0.82;
+  const isVeryCompactDensity = density < 0.72;
+  const summaryLineClamp = density < 0.5 ? 1 : isCompactDensity ? 2 : 3;
+  const maxCardWidth = Math.round(280 + density * 560);
   const canExpandSummary = canExpandSummaryPreview(normalizedSummary);
   const hasMetadataSection =
     Boolean(linkedBooksLabel) || Boolean(linkedChaptersLabel) || normalizedSummary.length > 0;
+
+  useScrollLock(descriptionLightboxOpen);
 
   useEffect(() => {
     setDraftSummary(timelineEvent.summary);
@@ -66,9 +86,6 @@ export function TimelineWorkspaceEventCard({
       return;
     }
 
-    const previousBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setDescriptionLightboxOpen(false);
@@ -77,7 +94,6 @@ export function TimelineWorkspaceEventCard({
 
     window.addEventListener("keydown", handleEscape);
     return () => {
-      document.body.style.overflow = previousBodyOverflow;
       window.removeEventListener("keydown", handleEscape);
     };
   }, [descriptionLightboxOpen]);
@@ -109,32 +125,71 @@ export function TimelineWorkspaceEventCard({
     }
   }
 
+  async function handleDelete() {
+    if (deleting || !onDelete) {
+      return;
+    }
+
+    const shouldDelete = window.confirm(`Delete "${timelineEvent.title}"? This cannot be undone.`);
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setDeleting(true);
+
+    try {
+      await onDelete(timelineEvent);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <article
-      className={`rounded-3xl border p-5 shadow-[0_20px_45px_-38px_rgba(24,24,27,0.4)] transition ${
+      className={`w-full rounded-3xl border transition ${
         selected
-          ? "border-zinc-950 bg-zinc-50"
-          : "border-zinc-200 bg-white hover:border-zinc-300"
+          ? "border-zinc-200 bg-[#fffdf8]"
+          : isBookmarked
+            ? "border-zinc-200 bg-zinc-50/60"
+            : "border-zinc-200 bg-white hover:border-zinc-300"
       }`}
+      style={{
+        maxWidth: `${maxCardWidth}px`,
+        padding: `${Math.round(6 + density * 10)}px`,
+        boxShadow:
+          isBookmarked && hasBookmarkAccent
+            ? `0 0 0 4px ${bookmarkColor}, 0 0 0 7px ${hexToRgba(
+                bookmarkColor,
+                0.18
+              )}, 0 0 28px 10px ${hexToRgba(bookmarkColor, 0.16)}, 0 18px 36px -24px rgba(24,24,27,0.32)`
+            : isBookmarked
+              ? "0 0 0 1px rgba(228, 228, 231, 0.95), 0 18px 36px -24px rgba(24,24,27,0.24)"
+              : "0 20px 45px -38px rgba(24,24,27,0.4)",
+      }}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
             Block {position}
           </p>
-          <h3 className="mt-2 text-lg font-semibold tracking-tight text-zinc-950">
+          <h3
+            className={`mt-1 font-semibold tracking-tight text-zinc-950 ${
+              isCompactDensity ? "text-[1rem] leading-6" : "text-lg"
+            }`}
+          >
             {timelineEvent.title}
           </h3>
         </div>
-        <span className="rounded-full bg-zinc-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
+        <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
           {timelineEvent.displayDateLabel.trim() || "Undated"}
         </span>
       </div>
 
       {hasMetadataSection ? (
-        <div className="mt-4 space-y-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-xs leading-5 text-zinc-700">
-          {linkedBooksLabel ? <p>{linkedBooksLabel}</p> : null}
-          {linkedChaptersLabel ? <p>{linkedChaptersLabel}</p> : null}
+        <div className="mt-2 space-y-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs leading-5 text-zinc-700">
+          {!isCompactDensity && linkedBooksLabel ? <p>{linkedBooksLabel}</p> : null}
+          {!isCompactDensity && linkedChaptersLabel ? <p>{linkedChaptersLabel}</p> : null}
 
           {normalizedSummary ? (
             <div className={`${linkedBooksLabel || linkedChaptersLabel ? "border-t border-zinc-200 pt-2" : ""}`}>
@@ -142,13 +197,15 @@ export function TimelineWorkspaceEventCard({
                 Summary
               </p>
               <p
-                className="mt-1 whitespace-pre-wrap text-sm leading-6 text-zinc-700"
+                className={`mt-1 whitespace-pre-wrap text-zinc-700 ${
+                  isVeryCompactDensity ? "text-[0.86rem] leading-5" : "text-sm leading-6"
+                }`}
                 style={
                   summaryExpanded
                     ? undefined
                     : {
                         display: "-webkit-box",
-                        WebkitLineClamp: 2,
+                        WebkitLineClamp: summaryLineClamp,
                         WebkitBoxOrient: "vertical",
                         overflow: "hidden",
                       }
@@ -178,28 +235,68 @@ export function TimelineWorkspaceEventCard({
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-200 pt-4">
-        <p className="min-w-0 truncate text-sm text-zinc-600">
+      <div className="mt-2 flex items-center justify-between gap-3 border-t border-zinc-200 pt-2">
+        <p className={`min-w-0 truncate ${isCompactDensity ? "text-xs" : "text-sm"} text-zinc-600`}>
           {formatTimelineEventDateRangeLabel(timelineEvent)}
         </p>
-        <button
-          type="button"
-          onClick={() => onView(timelineEvent.id)}
-          className="inline-flex h-10 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-        >
-          View Event
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onOpenBookmarkCollectionPicker?.(timelineEvent)}
+            className={`inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-medium transition ${
+              isBookmarked
+                ? hasBookmarkAccent
+                  ? "border text-white shadow-[0_10px_22px_-14px_rgba(24,24,27,0.35)] hover:opacity-95"
+                  : "border border-zinc-300 bg-zinc-950 text-white shadow-[0_10px_22px_-14px_rgba(24,24,27,0.22)] hover:bg-zinc-800"
+                : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+            }`}
+            aria-pressed={isBookmarked}
+            style={
+              isBookmarked && hasBookmarkAccent
+                ? {
+                    backgroundColor: bookmarkColor,
+                    borderColor: bookmarkColor,
+                    boxShadow: `0 0 0 4px ${bookmarkColor}, 0 0 0 7px ${hexToRgba(
+                      bookmarkColor,
+                      0.18
+                    )}, 0 0 24px 8px ${hexToRgba(bookmarkColor, 0.14)}, 0 10px 22px -14px rgba(24,24,27,0.35)`,
+                    color: "#ffffff",
+                  }
+                : undefined
+            }
+          >
+            {isBookmarked ? "Bookmarked" : "Bookmark"}
+          </button>
+          <button
+            type="button"
+            onClick={() => onView(timelineEvent.id)}
+            disabled={deleting}
+            className="inline-flex h-10 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+          >
+            View Event
+          </button>
+          {onDelete ? (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="inline-flex h-10 items-center justify-center rounded-full border border-red-200 bg-red-50 px-4 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {descriptionLightboxOpen ? (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
           <div
             className="absolute inset-0"
             onClick={() => setDescriptionLightboxOpen(false)}
             aria-hidden="true"
           />
 
-          <div className="relative z-10 mx-auto my-auto w-full max-w-2xl max-h-[calc(100vh-3rem)] overflow-y-auto rounded-4xl border border-zinc-200 bg-[#fffdf9] p-6 shadow-2xl">
+          <div className="relative z-10 mx-auto my-auto w-full max-w-2xl max-h-[calc(100vh-3rem)] overflow-y-auto overscroll-contain rounded-4xl border border-zinc-200 bg-[#fffdf9] p-6 shadow-2xl">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
               Timeline event
             </p>

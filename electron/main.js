@@ -28,6 +28,7 @@ const {
   deleteDocuments,
 } = require("./database");
 const { applyDraft, getDraftById, listDrafts, moveDraftToStatus, writeDraftText } = require("./drafts");
+const { generateDocxBuffer } = require("./docx");
 const { generateExports } = require("./exports");
 const { ensureProjectScaffold } = require("./templates");
 const {
@@ -68,6 +69,9 @@ const { HARD_TIME_INFERENCE_NOTES, buildHardTimeBrainDumpRegressionFixtures } = 
 const { slugify } = require("../lib/drafts/apply-helpers");
 
 const APP_PROTOCOL = "bookbible-file";
+const APP_NAME = "BuildaBook";
+const APP_WINDOW_TITLE = "BuildaBook";
+const WINDOW_ICON_PATH = path.join(__dirname, "..", "build", "icon.ico");
 const APP_SETTINGS_FILE = "app-settings.json";
 const DEFAULT_PROJECTS_ROOT = path.join(os.homedir(), "Documents", "BookWritingProjects");
 const DEFAULT_OPENAI_MODEL = "gpt-4.1-mini";
@@ -102,6 +106,8 @@ const RUN_HARD_TIME_UI_REGRESSION_CLI =
 const SKIP_RESTORE_CURRENT_PROJECT_ON_STARTUP =
   process.env.BOOK_BIBLE_SKIP_RESTORE_CURRENT_PROJECT === "1";
 
+app.setAppUserModelId("com.buildabook.desktop");
+
 protocol.registerSchemesAsPrivileged([
   {
     scheme: APP_PROTOCOL,
@@ -133,8 +139,12 @@ function getSettingsPath() {
 
 function createDefaultAppSettings() {
   return {
+    app: {
+      autoCorrectTyping: false,
+    },
     currentProjectId: null,
     currentProjectPath: null,
+    profile: createDefaultProfileSettings(),
     recentProjects: [],
     windowBounds: null,
     ai: {
@@ -148,16 +158,97 @@ function createDefaultAppSettings() {
   };
 }
 
+function createDefaultProfileSettings() {
+  return {
+    defaultPenName: null,
+    firstName: null,
+    lastName: null,
+    penNames: [],
+  };
+}
+
+function normalizeOptionalText(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizePenName(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim().replace(/\s+/g, " ");
+  return normalized ? normalized : null;
+}
+
+function normalizePenNameList(values) {
+  const uniquePenNames = [];
+  const sourceValues = Array.isArray(values) ? values : [];
+
+  sourceValues.forEach((value) => {
+    const penName = normalizePenName(value);
+
+    if (!penName) {
+      return;
+    }
+
+    if (uniquePenNames.some((existingPenName) => existingPenName.toLowerCase() === penName.toLowerCase())) {
+      return;
+    }
+
+    uniquePenNames.push(penName);
+  });
+
+  return uniquePenNames;
+}
+
+function normalizeProfileSettings(profile) {
+  const penNames = normalizePenNameList(profile?.penNames);
+  const requestedDefaultPenName = normalizePenName(profile?.defaultPenName);
+  const defaultPenName =
+    requestedDefaultPenName &&
+    penNames.some(
+      (penName) => penName.toLowerCase() === requestedDefaultPenName.toLowerCase()
+    )
+      ? penNames.find(
+          (penName) => penName.toLowerCase() === requestedDefaultPenName.toLowerCase()
+        ) ?? null
+      : penNames[0] ?? null;
+
+  return {
+    defaultPenName,
+    firstName: normalizeOptionalText(profile?.firstName),
+    lastName: normalizeOptionalText(profile?.lastName),
+    penNames,
+  };
+}
+
 function normalizeAppSettings(settings) {
   const defaults = createDefaultAppSettings();
   const openAiSettings = {
     ...defaults.ai.openai,
     ...(settings?.ai?.openai ?? {}),
   };
+  const appSettings = {
+    ...defaults.app,
+    ...(settings?.app ?? {}),
+  };
+  const profileSettings = {
+    ...defaults.profile,
+    ...(settings?.profile ?? {}),
+  };
 
   return {
     ...defaults,
     ...(settings ?? {}),
+    app: {
+      autoCorrectTyping: Boolean(appSettings.autoCorrectTyping),
+    },
+    profile: normalizeProfileSettings(profileSettings),
     currentProjectId:
       typeof settings?.currentProjectId === "string" && settings.currentProjectId.trim()
         ? settings.currentProjectId.trim()
@@ -177,6 +268,13 @@ function normalizeAppSettings(settings) {
         updatedAt: typeof openAiSettings.updatedAt === "string" ? openAiSettings.updatedAt : null,
       },
     },
+  };
+}
+
+function getRendererAppSettings(settings = readAppSettings()) {
+  return {
+    autoCorrectTyping: Boolean(settings.app.autoCorrectTyping),
+    profile: settings.profile,
   };
 }
 
@@ -598,6 +696,7 @@ function closeCurrentProject() {
   currentProjectRuntime = null;
   clearCurrentProjectSetting();
   sendRendererEvent("project:changed");
+  refreshApplicationMenu();
 }
 
 function deleteProjectFolder(projectPath) {
@@ -638,6 +737,7 @@ function deleteCurrentProject() {
   deleteProjectFolder(projectPath);
   sendRendererEvent("project:changed");
   sendRendererEvent("drafts:changed");
+  refreshApplicationMenu();
 }
 
 function openProjectAtPath(projectPath) {
@@ -677,6 +777,7 @@ function openProjectAtPath(projectPath) {
   startDraftsWatcher(projectRuntime);
   sendRendererEvent("project:changed");
   sendRendererEvent("drafts:changed");
+  refreshApplicationMenu();
   console.log(`[book-bible] openProjectAtPath:done ${projectPath}`);
   return serializeCurrentProject(projectRuntime);
 }
@@ -866,19 +967,216 @@ function configureSpellChecker(targetWindow) {
   }
 }
 
-async function createMainWindow() {
-  const settings = readAppSettings();
-  const windowBounds = settings.windowBounds ?? undefined;
+async function loadMainWindowRoute(routePath) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
 
-  mainWindow = new BrowserWindow({
-    width: windowBounds?.width ?? 1440,
-    height: windowBounds?.height ?? 960,
-    x: windowBounds?.x,
-    y: windowBounds?.y,
+  const rendererUrl = await ensureRendererUrl();
+  const routeUrl = new URL(routePath, rendererUrl);
+  await mainWindow.loadURL(routeUrl.toString());
+}
+
+async function openManuscriptWindow(routePath = "/manuscript") {
+  await createRendererWindow(routePath);
+}
+
+async function loadMainWindowWithQueryParam(routePath, searchParamName, searchParamValue) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  const rendererUrl = await ensureRendererUrl();
+  const currentUrl = mainWindow.webContents.getURL();
+  const baseUrl =
+    typeof currentUrl === "string" && currentUrl.length > 0 && currentUrl !== "about:blank"
+      ? currentUrl
+      : new URL(routePath, rendererUrl).toString();
+
+  const nextUrl = new URL(baseUrl);
+  nextUrl.searchParams.set(searchParamName, searchParamValue);
+  await mainWindow.loadURL(nextUrl.toString());
+}
+
+async function openExistingProjectFromMenu() {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    defaultPath: getDefaultProjectsRoot(),
+    properties: ["openDirectory"],
+    title: `Open ${APP_NAME} Project`,
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+
+  const openedProject = openProjectAtPath(result.filePaths[0]);
+  await loadMainWindowRoute("/timeline");
+  return openedProject;
+}
+
+async function showAboutDialog() {
+  await dialog.showMessageBox(mainWindow, {
+    buttons: ["OK"],
+    defaultId: 0,
+    detail:
+      "BuildaBook is a local-first desktop writing workspace for long-form fiction, story bibles, and timeline-driven drafting.",
+    message: `BuildaBook ${app.getVersion()}`,
+    noLink: true,
+    title: `About ${APP_NAME}`,
+    type: "info",
+  });
+}
+
+function buildApplicationMenuTemplate() {
+  const hasCurrentProject = Boolean(currentProjectRuntime);
+
+  return [
+    {
+      label: "File",
+      submenu: [
+        {
+          label: "New",
+          submenu: [
+            {
+              label: "New Project",
+              accelerator: "Ctrl+N",
+              click: () => {
+                void loadMainWindowRoute("/?newProject=1");
+              },
+            },
+          ],
+        },
+        { type: "separator" },
+        {
+          label: "Open Project...",
+          accelerator: "Ctrl+O",
+          click: () => {
+            void openExistingProjectFromMenu();
+          },
+        },
+        {
+          label: "Change Project",
+          click: () => {
+            void loadMainWindowWithQueryParam("/", "changeProject", "1");
+          },
+        },
+        {
+          label: "Reveal Current Project Folder",
+          enabled: hasCurrentProject,
+          click: () => {
+            const resolvedProjectPath =
+              currentProjectRuntime?.projectPath || readAppSettings().currentProjectPath;
+
+            if (!resolvedProjectPath) {
+              return;
+            }
+
+            void shell.openPath(resolvedProjectPath);
+          },
+        },
+      ],
+    },
+    {
+      label: "Navigate",
+      submenu: [
+        {
+          label: "Profile",
+          click: () => {
+            void loadMainWindowRoute("/profile");
+          },
+        },
+        { type: "separator" },
+        {
+          label: "Overview",
+          click: () => {
+            void loadMainWindowRoute("/project-overview");
+          },
+        },
+        {
+          label: "Timeline",
+          click: () => {
+            void loadMainWindowRoute("/timeline");
+          },
+        },
+        {
+          label: "Drafts",
+          click: () => {
+            void loadMainWindowRoute("/drafts");
+          },
+        },
+        {
+          label: "AI Jobs",
+          click: () => {
+            void loadMainWindowRoute("/ai-jobs");
+          },
+        },
+      ],
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "delete" },
+        { role: "selectAll" },
+      ],
+    },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    },
+    {
+      label: "Window",
+      submenu: [{ role: "minimize" }, { role: "zoom" }, { role: "close" }],
+    },
+    {
+      label: "Help",
+      submenu: [
+        {
+          label: `About ${APP_NAME}`,
+          click: () => {
+            void showAboutDialog();
+          },
+        },
+      ],
+    },
+  ];
+}
+
+function refreshApplicationMenu() {
+  Menu.setApplicationMenu(Menu.buildFromTemplate(buildApplicationMenuTemplate()));
+}
+
+async function createRendererWindow(routePath, options = {}) {
+  const {
+    bounds = null,
+    show = true,
+    title = APP_WINDOW_TITLE,
+    trackBounds = false,
+  } = options;
+  const rendererWindow = new BrowserWindow({
+    width: bounds?.width ?? 1440,
+    height: bounds?.height ?? 960,
+    x: bounds?.x,
+    y: bounds?.y,
     minWidth: 1200,
     minHeight: 800,
+    show,
     backgroundColor: "#f8f8f6",
-    title: "Book Bible Desktop",
+    icon: WINDOW_ICON_PATH,
+    title,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -887,34 +1185,50 @@ async function createMainWindow() {
     },
   });
 
-  configureSpellChecker(mainWindow);
-  registerEditorContextMenu(mainWindow);
-  mainWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+  configureSpellChecker(rendererWindow);
+  registerEditorContextMenu(rendererWindow);
+  rendererWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
     console.log(`[renderer console:${level}] ${sourceId}:${line} ${message}`);
   });
-  mainWindow.webContents.on("page-error", (_event, errorMessage, sourceId, lineNumber) => {
+  rendererWindow.webContents.on("page-error", (_event, errorMessage, sourceId, lineNumber) => {
     console.log(`[renderer page-error] ${sourceId}:${lineNumber} ${errorMessage}`);
   });
-  mainWindow.webContents.on("render-process-gone", (_event, details) => {
+  rendererWindow.webContents.on("render-process-gone", (_event, details) => {
     console.log(`[renderer gone] reason=${details.reason} exitCode=${details.exitCode}`);
   });
 
-  mainWindow.on("close", () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      const bounds = mainWindow.getBounds();
-      updateAppSettings((currentSettings) => ({
-        ...currentSettings,
-        windowBounds: bounds,
-      }));
-    }
-  });
+  if (trackBounds) {
+    rendererWindow.on("close", () => {
+      if (rendererWindow && !rendererWindow.isDestroyed()) {
+        const nextBounds = rendererWindow.getBounds();
+        updateAppSettings((currentSettings) => ({
+          ...currentSettings,
+          windowBounds: nextBounds,
+        }));
+      }
+    });
+  }
 
   const rendererUrl = await ensureRendererUrl();
-  await mainWindow.loadURL(rendererUrl);
+  const nextUrl = new URL(routePath, rendererUrl);
+  await rendererWindow.loadURL(nextUrl.toString());
 
   if (process.env.ELECTRON_RENDERER_URL) {
-    mainWindow.webContents.openDevTools({ mode: "detach" });
+    rendererWindow.webContents.openDevTools({ mode: "detach" });
   }
+
+  return rendererWindow;
+}
+
+async function createMainWindow() {
+  const settings = readAppSettings();
+  const windowBounds = settings.windowBounds ?? undefined;
+  mainWindow = await createRendererWindow("/", {
+    bounds: windowBounds,
+    trackBounds: true,
+  });
+
+  refreshApplicationMenu();
 }
 
 function migrateLegacyOpenAiKeyIfNeeded(settings = readAppSettings()) {
@@ -4450,7 +4764,7 @@ async function createAutomationWindow() {
     minHeight: 800,
     show: true,
     backgroundColor: "#f8f8f6",
-    title: "Book Bible Desktop Automation",
+    title: `${APP_NAME} Automation`,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -5377,7 +5691,7 @@ function registerIpcHandlers() {
     const result = await dialog.showOpenDialog(mainWindow, {
       defaultPath: getDefaultProjectsRoot(),
       properties: ["openDirectory"],
-      title: "Open Book Bible Project",
+      title: `Open ${APP_NAME} Project`,
     });
 
     if (result.canceled || result.filePaths.length === 0) {
@@ -5549,6 +5863,32 @@ function registerIpcHandlers() {
     fs.writeFileSync(absolutePath, Buffer.from(input.data));
   });
 
+  ipcMain.handle("attachments:write-document", async (_event, input) => {
+    const projectRuntime = ensureCurrentProjectRuntime();
+    const absolutePath = resolveStorageAbsolutePath(
+      projectRuntime,
+      input.bucketId,
+      input.storagePath
+    );
+
+    try {
+      ensureDirectory(path.dirname(absolutePath));
+      const docxBuffer = generateDocxBuffer(String(input.bodyText ?? ""));
+      fs.writeFileSync(absolutePath, docxBuffer);
+
+      return {
+        fileSizeBytes: docxBuffer.byteLength,
+      };
+    } catch (error) {
+      console.error("[book-bible] ipc attachments:write-document:failed", {
+        bucketId: input.bucketId,
+        storagePath: input.storagePath,
+        error,
+      });
+      throw error;
+    }
+  });
+
   ipcMain.handle("attachments:remove", async (_event, input) => {
     const projectRuntime = ensureCurrentProjectRuntime();
 
@@ -5599,6 +5939,10 @@ function registerIpcHandlers() {
     return detail;
   });
 
+  ipcMain.handle("manuscript:open-window", async (_event, routePath) => {
+    await openManuscriptWindow(typeof routePath === "string" && routePath.trim() ? routePath : "/manuscript");
+  });
+
   ipcMain.handle("exports:get-status", async () => {
     const projectRuntime = ensureCurrentProjectRuntime();
     return {
@@ -5612,6 +5956,111 @@ function registerIpcHandlers() {
     return {
       lastExportAt: getMeta(projectRuntime.db, "last_export_at"),
     };
+  });
+
+  ipcMain.handle("app:get-settings", async () => {
+    return getRendererAppSettings();
+  });
+
+  ipcMain.handle("app:set-auto-correct-typing", async (_event, enabledInput) => {
+    const autoCorrectTyping = Boolean(enabledInput);
+
+    const nextSettings = updateAppSettings((settings) => ({
+      ...settings,
+      app: {
+        ...settings.app,
+        autoCorrectTyping,
+      },
+    }));
+
+    sendRendererEvent("app:settings:changed");
+
+    return getRendererAppSettings(nextSettings);
+  });
+
+  ipcMain.handle("app:update-profile-info", async (_event, input) => {
+    const nextSettings = updateAppSettings((settings) => ({
+      ...settings,
+      profile: {
+        ...settings.profile,
+        firstName:
+          typeof input?.firstName === "undefined"
+            ? settings.profile.firstName
+            : normalizeOptionalText(input.firstName),
+        lastName:
+          typeof input?.lastName === "undefined"
+            ? settings.profile.lastName
+            : normalizeOptionalText(input.lastName),
+      },
+    }));
+
+    sendRendererEvent("app:settings:changed");
+
+    return getRendererAppSettings(nextSettings);
+  });
+
+  ipcMain.handle("app:add-pen-name", async (_event, penNameInput) => {
+    const penName = normalizePenName(penNameInput);
+
+    if (!penName) {
+      throw new Error("Pen name cannot be empty.");
+    }
+
+    const nextSettings = updateAppSettings((settings) => {
+      const existingPenNames = settings.profile.penNames ?? [];
+      const alreadySaved = existingPenNames.some(
+        (existingPenName) => existingPenName.toLowerCase() === penName.toLowerCase()
+      );
+
+      if (alreadySaved) {
+        throw new Error("That pen name is already saved.");
+      }
+
+      const penNames = [...existingPenNames, penName];
+
+      return {
+        ...settings,
+        profile: {
+          ...settings.profile,
+          defaultPenName: settings.profile.defaultPenName ?? penName,
+          penNames,
+        },
+      };
+    });
+
+    sendRendererEvent("app:settings:changed");
+
+    return getRendererAppSettings(nextSettings);
+  });
+
+  ipcMain.handle("app:set-default-pen-name", async (_event, penNameInput) => {
+    const penName = normalizePenName(penNameInput);
+
+    if (!penName) {
+      throw new Error("Select a pen name first.");
+    }
+
+    const nextSettings = updateAppSettings((settings) => {
+      const existingPenName = (settings.profile.penNames ?? []).find(
+        (value) => value.toLowerCase() === penName.toLowerCase()
+      );
+
+      if (!existingPenName) {
+        throw new Error("That pen name is not saved on this account.");
+      }
+
+      return {
+        ...settings,
+        profile: {
+          ...settings.profile,
+          defaultPenName: existingPenName,
+        },
+      };
+    });
+
+    sendRendererEvent("app:settings:changed");
+
+    return getRendererAppSettings(nextSettings);
   });
 
   ipcMain.handle("ai:get-config", async () => ({

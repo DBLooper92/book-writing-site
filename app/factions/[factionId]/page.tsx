@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { FactionDetailSection } from "@/components/factions/faction-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useFaction } from "@/hooks/use-faction";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function FactionDetailPage() {
   const params = useParams<{ factionId: string }>();
@@ -46,12 +48,27 @@ export default function FactionDetailPage() {
               Back to factions
             </Link>
             {faction ? (
-              <Link
-                href={`/factions/${faction.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit faction
-              </Link>
+              <>
+                <Link
+                  href={`/factions/${faction.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit faction
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="faction"
+                  entityTitle={faction.name}
+                  onDelete={() =>
+                    deleteEntityForProject(
+                      user?.uid ?? "",
+                      activeProjectId ?? "",
+                      "factions",
+                      faction.id
+                    )
+                  }
+                  redirectHref="/factions"
+                />
+              </>
             ) : null}
           </div>
         </div>

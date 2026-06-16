@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { GlossaryTermDetailSection } from "@/components/glossary-terms/glossary-term-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useGlossaryTerm } from "@/hooks/use-glossary-term";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function GlossaryTermDetailPage() {
   const params = useParams<{ glossaryTermId: string }>();
@@ -47,12 +49,27 @@ export default function GlossaryTermDetailPage() {
               Back to glossary terms
             </Link>
             {glossaryTerm ? (
-              <Link
-                href={`/glossary-terms/${glossaryTerm.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit glossary term
-              </Link>
+              <>
+                <Link
+                  href={`/glossary-terms/${glossaryTerm.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit glossary term
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="glossary term"
+                  entityTitle={glossaryTerm.title}
+                  onDelete={() =>
+                    deleteEntityForProject(
+                      user?.uid ?? "",
+                      activeProjectId ?? "",
+                      "glossary_terms",
+                      glossaryTerm.id
+                    )
+                  }
+                  redirectHref="/glossary-terms"
+                />
+              </>
             ) : null}
           </div>
         </div>

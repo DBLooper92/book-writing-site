@@ -32,6 +32,14 @@ export type TimelineEventCanonLevel = (typeof TIMELINE_EVENT_CANON_LEVEL_VALUES)
 export type TimelineEventConfidence = (typeof TIMELINE_EVENT_CONFIDENCE_VALUES)[number];
 export type TimelineEventType = (typeof TIMELINE_EVENT_TYPE_VALUES)[number];
 export type TimelineEventTimestamp = AppTimestamp;
+export type TimelineEventCreationSource = "manual" | "ai_single" | "ai_multi";
+
+export type TimelineEventCreationProvenance = {
+  creationSource: TimelineEventCreationSource;
+  sourceBrainDumpText: string;
+  sourceInsertionItemId: string | null;
+  sourceJobId: string | null;
+};
 
 export type TimelineEvent = {
   id: string;
@@ -72,6 +80,10 @@ export type TimelineEvent = {
   predecessorEventIds: string[];
   successorEventIds: string[];
   publicWikiSummary: string;
+  creationSource: TimelineEventCreationSource;
+  sourceBrainDumpText: string;
+  sourceInsertionItemId: string | null;
+  sourceJobId: string | null;
   createdAt: TimelineEventTimestamp;
   updatedAt: TimelineEventTimestamp;
 };
@@ -155,6 +167,7 @@ export type TimelineEventValidationResult = {
 type BuildTimelineEventDocumentInput = {
   id: string;
   projectId: string;
+  provenance?: Partial<TimelineEventCreationProvenance> | null;
   values: NormalizedTimelineEventFormValues;
 };
 
@@ -399,6 +412,7 @@ export function validateNormalizedTimelineEventFormValues(
 export function buildTimelineEventDocument({
   id,
   projectId,
+  provenance,
   values,
 }: BuildTimelineEventDocumentInput): TimelineEventDocumentData {
   return {
@@ -440,6 +454,10 @@ export function buildTimelineEventDocument({
     predecessorEventIds: values.predecessorEventIds,
     successorEventIds: values.successorEventIds,
     publicWikiSummary: values.publicWikiSummary,
+    creationSource: provenance?.creationSource ?? "manual",
+    sourceBrainDumpText: provenance?.sourceBrainDumpText?.trim() ?? "",
+    sourceInsertionItemId: provenance?.sourceInsertionItemId ?? null,
+    sourceJobId: provenance?.sourceJobId ?? null,
   };
 }
 

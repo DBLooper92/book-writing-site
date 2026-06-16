@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { Attachment } from "@/types/attachment";
 
 type AttachmentCardProps = {
@@ -32,6 +33,17 @@ export function AttachmentCard({ attachment }: AttachmentCardProps) {
       <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-500">
         <span>File: {attachment.fileName || "No file name"}</span>
         <span>Primary link: {attachment.linkedEntityType ?? "None"}</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={attachment.id}
+          entityLabel="attachment"
+          entityTitle={attachment.title}
+          redirectHref="/attachments"
+          tableName="attachments"
+          variant="attachment"
+        />
       </div>
     </article>
   );

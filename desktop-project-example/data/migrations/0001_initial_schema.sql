@@ -9,6 +9,7 @@ CREATE TABLE books (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
+  pen_name TEXT,
   summary TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'planning',
   sort_order INTEGER NOT NULL DEFAULT 0,
@@ -46,6 +47,17 @@ CREATE TABLE chapters (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE manuscripts (
+  id TEXT PRIMARY KEY,
+  book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+  chapter_number INTEGER NOT NULL,
+  chapter_id TEXT,
+  chapter_title TEXT NOT NULL DEFAULT '',
+  body_text TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE scenes (
   id TEXT PRIMARY KEY,
   chapter_id TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
@@ -57,6 +69,9 @@ CREATE TABLE scenes (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE INDEX idx_manuscripts_book_id ON manuscripts(book_id);
+CREATE INDEX idx_manuscripts_book_chapter ON manuscripts(book_id, chapter_number);
 
 CREATE TABLE timeline_events (
   id TEXT PRIMARY KEY,
@@ -118,4 +133,3 @@ CREATE TABLE ai_proposals (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
-

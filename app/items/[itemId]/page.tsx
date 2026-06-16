@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { ItemDetailSection } from "@/components/items/item-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useItem } from "@/hooks/use-item";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function ItemDetailPage() {
   const params = useParams<{ itemId: string }>();
@@ -45,12 +47,22 @@ export default function ItemDetailPage() {
               Back to items
             </Link>
             {item ? (
-              <Link
-                href={`/items/${item.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit item
-              </Link>
+              <>
+                <Link
+                  href={`/items/${item.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit item
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="item"
+                  entityTitle={item.name}
+                  onDelete={() =>
+                    deleteEntityForProject(user?.uid ?? "", activeProjectId ?? "", "items", item.id)
+                  }
+                  redirectHref="/items"
+                />
+              </>
             ) : null}
           </div>
         </div>

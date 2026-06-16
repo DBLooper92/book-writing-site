@@ -1,6 +1,8 @@
 import "client-only";
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { upsertDocumentAttachmentForEntity } from "@/lib/data/attachments";
+import { upsertManuscriptForProject } from "@/lib/data/manuscripts";
 import type { Database } from "@/types/database";
 import {
   buildChapterDocument,
@@ -13,37 +15,68 @@ import {
 } from "@/types/chapter";
 
 type ChapterRow = Database["public"]["Tables"]["chapters"]["Row"];
+type ManuscriptRow = Database["public"]["Tables"]["manuscripts"]["Row"];
 
 export async function getChaptersForProject(uid: string, projectId: string) {
   const supabase = getSupabaseBrowserClient();
-  const { data, error } = await supabase
-    .from("chapters")
-    .select("*")
-    .eq("user_id", uid)
-    .eq("project_id", projectId);
+  const [chaptersResult, manuscriptsResult] = await Promise.all([
+    supabase.from("chapters").select("*").eq("user_id", uid).eq("project_id", projectId),
+    supabase.from("manuscripts").select("*").eq("user_id", uid).eq("project_id", projectId),
+  ]);
+
+  const { data, error } = chaptersResult;
 
   if (error) {
     throw error;
   }
 
-  return (data ?? []).map((row) => normalizeChapterRow(row as ChapterRow)).sort(compareChapters);
+  if (manuscriptsResult.error) {
+    throw manuscriptsResult.error;
+  }
+
+  const manuscriptDrafts = buildManuscriptDraftMap(manuscriptsResult.data ?? []);
+
+  return (data ?? [])
+    .map((row) =>
+      normalizeChapterRow(
+        row as ChapterRow,
+        getChapterDraftTextForRow(row as ChapterRow, manuscriptDrafts)
+      )
+    )
+    .sort(compareChapters);
 }
 
 export async function getChapterById(uid: string, projectId: string, chapterId: string) {
   const supabase = getSupabaseBrowserClient();
-  const { data, error } = await supabase
-    .from("chapters")
-    .select("*")
-    .eq("user_id", uid)
-    .eq("project_id", projectId)
-    .eq("id", chapterId)
-    .maybeSingle();
+  const [chapterResult, manuscriptsResult] = await Promise.all([
+    supabase
+      .from("chapters")
+      .select("*")
+      .eq("user_id", uid)
+      .eq("project_id", projectId)
+      .eq("id", chapterId)
+      .maybeSingle(),
+    supabase.from("manuscripts").select("*").eq("user_id", uid).eq("project_id", projectId),
+  ]);
+
+  const { data, error } = chapterResult;
 
   if (error) {
     throw error;
   }
 
-  return data ? normalizeChapterRow(data as ChapterRow) : null;
+  if (manuscriptsResult.error) {
+    throw manuscriptsResult.error;
+  }
+
+  const manuscriptDrafts = buildManuscriptDraftMap(manuscriptsResult.data ?? []);
+
+  return data
+    ? normalizeChapterRow(
+        data as ChapterRow,
+        getChapterDraftTextForRow(data as ChapterRow, manuscriptDrafts)
+      )
+    : null;
 }
 
 export async function createChapterForProject(
@@ -58,11 +91,14 @@ export async function createChapterForProject(
   }
 
   const chapterId = await getAvailableChapterId(uid, projectId, title);
+  const draftAttachmentId = buildChapterDraftAttachmentId(chapterId);
   const supabase = getSupabaseBrowserClient();
   const now = new Date().toISOString();
   const chapterDocument = buildChapterDocument({
     id: chapterId,
     projectId,
+    draftAttachmentId,
+    draftText: "",
     values,
   });
 
@@ -74,6 +110,8 @@ export async function createChapterForProject(
     slug: chapterDocument.slug,
     summary: chapterDocument.summary,
     description: chapterDocument.description,
+    draft_text: chapterDocument.draftText,
+    draft_attachment_id: chapterDocument.draftAttachmentId,
     status: chapterDocument.status,
     tags: chapterDocument.tags,
     is_archived: chapterDocument.isArchived,
@@ -95,7 +133,38 @@ export async function createChapterForProject(
   });
 
   if (error) {
+    console.error("[chapter:create] chapter row insert failed", {
+      chapterId,
+      error,
+      projectId,
+      uid,
+    });
     throw error;
+  }
+
+  try {
+    await upsertDocumentAttachmentForEntity(uid, projectId, {
+      attachmentId: draftAttachmentId,
+      bodyText: "",
+      entityId: chapterId,
+      entityType: "chapter",
+      title: chapterDocument.title,
+    });
+  } catch (attachmentError) {
+    console.error("[chapter:create] attachment creation failed, removing chapter row", {
+      attachmentError,
+      chapterId,
+      draftAttachmentId,
+      projectId,
+      uid,
+    });
+    await supabase
+      .from("chapters")
+      .delete()
+      .eq("user_id", uid)
+      .eq("project_id", projectId)
+      .eq("id", chapterId);
+    throw attachmentError;
   }
 
   return chapterId;
@@ -136,6 +205,74 @@ export async function updateChapterForProject(
   if (error) {
     throw error;
   }
+
+  const currentChapter = await getChapterById(uid, projectId, chapterId);
+
+  if (currentChapter?.draftAttachmentId) {
+    await upsertDocumentAttachmentForEntity(uid, projectId, {
+      attachmentId: currentChapter.draftAttachmentId,
+      bodyText: currentChapter.draftText,
+      entityId: currentChapter.id,
+      entityType: "chapter",
+      title: currentChapter.title,
+    });
+  }
+}
+
+export async function saveChapterDraftForProject(
+  uid: string,
+  projectId: string,
+  chapterId: string,
+  draftText: string
+) {
+  const currentChapter = await getChapterById(uid, projectId, chapterId);
+
+  if (!currentChapter) {
+    throw new Error("Chapter not found in the active project.");
+  }
+
+  const chapterDraftAttachmentId =
+    currentChapter.draftAttachmentId ?? buildChapterDraftAttachmentId(currentChapter.id);
+
+  const supabase = getSupabaseBrowserClient();
+  const { error } = await supabase
+    .from("chapters")
+    .update({
+      draft_text: draftText,
+      draft_attachment_id: chapterDraftAttachmentId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", uid)
+    .eq("project_id", projectId)
+    .eq("id", chapterId);
+
+  if (error) {
+    console.error("[chapter:draft-save] chapter row update failed", {
+      chapterId,
+      error,
+      projectId,
+      uid,
+    });
+    throw error;
+  }
+
+  await upsertDocumentAttachmentForEntity(uid, projectId, {
+    attachmentId: chapterDraftAttachmentId,
+    bodyText: draftText,
+    entityId: currentChapter.id,
+    entityType: "chapter",
+    title: currentChapter.title,
+  });
+
+  if (currentChapter.bookId && typeof currentChapter.chapterNumber === "number") {
+    await upsertManuscriptForProject(uid, projectId, {
+      bodyText: draftText,
+      bookId: currentChapter.bookId,
+      chapterId: currentChapter.id,
+      chapterNumber: currentChapter.chapterNumber,
+      chapterTitle: currentChapter.title,
+    });
+  }
 }
 
 async function getAvailableChapterId(uid: string, projectId: string, title: string) {
@@ -163,7 +300,7 @@ async function getAvailableChapterId(uid: string, projectId: string, title: stri
   return candidateId;
 }
 
-function normalizeChapterRow(row: ChapterRow): Chapter {
+function normalizeChapterRow(row: ChapterRow, draftText = ""): Chapter {
   return {
     id: row.id,
     projectId: row.project_id,
@@ -171,6 +308,8 @@ function normalizeChapterRow(row: ChapterRow): Chapter {
     slug: row.slug || slugifyChapterTitle(row.title),
     summary: row.summary || "",
     description: row.description || "",
+    draftText: row.draft_text || draftText || "",
+    draftAttachmentId: row.draft_attachment_id ?? null,
     status: coerceChapterStatus(row.status),
     tags: row.tags ?? [],
     isArchived: row.is_archived ?? row.status === "archived",
@@ -190,6 +329,56 @@ function normalizeChapterRow(row: ChapterRow): Chapter {
     createdAt: readDateOrNull(row.created_at),
     updatedAt: readDateOrNull(row.updated_at),
   };
+}
+
+function buildManuscriptDraftMap(manuscriptRows: ManuscriptRow[]) {
+  const byChapterId = new Map<string, string>();
+  const byBookAndChapterNumber = new Map<string, string>();
+
+  for (const row of manuscriptRows) {
+    if (typeof row.chapter_id === "string" && row.chapter_id.trim()) {
+      byChapterId.set(row.chapter_id, row.body_text ?? "");
+    }
+
+    if (typeof row.book_id === "string" && row.book_id.trim()) {
+      byBookAndChapterNumber.set(`${row.book_id}:${row.chapter_number}`, row.body_text ?? "");
+    }
+  }
+
+  return { byBookAndChapterNumber, byChapterId };
+}
+
+function getChapterDraftTextForRow(
+  row: ChapterRow,
+  manuscriptDrafts: ReturnType<typeof buildManuscriptDraftMap>
+) {
+  const chapterDraftText = row.draft_text || "";
+
+  if (chapterDraftText.trim().length > 0) {
+    return chapterDraftText;
+  }
+
+  const byChapterId = manuscriptDrafts.byChapterId.get(row.id);
+
+  if (typeof byChapterId === "string" && byChapterId.trim().length > 0) {
+    return byChapterId;
+  }
+
+  if (row.book_id && typeof row.chapter_number === "number") {
+    const byBookAndChapterNumber = manuscriptDrafts.byBookAndChapterNumber.get(
+      `${row.book_id}:${row.chapter_number}`
+    );
+
+    if (typeof byBookAndChapterNumber === "string") {
+      return byBookAndChapterNumber;
+    }
+  }
+
+  return "";
+}
+
+function buildChapterDraftAttachmentId(chapterId: string) {
+  return `chapter_draft_${chapterId}`;
 }
 
 function buildChapterId(title: string) {

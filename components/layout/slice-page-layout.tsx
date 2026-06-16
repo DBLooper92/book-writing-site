@@ -38,7 +38,7 @@ export function SlicePageLayout({
   }
 
   return (
-    <main className="flex min-h-[calc(100vh-6rem)] w-full flex-col xl:h-[calc(100vh-6rem)] xl:min-h-0">
+    <main className="flex min-h-[calc(100vh-6rem)] w-full flex-col xl:min-h-[calc(100vh-6rem)]">
       <section className="grid flex-1 xl:grid-cols-[22rem_minmax(0,1fr)] xl:overflow-hidden">
         <SliceSidebar pathname={pathname} />
 

@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { CharacterDetailSection } from "@/components/characters/character-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useCharacter } from "@/hooks/use-character";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function CharacterDetailPage() {
   const params = useParams<{ characterId: string }>();
@@ -46,12 +48,27 @@ export default function CharacterDetailPage() {
               Back to characters
             </Link>
             {character ? (
-              <Link
-                href={`/characters/${character.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit character
-              </Link>
+              <>
+                <Link
+                  href={`/characters/${character.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit character
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="character"
+                  entityTitle={character.name}
+                  onDelete={() =>
+                    deleteEntityForProject(
+                      user?.uid ?? "",
+                      activeProjectId ?? "",
+                      "characters",
+                      character.id
+                    )
+                  }
+                  redirectHref="/characters"
+                />
+              </>
             ) : null}
           </div>
         </div>

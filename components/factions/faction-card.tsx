@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { Faction } from "@/types/faction";
 
 type FactionCardProps = {
@@ -31,6 +32,16 @@ export function FactionCard({ faction }: FactionCardProps) {
       <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-500">
         <span>Slug: {faction.slug}</span>
         <span>Project: {faction.projectId}</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={faction.id}
+          entityLabel="faction"
+          entityTitle={faction.name}
+          redirectHref="/factions"
+          tableName="factions"
+        />
       </div>
     </article>
   );

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { Outline } from "@/types/outline";
 
 type OutlineCardProps = {
@@ -31,6 +32,16 @@ export function OutlineCard({ outline }: OutlineCardProps) {
       <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-500">
         <span>Scope: {outline.scope || "not set"}</span>
         <span>Project: {outline.projectId}</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={outline.id}
+          entityLabel="outline"
+          entityTitle={outline.title}
+          redirectHref="/outlines"
+          tableName="outlines"
+        />
       </div>
     </article>
   );

@@ -5,15 +5,23 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { ChapterDetailSection } from "@/components/chapters/chapter-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
+import { useAttachment } from "@/hooks/use-attachment";
 import { useChapter } from "@/hooks/use-chapter";
+import { deleteAttachmentForProject } from "@/lib/data/attachments";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function ChapterDetailPage() {
   const params = useParams<{ chapterId: string }>();
   const chapterId = typeof params.chapterId === "string" ? params.chapterId : null;
   const { chapter, loading, error, user, activeProjectId, activeProject } =
     useChapter(chapterId);
+  const { attachment, loading: attachmentLoading } = useAttachment(
+    chapter?.draftAttachmentId ?? null
+  );
+  const canOpenDraft = Boolean(chapter?.draftAttachmentId) && Boolean(attachment);
 
   return (
     <PageShell
@@ -36,6 +44,11 @@ export default function ChapterDetailPage() {
               Scope: Supabase rows filtered by user_id and project_id for chapters/
               {chapterId ?? "{chapterId}"}
             </p>
+            {chapter?.draftAttachmentId ? (
+              <p className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
+                Draft attachment: {attachment?.fileName ?? chapter.draftAttachmentId}
+              </p>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -45,13 +58,48 @@ export default function ChapterDetailPage() {
             >
               Back to chapters
             </Link>
+            <button
+              type="button"
+              disabled={!canOpenDraft || attachmentLoading}
+              onClick={() =>
+                void window.bookBible.manuscript.openWindow(
+                  `/manuscript?chapterId=${chapter?.id ?? ""}`
+                )
+              }
+              className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Open draft
+            </button>
             {chapter ? (
-              <Link
-                href={`/chapters/${chapter.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit chapter
-              </Link>
+              <>
+                <Link
+                  href={`/chapters/${chapter.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit chapter
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="chapter"
+                  entityTitle={chapter.title}
+                  onDelete={async () => {
+                    if (chapter.draftAttachmentId) {
+                      await deleteAttachmentForProject(
+                        user?.uid ?? "",
+                        activeProjectId ?? "",
+                        chapter.draftAttachmentId
+                      );
+                    }
+
+                    await deleteEntityForProject(
+                      user?.uid ?? "",
+                      activeProjectId ?? "",
+                      "chapters",
+                      chapter.id
+                    );
+                  }}
+                  redirectHref="/chapters"
+                />
+              </>
             ) : null}
           </div>
         </div>

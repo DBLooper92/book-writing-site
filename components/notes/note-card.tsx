@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { Note } from "@/types/note";
 
 type NoteCardProps = {
@@ -31,6 +32,16 @@ export function NoteCard({ note }: NoteCardProps) {
       <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-500">
         <span>Linked entity: {note.linkedEntityType ?? "None"}</span>
         <span>Project: {note.projectId}</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={note.id}
+          entityLabel="note"
+          entityTitle={note.title}
+          redirectHref="/notes"
+          tableName="notes"
+        />
       </div>
     </article>
   );

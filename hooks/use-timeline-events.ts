@@ -76,6 +76,10 @@ export function useTimelineEvents(): UseTimelineEventsResult {
           return;
         }
 
+        if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+          logTimelineEventSnapshot("[timeline:data] loaded events", queryKey, nextTimelineEvents);
+        }
+
         setState({
           key: queryKey,
           timelineEvents: nextTimelineEvents,
@@ -145,6 +149,40 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error
     ? error.message
     : "Unable to load timeline events for the active project.";
+}
+
+function logTimelineEventSnapshot(
+  label: string,
+  queryKey: string,
+  timelineEvents: TimelineEvent[]
+) {
+  const duplicateIds = findDuplicateValues(timelineEvents.map((timelineEvent) => timelineEvent.id));
+  const firstIds = timelineEvents.slice(0, 5).map((timelineEvent) => timelineEvent.id);
+  const lastIds = timelineEvents.slice(-5).map((timelineEvent) => timelineEvent.id);
+
+  console.log(label, {
+    queryKey,
+    count: timelineEvents.length,
+    duplicateIds,
+    firstIds,
+    lastIds,
+  });
+}
+
+function findDuplicateValues(values: string[]) {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const value of values) {
+    if (seen.has(value)) {
+      duplicates.add(value);
+      continue;
+    }
+
+    seen.add(value);
+  }
+
+  return Array.from(duplicates);
 }
 
 

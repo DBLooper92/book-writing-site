@@ -52,6 +52,7 @@ The app creates/repairs this shape through `electron/templates.js`. `desktop-pro
 - Project scaffold generation with manifest, directories, prompt templates, and helper scripts.
 - Per-project SQLite document-table runtime for current entity slices.
 - Local auth/profile shim using the single local desktop user.
+- Profile settings in the app preferences store, including first name, last name, and multiple pen names with a persisted default pen name.
 - Renderer entity routes for books, chapters, scenes, characters, relationships, factions, cultures, religions, governments, organizations, plot threads, outlines, glossary terms, eras, themes, languages, species, items, technologies, locations, timeline events, notes, retcons, attachments, drafts, AI jobs, timeline, profile, and project overview.
 - Generated markdown/json exports after record writes and on project open.
 - Proposal lifecycle folders and Electron IPC for list/get/save/approve/reject/apply.

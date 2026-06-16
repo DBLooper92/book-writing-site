@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { PageShell } from "@/components/layout/page-shell";
 import { PlotThreadDetailSection } from "@/components/plot-threads/plot-thread-detail-section";
 import { usePlotThread } from "@/hooks/use-plot-thread";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function PlotThreadDetailPage() {
   const params = useParams<{ plotThreadId: string }>();
@@ -47,12 +49,27 @@ export default function PlotThreadDetailPage() {
               Back to plot threads
             </Link>
             {plotThread ? (
-              <Link
-                href={`/plot-threads/${plotThread.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit plot thread
-              </Link>
+              <>
+                <Link
+                  href={`/plot-threads/${plotThread.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit plot thread
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="plot thread"
+                  entityTitle={plotThread.title}
+                  onDelete={() =>
+                    deleteEntityForProject(
+                      user?.uid ?? "",
+                      activeProjectId ?? "",
+                      "plot_threads",
+                      plotThread.id
+                    )
+                  }
+                  redirectHref="/plot-threads"
+                />
+              </>
             ) : null}
           </div>
         </div>

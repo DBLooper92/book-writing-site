@@ -328,6 +328,8 @@ function buildTimelineBrainDumpUserPrompt(input) {
       ? "Use the project title as a naming hint only when the dump is defining the series itself."
       : null,
     "",
+    buildReferenceContextSection(input?.projectContext?.referenceContext ?? null),
+    "",
     buildInsertionContextSection(input?.projectContext),
     "",
     "Brain dump text:",
@@ -601,6 +603,76 @@ function buildInsertionContextSection(projectContext) {
   } else if (hasAfter) {
     lines.push("Treat the first After event as the anchor. Draft events before it.");
   }
+
+  return lines.join("\n");
+}
+
+function buildReferenceContextSection(referenceContext) {
+  if (
+    !referenceContext ||
+    typeof referenceContext !== "object" ||
+    (!Array.isArray(referenceContext.cards) && !Array.isArray(referenceContext.relatedEvents))
+  ) {
+    return "";
+  }
+
+  const lines = ["Session reference context:"];
+  const cards = Array.isArray(referenceContext.cards) ? referenceContext.cards : [];
+  const relatedEvents = Array.isArray(referenceContext.relatedEvents)
+    ? referenceContext.relatedEvents
+    : [];
+
+  if (cards.length > 0) {
+    lines.push("Earlier cards in this composer:");
+
+    for (const card of cards) {
+      if (!card || typeof card !== "object") {
+        continue;
+      }
+
+      const cardType = String(card.cardType ?? "").trim() === "manual" ? "Manual" : "AI";
+      const title = String(card.title ?? "").trim() || "Untitled card";
+      const summary = String(card.summary ?? "").trim();
+      const status = String(card.status ?? "").trim() || "idle";
+      const bookmarkLabel = card.bookmarked ? "bookmarked" : "unbookmarked";
+
+      lines.push(
+        `- ${cardType} card ${title} [${status}, ${bookmarkLabel}]${summary ? `: ${summary}` : ""}`
+      );
+    }
+  }
+
+  if (relatedEvents.length > 0) {
+    lines.push("Potentially related timeline events discovered from linked entities:");
+
+    for (const event of relatedEvents) {
+      if (!event || typeof event !== "object") {
+        continue;
+      }
+
+      const title = String(event.title ?? "").trim() || "Untitled event";
+      const summary = String(event.summary ?? "").trim();
+      const relation = String(event.relation ?? "summary");
+      const detailLabel = relation === "description" ? "full description already relevant" : "summary only";
+
+      lines.push(`- ${title} (${detailLabel})${summary ? `: ${summary}` : ""}`);
+
+      if (relation === "description") {
+        const description = String(event.description ?? "").trim();
+        if (description) {
+          lines.push(`  Description: ${description}`);
+        }
+      }
+    }
+  }
+
+  if (cards.length === 0 && relatedEvents.length === 0) {
+    return "";
+  }
+
+  lines.push(
+    "Use this reference context for continuity only. Do not merge unrelated cards, and do not invent new chronology from these notes."
+  );
 
   return lines.join("\n");
 }

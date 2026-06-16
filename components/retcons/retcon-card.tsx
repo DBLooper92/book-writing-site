@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { Retcon } from "@/types/retcon";
 
 type RetconCardProps = {
@@ -32,6 +33,16 @@ export function RetconCard({ retcon }: RetconCardProps) {
       <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-500">
         <span>Affected IDs: {retcon.affectedEntityIds.length}</span>
         <span>Project: {retcon.projectId}</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={retcon.id}
+          entityLabel="retcon"
+          entityTitle={retcon.title}
+          redirectHref="/retcons"
+          tableName="retcons"
+        />
       </div>
     </article>
   );

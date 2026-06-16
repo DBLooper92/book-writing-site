@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { PageShell } from "@/components/layout/page-shell";
 import { ThemeDetailSection } from "@/components/themes/theme-detail-section";
 import { useTheme } from "@/hooks/use-theme";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function ThemeDetailPage() {
   const params = useParams<{ themeId: string }>();
@@ -45,12 +47,22 @@ export default function ThemeDetailPage() {
               Back to themes
             </Link>
             {theme ? (
-              <Link
-                href={`/themes/${theme.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit theme
-              </Link>
+              <>
+                <Link
+                  href={`/themes/${theme.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit theme
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="theme"
+                  entityTitle={theme.name}
+                  onDelete={() =>
+                    deleteEntityForProject(user?.uid ?? "", activeProjectId ?? "", "themes", theme.id)
+                  }
+                  redirectHref="/themes"
+                />
+              </>
             ) : null}
           </div>
         </div>

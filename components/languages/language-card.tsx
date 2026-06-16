@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { Language } from "@/types/language";
 
 type LanguageCardProps = {
@@ -31,6 +32,16 @@ export function LanguageCard({ language }: LanguageCardProps) {
       <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-500">
         <span>Slug: {language.slug}</span>
         <span>Project: {language.projectId}</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={language.id}
+          entityLabel="language"
+          entityTitle={language.name}
+          redirectHref="/languages"
+          tableName="languages"
+        />
       </div>
     </article>
   );

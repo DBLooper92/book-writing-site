@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { Relationship } from "@/types/relationship";
 
 type RelationshipCardProps = {
@@ -35,6 +36,16 @@ export function RelationshipCard({ relationship }: RelationshipCardProps) {
         <span>
           {formatEntityType(relationship.entityBType)}: {relationship.entityBId || "None"}
         </span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={relationship.id}
+          entityLabel="relationship"
+          entityTitle={relationship.title}
+          redirectHref="/relationships"
+          tableName="relationships"
+        />
       </div>
     </article>
   );

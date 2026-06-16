@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { Book } from "@/types/book";
 
 type BookCardProps = {
@@ -37,6 +38,16 @@ export function BookCard({ book }: BookCardProps) {
         <span>
           Target: {typeof book.wordCountTarget === "number" ? book.wordCountTarget : "n/a"}
         </span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={book.id}
+          entityLabel="book"
+          entityTitle={book.title}
+          redirectHref="/books"
+          tableName="books"
+        />
       </div>
     </article>
   );

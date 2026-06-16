@@ -1,6 +1,7 @@
 import "client-only";
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 import { sortTimelineEvents } from "@/lib/timeline/workspace";
 import type { Database } from "@/types/database";
 import {
@@ -11,9 +12,15 @@ import {
   coerceTimelineEventType,
   slugifyTimelineEventTitle,
   validateNormalizedTimelineEventFormValues,
+  type TimelineEventCreationProvenance,
   type NormalizedTimelineEventFormValues,
   type TimelineEvent,
 } from "@/types/timeline-event";
+import {
+  buildTimelineEventBookmarkCollectionTag,
+  TIMELINE_BOOKMARK_COLLECTION_TAG_PREFIX,
+  TIMELINE_BOOKMARK_COLLECTION_UNCATEGORIZED_ID,
+} from "@/lib/timeline/bookmark-collections";
 
 type TimelineEventRow = Database["public"]["Tables"]["timeline_events"]["Row"];
 
@@ -58,7 +65,8 @@ export async function getTimelineEventById(
 export async function createTimelineEventForProject(
   uid: string,
   projectId: string,
-  values: NormalizedTimelineEventFormValues
+  values: NormalizedTimelineEventFormValues,
+  provenance?: TimelineEventCreationProvenance | null
 ) {
   assertValidTimelineEventValues(values);
 
@@ -69,6 +77,7 @@ export async function createTimelineEventForProject(
   const timelineEventDocument = buildTimelineEventDocument({
     id: timelineEventId,
     projectId,
+    provenance,
     values,
   });
 
@@ -112,6 +121,10 @@ export async function createTimelineEventForProject(
     predecessor_event_ids: timelineEventDocument.predecessorEventIds,
     successor_event_ids: timelineEventDocument.successorEventIds,
     public_wiki_summary: timelineEventDocument.publicWikiSummary,
+    creation_source: timelineEventDocument.creationSource,
+    source_brain_dump_text: timelineEventDocument.sourceBrainDumpText,
+    source_insertion_item_id: timelineEventDocument.sourceInsertionItemId,
+    source_job_id: timelineEventDocument.sourceJobId,
     created_at: now,
     updated_at: now,
   });
@@ -180,6 +193,32 @@ export async function updateTimelineEventForProject(
   }
 }
 
+export async function updateTimelineEventContinuityForProject(
+  uid: string,
+  projectId: string,
+  timelineEventId: string,
+  values: {
+    predecessorEventIds: string[];
+    successorEventIds: string[];
+  }
+) {
+  const supabase = getSupabaseBrowserClient();
+  const { error } = await supabase
+    .from("timeline_events")
+    .update({
+      predecessor_event_ids: values.predecessorEventIds,
+      successor_event_ids: values.successorEventIds,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", uid)
+    .eq("project_id", projectId)
+    .eq("id", timelineEventId);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function updateTimelineEventSummaryAndDescriptionForProject(
   uid: string,
   projectId: string,
@@ -206,67 +245,69 @@ export async function updateTimelineEventSummaryAndDescriptionForProject(
   }
 }
 
+export async function setTimelineEventBookmarkedForProject(
+  uid: string,
+  projectId: string,
+  timelineEventId: string,
+  bookmarked: boolean,
+  bookmarkCollectionId?: string | null
+) {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("timeline_events")
+    .select("tags")
+    .eq("user_id", uid)
+    .eq("project_id", projectId)
+    .eq("id", timelineEventId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  const tags = Array.isArray(data?.tags) ? data.tags.filter((tag) => typeof tag === "string") : [];
+  const nextTags = bookmarked
+    ? buildBookmarkTags(tags, bookmarkCollectionId ?? null)
+    : tags.filter(
+        (tag) =>
+          tag !== "bookmarked" && !tag.startsWith(TIMELINE_BOOKMARK_COLLECTION_TAG_PREFIX)
+      );
+
+  const { error: updateError } = await supabase
+    .from("timeline_events")
+    .update({
+      tags: nextTags,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", uid)
+    .eq("project_id", projectId)
+    .eq("id", timelineEventId);
+
+  if (updateError) {
+    throw updateError;
+  }
+}
+
+function buildBookmarkTags(tags: string[], bookmarkCollectionId: string | null) {
+  const nextTags = tags.filter(
+    (tag) => tag !== "bookmarked" && !tag.startsWith(TIMELINE_BOOKMARK_COLLECTION_TAG_PREFIX)
+  );
+
+  nextTags.push("bookmarked");
+
+  if (bookmarkCollectionId && bookmarkCollectionId !== TIMELINE_BOOKMARK_COLLECTION_UNCATEGORIZED_ID) {
+    nextTags.push(buildTimelineEventBookmarkCollectionTag(bookmarkCollectionId));
+  }
+
+  return Array.from(new Set(nextTags));
+}
+
 export async function deleteTimelineEventForProject(
   uid: string,
   projectId: string,
   timelineEventId: string
 ) {
-  const supabase = getSupabaseBrowserClient();
-  const now = new Date().toISOString();
-
-  const { error: deleteError } = await supabase
-    .from("timeline_events")
-    .delete()
-    .eq("user_id", uid)
-    .eq("project_id", projectId)
-    .eq("id", timelineEventId);
-
-  if (deleteError) {
-    throw deleteError;
-  }
-
-  const { data: remainingRows, error: selectError } = await supabase
-    .from("timeline_events")
-    .select("id, predecessor_event_ids, successor_event_ids")
-    .eq("user_id", uid)
-    .eq("project_id", projectId);
-
-  if (selectError) {
-    throw selectError;
-  }
-
-  const impactedRows = (remainingRows ?? []).filter((row) => {
-    const predecessorEventIds = row.predecessor_event_ids ?? [];
-    const successorEventIds = row.successor_event_ids ?? [];
-
-    return (
-      predecessorEventIds.includes(timelineEventId) || successorEventIds.includes(timelineEventId)
-    );
-  });
-
-  for (const row of impactedRows) {
-    const nextPredecessorEventIds = (row.predecessor_event_ids ?? []).filter(
-      (eventId) => eventId !== timelineEventId
-    );
-    const nextSuccessorEventIds = (row.successor_event_ids ?? []).filter(
-      (eventId) => eventId !== timelineEventId
-    );
-
-    const { error: updateError } = await supabase
-      .from("timeline_events")
-      .update({
-        predecessor_event_ids: nextPredecessorEventIds,
-        successor_event_ids: nextSuccessorEventIds,
-        updated_at: now,
-      })
-      .eq("user_id", uid)
-      .eq("project_id", projectId)
-      .eq("id", row.id);
-
-    if (updateError) {
-      throw updateError;
-    }
-  }
+  await deleteEntityForProject(uid, projectId, "timeline_events", timelineEventId);
 }
 
 async function getAvailableTimelineEventId(uid: string, projectId: string, title: string) {
@@ -336,6 +377,10 @@ function normalizeTimelineEventRow(row: TimelineEventRow): TimelineEvent {
     predecessorEventIds: row.predecessor_event_ids ?? [],
     successorEventIds: row.successor_event_ids ?? [],
     publicWikiSummary: row.public_wiki_summary || "",
+    creationSource: normalizeTimelineEventCreationSource(row.creation_source),
+    sourceBrainDumpText: row.source_brain_dump_text || "",
+    sourceInsertionItemId: row.source_insertion_item_id ?? null,
+    sourceJobId: row.source_job_id ?? null,
     createdAt: readDateOrNull(row.created_at),
     updatedAt: readDateOrNull(row.updated_at),
   };
@@ -366,4 +411,8 @@ function readDateOrNull(value: string | null) {
 
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function normalizeTimelineEventCreationSource(value: unknown) {
+  return value === "ai_single" || value === "ai_multi" ? value : "manual";
 }

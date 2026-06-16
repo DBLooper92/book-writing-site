@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
 import { TimelineEventDetailView } from "@/components/timeline-events/timeline-event-detail-view";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { useBook } from "@/hooks/use-book";
 import { useChapter } from "@/hooks/use-chapter";
 import { useCharacter } from "@/hooks/use-character";
@@ -38,10 +39,11 @@ export function TimelineLinkedRecordLightbox({
   referenceSets,
 }: TimelineLinkedRecordLightboxProps) {
   const [nestedItem, setNestedItem] = useState<TimelineLinkedReferenceItem | null>(null);
+  useScrollLock(true);
 
   return (
     <>
-      <div className="fixed inset-0 z-60 flex items-center justify-center bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
+      <div className="fixed inset-0 z-60 flex items-center justify-center overscroll-contain bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
         <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
         <div className="relative z-10 max-h-full w-full max-w-5xl overflow-hidden rounded-4xl border border-zinc-200 bg-[#fffdf9] shadow-2xl">
           {renderLinkedRecordPanel(item, onClose, setNestedItem, referenceMaps, referenceSets)}
@@ -107,7 +109,7 @@ function LinkedRecordFrame({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-6">
         <div className="space-y-6">{children}</div>
       </div>
     </div>

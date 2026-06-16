@@ -2,6 +2,7 @@ import "client-only";
 
 import { normalizeAiCapabilitySettings } from "@/lib/ai/capabilities";
 import { LOCAL_DESKTOP_AUTH_USER } from "@/lib/auth";
+import type { BookBibleProfileSettings } from "@/types/electron-api";
 
 export type ProfileOwnerContext = {
   uid: string;
@@ -24,6 +25,20 @@ export type UserProfile = {
   lastLoginAt: string | null;
 };
 
+function getProfileDisplayName(profile: BookBibleProfileSettings | null | undefined) {
+  const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(" ").trim();
+
+  if (fullName) {
+    return fullName;
+  }
+
+  if (profile?.defaultPenName) {
+    return profile.defaultPenName;
+  }
+
+  return profile?.penNames?.[0] ?? null;
+}
+
 export async function getProfileById(uid: string) {
   if (uid !== LOCAL_DESKTOP_AUTH_USER.uid) {
     return null;
@@ -31,11 +46,12 @@ export async function getProfileById(uid: string) {
 
   const currentProject = await window.bookBible.project.getCurrent();
   const now = new Date().toISOString();
+  const settings = await window.bookBible.app.getSettings();
 
   return {
     id: LOCAL_DESKTOP_AUTH_USER.uid,
     email: LOCAL_DESKTOP_AUTH_USER.email,
-    displayName: LOCAL_DESKTOP_AUTH_USER.displayName,
+    displayName: getProfileDisplayName(settings.profile) ?? LOCAL_DESKTOP_AUTH_USER.displayName,
     role: "owner",
     plan: "desktop",
     status: "active",

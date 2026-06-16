@@ -142,6 +142,7 @@ export type Database = {
           id: string;
           title: string;
           slug: string;
+          pen_name: string | null;
           summary: string;
           description: string;
           status: string;
@@ -173,6 +174,7 @@ export type Database = {
           id: string;
           title: string;
           slug: string;
+          pen_name?: string | null;
           summary?: string;
           description?: string;
           status: string;
@@ -204,6 +206,7 @@ export type Database = {
           id?: string;
           title?: string;
           slug?: string;
+          pen_name?: string | null;
           summary?: string;
           description?: string;
           status?: string;
@@ -240,6 +243,8 @@ export type Database = {
           slug: string;
           summary: string;
           description: string;
+          draft_text: string;
+          draft_attachment_id: string | null;
           status: string;
           tags: string[];
           is_archived: boolean;
@@ -267,6 +272,8 @@ export type Database = {
           slug: string;
           summary?: string;
           description?: string;
+          draft_text?: string;
+          draft_attachment_id?: string | null;
           status: string;
           tags?: string[];
           is_archived?: boolean;
@@ -294,6 +301,8 @@ export type Database = {
           slug?: string;
           summary?: string;
           description?: string;
+          draft_text?: string;
+          draft_attachment_id?: string | null;
           status?: string;
           tags?: string[];
           is_archived?: boolean;
@@ -310,6 +319,45 @@ export type Database = {
           plot_thread_ids?: string[];
           foreshadows?: string[];
           payoffs?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      manuscripts: {
+        Row: {
+          user_id: string;
+          project_id: string;
+          id: string;
+          book_id: string;
+          chapter_number: number;
+          chapter_id: string | null;
+          chapter_title: string;
+          body_text: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          project_id: string;
+          id: string;
+          book_id: string;
+          chapter_number: number;
+          chapter_id?: string | null;
+          chapter_title?: string;
+          body_text?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          project_id?: string;
+          id?: string;
+          book_id?: string;
+          chapter_number?: number;
+          chapter_id?: string | null;
+          chapter_title?: string;
+          body_text?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -2228,6 +2276,10 @@ export type Database = {
           predecessor_event_ids: string[];
           successor_event_ids: string[];
           public_wiki_summary: string;
+          creation_source: string;
+          source_brain_dump_text: string;
+          source_insertion_item_id: string | null;
+          source_job_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -2271,6 +2323,10 @@ export type Database = {
           predecessor_event_ids?: string[];
           successor_event_ids?: string[];
           public_wiki_summary?: string;
+          creation_source?: string;
+          source_brain_dump_text?: string;
+          source_insertion_item_id?: string | null;
+          source_job_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -2314,6 +2370,10 @@ export type Database = {
           predecessor_event_ids?: string[];
           successor_event_ids?: string[];
           public_wiki_summary?: string;
+          creation_source?: string;
+          source_brain_dump_text?: string;
+          source_insertion_item_id?: string | null;
+          source_job_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };

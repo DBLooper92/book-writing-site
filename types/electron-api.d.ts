@@ -74,7 +74,30 @@ export type DesktopDraftDetail = DesktopDraftListItem & {
   relativePath: string;
 };
 
+export type BookBibleProfileSettings = {
+  defaultPenName: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  penNames: string[];
+};
+
+export type BookBibleAppSettings = {
+  autoCorrectTyping: boolean;
+  profile: BookBibleProfileSettings;
+};
+
 export type BookBibleElectronApi = {
+  app: {
+    getSettings(): Promise<BookBibleAppSettings>;
+    setAutoCorrectTyping(enabled: boolean): Promise<BookBibleAppSettings>;
+    addPenName(penName: string): Promise<BookBibleAppSettings>;
+    setDefaultPenName(penName: string): Promise<BookBibleAppSettings>;
+    updateProfileInfo(input: {
+      firstName: string;
+      lastName: string;
+    }): Promise<BookBibleAppSettings>;
+    subscribeSettings(listener: () => void): () => void;
+  };
   launcher: {
     createProject(input: { title: string }): Promise<DesktopCurrentProject>;
     listRecentProjects(): Promise<DesktopRecentProject[]>;
@@ -115,12 +138,21 @@ export type BookBibleElectronApi = {
   attachments: {
     createPreviewUrl(bucketId: string, storagePath: string): Promise<string>;
     remove(input: { bucketId: string; storagePaths: string[] }): Promise<void>;
+    writeDocument(input: {
+      bucketId: string;
+      bodyText: string;
+      storagePath: string;
+    }): Promise<{ fileSizeBytes: number }>;
     upload(input: {
       bucketId: string;
       contentType?: string | null;
       data: Uint8Array;
       storagePath: string;
     }): Promise<void>;
+  };
+  spellcheck: {
+    correct(word: string): Promise<boolean>;
+    suggest(word: string): Promise<string[]>;
   };
   drafts: {
     apply(draftId: string): Promise<DesktopDraftDetail>;
@@ -130,6 +162,9 @@ export type BookBibleElectronApi = {
     reject(draftId: string): Promise<DesktopDraftDetail>;
     save(input: { draftId: string; rawText: string }): Promise<DesktopDraftDetail>;
     subscribe(listener: () => void): () => void;
+  };
+  manuscript: {
+    openWindow(routePath?: string): Promise<void>;
   };
   exports: {
     getStatus(): Promise<{ lastExportAt: string | null }>;

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { useActiveProject } from "@/hooks/use-active-project";
+import { useAppSettings } from "@/hooks/use-app-settings";
 import { PageShell } from "@/components/layout/page-shell";
 import {
   type OpenAiUsageRangePreset,
@@ -62,6 +63,16 @@ function getModelLabel(model: string | null | undefined) {
   return value.replace(/^openai\./i, "").replace(/-/g, " ");
 }
 
+function formatIdentityLabel(firstName: string, lastName: string, defaultPenName: string | null) {
+  const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
+
+  if (fullName) {
+    return fullName;
+  }
+
+  return defaultPenName ?? "Not set";
+}
+
 function getKeyScopeLabel(scope: OpenAiUsageScope, dashboardKeys: string[]) {
   if (scope === "all") {
     return "All keys";
@@ -81,6 +92,14 @@ function getKeyScopeLabel(scope: OpenAiUsageScope, dashboardKeys: string[]) {
 export default function ProfilePage() {
   const router = useRouter();
   const { activeProject, activeProjectId, uid } = useActiveProject();
+  const {
+    addPenName: savePenName,
+    loading: appSettingsLoading,
+    setAutoCorrectTyping,
+    setDefaultPenName: saveDefaultPenName,
+    settings: appSettings,
+    updateProfileInfo,
+  } = useAppSettings();
   const [rangePreset, setRangePreset] = useState<OpenAiUsageRangePreset>("30d");
   const [scope, setScope] = useState<OpenAiUsageScope>("all");
   const { config, dashboard, error: dashboardError, loading, refresh } = useOpenAiDashboard(
@@ -89,23 +108,46 @@ export default function ProfilePage() {
   );
   const [apiKey, setApiKey] = useState("");
   const [keyLabel, setKeyLabel] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [penName, setPenName] = useState("");
+  const [accountInfoInitialized, setAccountInfoInitialized] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [adding, setAdding] = useState(false);
   const [removingKeyId, setRemovingKeyId] = useState<string | null>(null);
+  const [savingAccountInfo, setSavingAccountInfo] = useState(false);
+  const [addingPenName, setAddingPenName] = useState(false);
+  const [settingDefaultPenName, setSettingDefaultPenName] = useState<string | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [backingUpProject, setBackingUpProject] = useState(false);
   const [deletingProject, setDeletingProject] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [savingAppSettings, setSavingAppSettings] = useState(false);
 
   const keys = useMemo(() => config?.keys ?? [], [config?.keys]);
   const activeKey = dashboard?.activeKey ?? keys.find((key) => key.active) ?? null;
   const activeKeyLabel = activeKey?.label ?? "No active key";
   const selectedScopeKeys = dashboard?.keys ?? [];
+  const accountProfile = appSettings?.profile ?? {
+    defaultPenName: null,
+    firstName: null,
+    lastName: null,
+    penNames: [],
+  };
+  const defaultPenName = accountProfile.defaultPenName;
+  const identityLabel = formatIdentityLabel(
+    accountInfoInitialized ? firstName : accountProfile.firstName ?? "",
+    accountInfoInitialized ? lastName : accountProfile.lastName ?? "",
+    defaultPenName
+  );
+  const penNames = accountProfile.penNames ?? [];
   const timelineMaxTokens = useMemo(
     () => Math.max(1, ...(dashboard?.timeline.map((entry) => entry.totalTokens) ?? [1])),
     [dashboard]
   );
+  const autoCorrectTyping = Boolean(appSettings?.autoCorrectTyping);
   const usageSummary = dashboard?.summary ?? {
     averageSpendUsd: 0,
     averageTokens: 0,
@@ -114,6 +156,20 @@ export default function ProfilePage() {
     totalSpendUsd: 0,
     totalTokens: 0,
   };
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (accountInfoInitialized || !appSettings) {
+      return;
+    }
+
+    setFirstName(appSettings.profile?.firstName ?? "");
+    setLastName(appSettings.profile?.lastName ?? "");
+    setAccountInfoInitialized(true);
+  }, [accountInfoInitialized, appSettings]);
 
   useEffect(() => {
     if (scope === "all" || scope === "active") {
@@ -126,9 +182,100 @@ export default function ProfilePage() {
   }, [keys, scope]);
 
   const canDeleteProject =
+    mounted &&
     Boolean(activeProjectId) &&
     deleteConfirmText.trim().toUpperCase() === "CONFIRM" &&
     !deletingProject;
+  const canBackupProject = mounted && Boolean(activeProjectId) && !backingUpProject && !deletingProject;
+
+  async function toggleAutoCorrectTyping(nextEnabled: boolean) {
+    setSavingAppSettings(true);
+    setActionError(null);
+    setMessage(null);
+
+    try {
+      await setAutoCorrectTyping(nextEnabled);
+      setMessage(`Auto-correct typing ${nextEnabled ? "enabled" : "disabled"}.`);
+    } catch (nextError) {
+      setActionError(nextError instanceof Error ? nextError.message : "Unable to update app settings.");
+    } finally {
+      setSavingAppSettings(false);
+    }
+  }
+
+  async function saveAccountInfo() {
+    setSavingAccountInfo(true);
+    setActionError(null);
+    setMessage(null);
+
+    try {
+      await updateProfileInfo({
+        firstName,
+        lastName,
+      });
+      setMessage("Account info saved.");
+    } catch (nextError) {
+      setActionError(nextError instanceof Error ? nextError.message : "Unable to save account info.");
+    } finally {
+      setSavingAccountInfo(false);
+    }
+  }
+
+  async function saveAccountInfoIfNeeded() {
+    if (appSettingsLoading || savingAccountInfo) {
+      return;
+    }
+
+    await saveAccountInfo();
+  }
+
+  async function addPenNameToAccount() {
+    const normalizedPenName = penName.trim();
+
+    if (!normalizedPenName) {
+      setActionError("Enter a pen name first.");
+      return;
+    }
+
+    setAddingPenName(true);
+    setActionError(null);
+    setMessage(null);
+
+    try {
+      await updateProfileInfo({
+        firstName,
+        lastName,
+      });
+      await savePenName(normalizedPenName);
+      setPenName("");
+      setMessage(
+        penNames.length === 0
+          ? `${normalizedPenName} was added and set as the default pen name.`
+          : `${normalizedPenName} was added to your pen names.`
+      );
+    } catch (nextError) {
+      setActionError(nextError instanceof Error ? nextError.message : "Unable to add pen name.");
+    } finally {
+      setAddingPenName(false);
+    }
+  }
+
+  async function setDefaultPenNameForAccount(nextDefaultPenName: string) {
+    setSettingDefaultPenName(nextDefaultPenName);
+    setActionError(null);
+    setMessage(null);
+
+    try {
+      await saveDefaultPenName(nextDefaultPenName);
+      setMessage(`${nextDefaultPenName} is now the default pen name.`);
+    } catch (nextError) {
+      setActionError(
+        nextError instanceof Error ? nextError.message : "Unable to update default pen name."
+      );
+    } finally {
+      setSettingDefaultPenName(null);
+    }
+  }
 
   async function saveActiveKey() {
     const normalizedKey = apiKey.trim();
@@ -300,6 +447,223 @@ export default function ProfilePage() {
       title="Profile, Keys, Usage & Project Delete"
       description="Manage encrypted OpenAI keys locally, review spend, token volume, and request counts by key and by time range, and delete the current project with a typed confirmation when you are ready to start fresh. Usage data is written to the app backend so it does not live in project files."
     >
+      <section className="mb-6 rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+              Editor behavior
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+              Auto-correct typing
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
+              When enabled, the app will try to replace a misspelled word after you finish it and
+              type a word boundary, using a conservative Hunspell-style dictionary suggestion.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoCorrectTyping}
+            aria-label="Toggle auto-correct typing"
+            onClick={() => void toggleAutoCorrectTyping(!autoCorrectTyping)}
+            disabled={appSettingsLoading || savingAppSettings}
+            className={`relative inline-flex h-12 w-24 items-center rounded-full border px-1 transition ${
+              autoCorrectTyping
+                ? "border-emerald-300 bg-emerald-500"
+                : "border-zinc-300 bg-zinc-200"
+            } disabled:cursor-not-allowed disabled:opacity-60`}
+          >
+            <span
+              className={`inline-block h-10 w-10 rounded-full bg-white shadow-sm transition-transform ${
+                autoCorrectTyping ? "translate-x-12" : "translate-x-0"
+              }`}
+            />
+            <span className="sr-only">
+              {autoCorrectTyping ? "Auto-correct on" : "Auto-correct off"}
+            </span>
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+              autoCorrectTyping
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-zinc-100 text-zinc-600"
+            }`}
+          >
+            {autoCorrectTyping ? "On" : "Off"}
+          </span>
+          <p className="text-xs leading-5 text-zinc-500">
+            It only runs on plain text fields and ignores passwords, read-only controls, and short acronyms.
+          </p>
+        </div>
+      </section>
+
+      <section className="mb-6 rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+              Account info
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+              First name, last name, and pen names
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
+              Store your main identity details here. The first pen name you add becomes the default
+              automatically, and you can switch the default to any saved pen name later.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-right">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              Display name
+            </p>
+            <p className="mt-1 text-sm font-medium text-zinc-950">{identityLabel}</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Default pen name: {defaultPenName ?? "Not set"}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <label className="block">
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              First name
+            </span>
+            <input
+              type="text"
+              value={firstName}
+              onChange={(event) => setFirstName(event.target.value)}
+              onBlur={() => void saveAccountInfoIfNeeded()}
+              placeholder="First name"
+              className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-zinc-50"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              Last name
+            </span>
+            <input
+              type="text"
+              value={lastName}
+              onChange={(event) => setLastName(event.target.value)}
+              onBlur={() => void saveAccountInfoIfNeeded()}
+              placeholder="Last name"
+              className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-zinc-50"
+            />
+          </label>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => void saveAccountInfo()}
+            disabled={savingAccountInfo || appSettingsLoading}
+            className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {savingAccountInfo ? "Saving..." : "Save account info"}
+          </button>
+        </div>
+
+        <div className="mt-6 rounded-[1.5rem] border border-zinc-200 bg-zinc-50 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                Pen names
+              </p>
+              <h3 className="mt-2 text-xl font-semibold tracking-tight text-zinc-950">
+                Saved writing names
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-600">
+                Add alternate pen names for publishing. The first saved pen name becomes the
+                default automatically, and any saved pen name can be promoted later.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-right">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Saved names
+              </p>
+              <p className="mt-1 text-sm font-medium text-zinc-950">{penNames.length}</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Default: {defaultPenName ?? "Not set"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+            <label className="block">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Pen name
+              </span>
+            <input
+              type="text"
+              value={penName}
+              onChange={(event) => setPenName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void addPenNameToAccount();
+                }
+              }}
+              placeholder="Author name, alias, or imprint"
+              className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-zinc-50"
+            />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => void addPenNameToAccount()}
+              disabled={addingPenName || appSettingsLoading}
+              className="inline-flex h-12 items-center justify-center rounded-full bg-amber-300 px-5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {addingPenName ? "Adding..." : "Add pen name"}
+            </button>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {penNames.length > 0 ? (
+              penNames.map((savedPenName, index) => {
+                const isDefault = savedPenName === defaultPenName;
+
+                return (
+                  <button
+                    type="button"
+                    key={`${savedPenName}-${index}`}
+                    onClick={() => void setDefaultPenNameForAccount(savedPenName)}
+                    disabled={isDefault || settingDefaultPenName === savedPenName || appSettingsLoading}
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${
+                      isDefault
+                        ? "border-zinc-950 bg-zinc-950 text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100"
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    <span>{savedPenName}</span>
+                    {isDefault ? (
+                      <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]">
+                        Default
+                      </span>
+                    ) : settingDefaultPenName === savedPenName ? (
+                      <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
+                        Saving
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="rounded-2xl border border-dashed border-zinc-300 bg-white px-4 py-4 text-sm text-zinc-500">
+                No pen names saved yet. Add one above to set your first default.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.25fr)]">
         <section className="relative overflow-hidden rounded-[2rem] border border-zinc-200 bg-[linear-gradient(180deg,#1f2937_0%,#111827_100%)] p-6 text-zinc-100 shadow-[0_20px_80px_rgba(15,23,42,0.18)]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.18),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(244,114,182,0.14),transparent_30%)]" />
@@ -749,10 +1113,12 @@ export default function ProfilePage() {
               Active project
             </p>
             <p className="mt-1 text-sm font-medium text-rose-950">
-              {activeProject?.title ?? "No active project"}
+              {mounted ? activeProject?.title ?? "No active project" : "No active project"}
             </p>
             <p className="mt-1 text-xs text-rose-600">
-              {activeProject?.path ?? "There is nothing selected right now."}
+              {mounted
+                ? activeProject?.path ?? "There is nothing selected right now."
+                : "There is nothing selected right now."}
             </p>
           </div>
         </div>
@@ -776,7 +1142,7 @@ export default function ProfilePage() {
           <button
             type="button"
             onClick={() => void backupCurrentProject()}
-            disabled={!activeProjectId || backingUpProject || deletingProject}
+            disabled={!canBackupProject}
             className="inline-flex h-12 items-center justify-center rounded-full border border-zinc-300 bg-white px-5 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {backingUpProject ? "Backing up..." : "Back up project"}

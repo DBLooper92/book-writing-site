@@ -46,3 +46,38 @@ Durable decisions for this desktop repository.
 
 - Decision: Keep a dedicated Scroll presentation for the timeline workspace alongside the existing visual chronology view, while reusing the same insertion/composer and edit sidebars.
 - Why: Authors need a distraction-light reading pass for event descriptions without losing the same create, edit, and AI insertion workflows already wired into the timeline.
+
+## D-010
+
+- Decision: Store timeline bookmarks as a reserved tag on the event record and persist AI creation provenance directly on the same event row.
+- Why: That keeps bookmark filtering and provenance rendering local to the canonical event record without introducing a separate bookmark table or transient job-state lookup.
+
+## D-011
+
+- Decision: Drive the timeline entity editor from a shared slice configuration map instead of separate per-slice modal handlers.
+- Why: A single menu and modal path stays easier to extend as additional slices are added, and it keeps the index-route/view-all wiring aligned with the form that is actually rendered.
+
+## D-012
+
+- Decision: Treat the multi-event BrainDump surface as a card-based session composer where each card runs as its own AI event or manual entry.
+- Why: Authors can separate beats explicitly, preserve bookmarks and order, and feed continuity from earlier cards without asking the model to split one large dump into multiple events.
+
+## D-013
+
+- Decision: Keep chapter-writing in a dedicated `/manuscript` route with a project-scoped manuscript table, and launch it from `Draft` as either a separate Electron window or a split-screen pane beside the scroll workspace.
+- Why: Proposal-review drafts and manuscript drafting are different workflows, and the editor needs to stay consistent across launch modes while preserving blank chapter slots, sparse chapter expansion, and local autosave per project/book/chapter slot.
+
+## D-014
+
+- Decision: Treat split Scroll mode as two distinct panes under one app shell, with the scroll controls anchored to the left pane and the manuscript editor anchored to the right pane.
+- Why: That matches the authoring mockup, keeps the left/right workflows visually separate, and makes the active pane emphasis and divider behavior easier to reason about.
+
+## D-015
+
+- Decision: Keep entity deletion focused on removing cross-entity link IDs and connection rows, while leaving descriptive text, summaries, and drafts intact.
+- Why: Authors need the delete action to clean up broken references automatically without accidentally erasing the narrative content attached to the record.
+
+## D-016
+
+- Decision: Route timeline event deletion through the same generic entity cleanup path used by other record types.
+- Why: Timeline events also participate in cross-entity ID links, so they should lose predecessor/successor and other connection fields when deleted instead of leaving broken references behind.

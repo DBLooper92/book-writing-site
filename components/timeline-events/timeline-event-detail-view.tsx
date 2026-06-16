@@ -72,10 +72,15 @@ export function TimelineEventDetailView({
       ) : null}
 
       <TimelineEventDetailSection title="Summary">
-        <div className="space-y-3 text-sm leading-6 text-zinc-700">
-          <p>{timelineEvent.summary || "No summary yet."}</p>
-          <p>{timelineEvent.description || "No full description yet."}</p>
-        </div>
+        <p className="text-sm leading-6 text-zinc-700">
+          {timelineEvent.summary || "No summary yet."}
+        </p>
+      </TimelineEventDetailSection>
+
+      <TimelineEventDetailSection title="Description">
+        <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-700">
+          {timelineEvent.description || "No full description yet."}
+        </p>
       </TimelineEventDetailSection>
 
       <TimelineEventDetailSection title="Event details">

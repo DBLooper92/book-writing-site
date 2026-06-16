@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { PageShell } from "@/components/layout/page-shell";
 import { ReligionDetailSection } from "@/components/religions/religion-detail-section";
 import { useReligion } from "@/hooks/use-religion";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function ReligionDetailPage() {
   const params = useParams<{ religionId: string }>();
@@ -46,12 +48,27 @@ export default function ReligionDetailPage() {
               Back to religions
             </Link>
             {religion ? (
-              <Link
-                href={`/religions/${religion.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit religion
-              </Link>
+              <>
+                <Link
+                  href={`/religions/${religion.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit religion
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="religion"
+                  entityTitle={religion.name}
+                  onDelete={() =>
+                    deleteEntityForProject(
+                      user?.uid ?? "",
+                      activeProjectId ?? "",
+                      "religions",
+                      religion.id
+                    )
+                  }
+                  redirectHref="/religions"
+                />
+              </>
             ) : null}
           </div>
         </div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { Era } from "@/types/era";
 
 type EraCardProps = {
@@ -31,6 +32,16 @@ export function EraCard({ era }: EraCardProps) {
       <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-500">
         <span>Slug: {era.slug}</span>
         <span>Project: {era.projectId}</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={era.id}
+          entityLabel="era"
+          entityTitle={era.name}
+          redirectHref="/eras"
+          tableName="eras"
+        />
       </div>
     </article>
   );

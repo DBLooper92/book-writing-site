@@ -193,11 +193,17 @@ class LocalQueryBuilder<
   private async executeProfilesQuery(): LocalResponse<TResult> {
     try {
       const currentProject = await window.bookBible.project.getCurrent();
+      const settings = await window.bookBible.app.getSettings();
+      const displayName =
+        [settings.profile.firstName, settings.profile.lastName].filter(Boolean).join(" ").trim() ||
+        settings.profile.defaultPenName ||
+        settings.profile.penNames[0] ||
+        "Local Desktop User";
       const now = new Date().toISOString();
       const profile = {
         id: "local-desktop",
         email: "local@desktop.invalid",
-        display_name: "Local Desktop User",
+        display_name: displayName,
         role: "owner",
         plan: "desktop",
         status: "active",

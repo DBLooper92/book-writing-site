@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { GovernmentDetailSection } from "@/components/governments/government-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useGovernment } from "@/hooks/use-government";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function GovernmentDetailPage() {
   const params = useParams<{ governmentId: string }>();
@@ -46,12 +48,27 @@ export default function GovernmentDetailPage() {
               Back to governments
             </Link>
             {government ? (
-              <Link
-                href={`/governments/${government.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit government
-              </Link>
+              <>
+                <Link
+                  href={`/governments/${government.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit government
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="government"
+                  entityTitle={government.name}
+                  onDelete={() =>
+                    deleteEntityForProject(
+                      user?.uid ?? "",
+                      activeProjectId ?? "",
+                      "governments",
+                      government.id
+                    )
+                  }
+                  redirectHref="/governments"
+                />
+              </>
             ) : null}
           </div>
         </div>

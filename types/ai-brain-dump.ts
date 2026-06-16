@@ -134,10 +134,68 @@ export type MultiEventBrainDumpPreviewResult = {
 
 export type TimelineBrainDumpProjectContext = {
   insertionContext?: TimelineBrainDumpInsertionContext;
+  referenceContext?: TimelineBrainDumpReferenceContext | null;
   predecessorEventIds?: string[];
   successorEventIds?: string[];
   yearEnd?: string;
   yearStart?: string;
+};
+
+export type TimelineBrainDumpReferenceTimelineEvent = {
+  bookmarkCollectionId: string | null;
+  bookmarked: boolean;
+  description: string;
+  eventId: string;
+  relation: "summary" | "description";
+  summary: string;
+  title: string;
+};
+
+export type TimelineBrainDumpReferenceCard = {
+  bookmarked: boolean;
+  cardId: string;
+  cardType: "ai" | "manual";
+  publishedTimelineEventId: string | null;
+  status: "idle" | "processing" | "ready" | "failed" | "published";
+  summary: string;
+  text: string;
+  title: string;
+};
+
+export type TimelineBrainDumpReferenceContext = {
+  cards: TimelineBrainDumpReferenceCard[];
+  relatedEvents: TimelineBrainDumpReferenceTimelineEvent[];
+};
+
+export type TimelineBrainDumpComposerCardType = "ai" | "manual";
+export type TimelineBrainDumpComposerCardStatus =
+  | "idle"
+  | "processing"
+  | "ready"
+  | "failed"
+  | "published";
+
+export type TimelineBrainDumpComposerCard = {
+  aiDraft: AiTimelineCreateDraftState | null;
+  bookmarkCollectionId: string | null;
+  bookmarked: boolean;
+  cardId: string;
+  createdAt: string;
+  error: string | null;
+  publishedTimelineEventId: string | null;
+  status: TimelineBrainDumpComposerCardStatus;
+  text: string;
+  type: TimelineBrainDumpComposerCardType;
+  updatedAt: string;
+};
+
+export type TimelineBrainDumpComposerSession = {
+  cards: TimelineBrainDumpComposerCard[];
+  createdAt: string;
+  insertionItemId: string | null;
+  projectId: string;
+  sessionId: string;
+  updatedAt: string;
 };
 
 export type MultiEventDraftState = {

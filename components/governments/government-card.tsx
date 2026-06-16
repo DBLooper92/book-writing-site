@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { Government } from "@/types/government";
 
 type GovernmentCardProps = {
@@ -31,6 +32,16 @@ export function GovernmentCard({ government }: GovernmentCardProps) {
       <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-500">
         <span>Slug: {government.slug}</span>
         <span>Project: {government.projectId}</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={government.id}
+          entityLabel="government"
+          entityTitle={government.name}
+          redirectHref="/governments"
+          tableName="governments"
+        />
       </div>
     </article>
   );

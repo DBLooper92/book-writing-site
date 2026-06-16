@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { PageShell } from "@/components/layout/page-shell";
 import { TechnologyDetailSection } from "@/components/technologies/technology-detail-section";
 import { useTechnology } from "@/hooks/use-technology";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function TechnologyDetailPage() {
   const params = useParams<{ technologyId: string }>();
@@ -46,12 +48,27 @@ export default function TechnologyDetailPage() {
               Back to technologies
             </Link>
             {technology ? (
-              <Link
-                href={`/technologies/${technology.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit technology
-              </Link>
+              <>
+                <Link
+                  href={`/technologies/${technology.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit technology
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="technology"
+                  entityTitle={technology.name}
+                  onDelete={() =>
+                    deleteEntityForProject(
+                      user?.uid ?? "",
+                      activeProjectId ?? "",
+                      "technologies",
+                      technology.id
+                    )
+                  }
+                  redirectHref="/technologies"
+                />
+              </>
             ) : null}
           </div>
         </div>

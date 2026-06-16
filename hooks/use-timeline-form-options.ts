@@ -27,6 +27,7 @@ export type TimelineFormOptionsResult = {
   error: string | null;
   bookOptions: TimelineReferenceOption[];
   chapterOptions: TimelineReferenceOption[];
+  chapterBookIdById: ReadonlyMap<string, string | null>;
   sceneOptions: TimelineReferenceOption[];
   characterOptions: TimelineReferenceOption[];
   locationOptions: TimelineReferenceOption[];
@@ -45,6 +46,7 @@ export type TimelineFormOptionsResult = {
 export function useTimelineFormOptions(currentTimelineEventId?: string | null) {
   const booksState = useBooks();
   const chaptersState = useChapters();
+  const bookTitleById = new Map(booksState.books.map((book) => [book.id, book.title] as const));
   const scenesState = useScenes();
   const charactersState = useCharacters();
   const locationsState = useLocations();
@@ -64,8 +66,13 @@ export function useTimelineFormOptions(currentTimelineEventId?: string | null) {
   const chapterOptions = chaptersState.chapters.map((chapter) => ({
     value: chapter.id,
     label: chapter.title,
-    meta: chapter.bookId ? `Book: ${chapter.bookId}` : chapter.id,
+    meta: chapter.bookId
+      ? `Book: ${bookTitleById.get(chapter.bookId) ?? chapter.bookId}`
+      : "No book",
   }));
+  const chapterBookIdById = new Map(
+    chaptersState.chapters.map((chapter) => [chapter.id, chapter.bookId] as const)
+  );
   const sceneOptions = scenesState.scenes.map((scene) => ({
     value: scene.id,
     label: scene.title,
@@ -155,6 +162,7 @@ export function useTimelineFormOptions(currentTimelineEventId?: string | null) {
       timelineEventsState.error,
     bookOptions,
     chapterOptions,
+    chapterBookIdById,
     sceneOptions,
     characterOptions,
     locationOptions,

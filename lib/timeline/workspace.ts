@@ -1,22 +1,21 @@
-import { getTimelineReferenceIssues, type TimelineReferenceSets } from "@/lib/timeline/references";
+import { getTimelineReferenceIssues, type TimelineReferenceSets } from "./references";
+import {
+  getTimelineEventBookmarkCollectionId,
+  getTimelineBookmarkCollectionById,
+  TIMELINE_BOOKMARK_COLLECTION_UNCATEGORIZED_ID,
+  TIMELINE_BOOKMARK_COLLECTION_DEFAULT_COLOR,
+  type TimelineBookmarkCollection,
+} from "./bookmark-collections";
 import {
   TIMELINE_EVENT_STATUS_OPTIONS,
   TIMELINE_EVENT_TYPE_OPTIONS,
   type TimelineEvent,
   type TimelineEventStatus,
   type TimelineEventType,
-} from "@/types/timeline-event";
+} from "../../types/timeline-event";
 
 export type TimelineWorkspaceStatusFilter = "all" | TimelineEventStatus;
 export type TimelineWorkspaceTypeFilter = "all" | TimelineEventType;
-export type TimelineWorkspaceDatingFilter = "all" | "dated" | "undated";
-export type TimelineWorkspaceLinkScopeFilter =
-  | "all"
-  | "manuscript"
-  | "characters"
-  | "locations"
-  | "worldbuilding"
-  | "continuity";
 
 export type TimelineWorkspaceFilters = {
   bookIds: string[];
@@ -24,8 +23,8 @@ export type TimelineWorkspaceFilters = {
   search: string;
   status: TimelineWorkspaceStatusFilter;
   eventType: TimelineWorkspaceTypeFilter;
-  dating: TimelineWorkspaceDatingFilter;
-  linkScope: TimelineWorkspaceLinkScopeFilter;
+  bookmarked: boolean;
+  bookmarkCollectionIds: string[];
 };
 
 export type TimelineWorkspaceYearGroup = {
@@ -67,27 +66,6 @@ export const TIMELINE_WORKSPACE_TYPE_OPTIONS: ReadonlyArray<{
   label: string;
 }> = [{ value: "all", label: "All event types" }, ...TIMELINE_EVENT_TYPE_OPTIONS];
 
-export const TIMELINE_WORKSPACE_DATING_OPTIONS: ReadonlyArray<{
-  value: TimelineWorkspaceDatingFilter;
-  label: string;
-}> = [
-  { value: "all", label: "All chronology coverage" },
-  { value: "dated", label: "Dated events only" },
-  { value: "undated", label: "Undated events only" },
-];
-
-export const TIMELINE_WORKSPACE_LINK_SCOPE_OPTIONS: ReadonlyArray<{
-  value: TimelineWorkspaceLinkScopeFilter;
-  label: string;
-}> = [
-  { value: "all", label: "All link coverage" },
-  { value: "manuscript", label: "Manuscript-linked" },
-  { value: "characters", label: "Character-linked" },
-  { value: "locations", label: "Location-linked" },
-  { value: "worldbuilding", label: "Worldbuilding-linked" },
-  { value: "continuity", label: "Continuity-linked" },
-];
-
 export function createEmptyTimelineWorkspaceFilters(): TimelineWorkspaceFilters {
   return {
     bookIds: [],
@@ -95,8 +73,8 @@ export function createEmptyTimelineWorkspaceFilters(): TimelineWorkspaceFilters 
     search: "",
     status: "all",
     eventType: "all",
-    dating: "all",
-    linkScope: "all",
+    bookmarked: false,
+    bookmarkCollectionIds: [],
   };
 }
 
@@ -107,9 +85,26 @@ export function hasActiveTimelineWorkspaceFilters(filters: TimelineWorkspaceFilt
     filters.search.trim().length > 0 ||
     filters.status !== "all" ||
     filters.eventType !== "all" ||
-    filters.dating !== "all" ||
-    filters.linkScope !== "all"
+    filters.bookmarked ||
+    filters.bookmarkCollectionIds.length > 0
   );
+}
+
+export function getTimelineWorkspaceBookmarkAccentColor(
+  filters: Pick<TimelineWorkspaceFilters, "bookmarked" | "bookmarkCollectionIds">,
+  bookmarkCollections: ReadonlyArray<TimelineBookmarkCollection>
+) {
+  if (!filters.bookmarked || filters.bookmarkCollectionIds.length !== 1) {
+    return null;
+  }
+
+  const bookmarkCollectionId = filters.bookmarkCollectionIds[0];
+
+  if (bookmarkCollectionId === TIMELINE_BOOKMARK_COLLECTION_UNCATEGORIZED_ID) {
+    return TIMELINE_BOOKMARK_COLLECTION_DEFAULT_COLOR;
+  }
+
+  return getTimelineBookmarkCollectionById(bookmarkCollections, bookmarkCollectionId)?.color ?? null;
 }
 
 export function buildTimelineWorkspaceModel(
@@ -150,7 +145,28 @@ export function buildTimelineWorkspaceModel(
 
 export function sortTimelineEvents(timelineEvents: TimelineEvent[]) {
   const baseSortedTimelineEvents = [...timelineEvents].sort(compareTimelineEvents);
-  return resolveTimelineAdjacencyOrder(baseSortedTimelineEvents);
+  const orderedTimelineEvents = resolveTimelineAdjacencyOrder(baseSortedTimelineEvents);
+
+  if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+    const insertionEvents = orderedTimelineEvents.filter(
+      (timelineEvent) => timelineEvent.sourceInsertionItemId
+    );
+
+    if (insertionEvents.length > 0) {
+      console.log("[timeline:sort]", {
+        baseOrder: baseSortedTimelineEvents.map((timelineEvent) => timelineEvent.id),
+        orderedOrder: orderedTimelineEvents.map((timelineEvent) => timelineEvent.id),
+        insertionEvents: insertionEvents.map((timelineEvent) => ({
+          id: timelineEvent.id,
+          predecessorEventIds: timelineEvent.predecessorEventIds,
+          sourceInsertionItemId: timelineEvent.sourceInsertionItemId,
+          successorEventIds: timelineEvent.successorEventIds,
+        })),
+      });
+    }
+  }
+
+  return orderedTimelineEvents;
 }
 
 export function compareTimelineEvents(left: TimelineEvent, right: TimelineEvent) {
@@ -202,6 +218,12 @@ export function compareTimelineEvents(left: TimelineEvent, right: TimelineEvent)
 
   if (endComparison !== 0) {
     return endComparison;
+  }
+
+  const createdAtComparison = compareTimelineEventCreatedAt(left, right);
+
+  if (createdAtComparison !== 0) {
+    return createdAtComparison;
   }
 
   return left.title.localeCompare(right.title);
@@ -433,6 +455,15 @@ function compareTimelineAnchorYear(left: number | null, right: number | null) {
 }
 
 function compareUndatedTimelineEvents(left: TimelineEvent, right: TimelineEvent) {
+  const sourceInsertionComparison = compareSourceInsertionProvenance(
+    left.sourceInsertionItemId,
+    right.sourceInsertionItemId
+  );
+
+  if (sourceInsertionComparison !== 0) {
+    return sourceInsertionComparison;
+  }
+
   const createdAtComparison = compareTimelineEventCreatedAt(left, right);
 
   if (createdAtComparison !== 0) {
@@ -461,19 +492,38 @@ function compareTimelineEventCreatedAt(left: TimelineEvent, right: TimelineEvent
   return 0;
 }
 
+function compareSourceInsertionProvenance(leftSourceInsertionItemId: string | null, rightSourceInsertionItemId: string | null) {
+  if (leftSourceInsertionItemId && !rightSourceInsertionItemId) {
+    return -1;
+  }
+
+  if (!leftSourceInsertionItemId && rightSourceInsertionItemId) {
+    return 1;
+  }
+
+  if (leftSourceInsertionItemId && rightSourceInsertionItemId) {
+    return leftSourceInsertionItemId.localeCompare(rightSourceInsertionItemId);
+  }
+
+  return 0;
+}
+
 function resolveTimelineAdjacencyOrder(timelineEvents: TimelineEvent[]) {
   if (timelineEvents.length < 2) {
     return timelineEvents;
   }
 
-  const timelineEventById = new Map(
-    timelineEvents.map((timelineEvent) => [timelineEvent.id, timelineEvent])
-  );
   const baseIndexById = new Map(
     timelineEvents.map((timelineEvent, index) => [timelineEvent.id, index])
   );
+  const placementRankById = buildTimelineEventPlacementRankById(timelineEvents, baseIndexById);
+  const timelineEventById = new Map(
+    timelineEvents.map((timelineEvent) => [timelineEvent.id, timelineEvent])
+  );
   const indegreeById = new Map(timelineEvents.map((timelineEvent) => [timelineEvent.id, 0]));
-  const adjacencyById = new Map(timelineEvents.map((timelineEvent) => [timelineEvent.id, new Set<string>()]));
+  const adjacencyById = new Map(
+    timelineEvents.map((timelineEvent) => [timelineEvent.id, new Set<string>()])
+  );
 
   for (const timelineEvent of timelineEvents) {
     for (const predecessorId of timelineEvent.predecessorEventIds) {
@@ -499,7 +549,10 @@ function resolveTimelineAdjacencyOrder(timelineEvents: TimelineEvent[]) {
 
   const readyIds = timelineEvents
     .filter((timelineEvent) => (indegreeById.get(timelineEvent.id) ?? 0) === 0)
-    .map((timelineEvent) => timelineEvent.id);
+    .map((timelineEvent) => timelineEvent.id)
+    .sort((leftId, rightId) =>
+      compareReadyTimelineIds(leftId, rightId, placementRankById, baseIndexById, timelineEventById)
+    );
   const orderedTimelineEvents: TimelineEvent[] = [];
 
   while (readyIds.length > 0) {
@@ -522,7 +575,13 @@ function resolveTimelineAdjacencyOrder(timelineEvents: TimelineEvent[]) {
       indegreeById.set(linkedId, nextIndegree);
 
       if (nextIndegree === 0) {
-        insertTimelineIdByBaseIndex(readyIds, linkedId, baseIndexById);
+        insertTimelineIdByPlacement(
+          readyIds,
+          linkedId,
+          placementRankById,
+          baseIndexById,
+          timelineEventById
+        );
       }
     });
   }
@@ -536,6 +595,76 @@ function resolveTimelineAdjacencyOrder(timelineEvents: TimelineEvent[]) {
     ...orderedTimelineEvents,
     ...timelineEvents.filter((timelineEvent) => !orderedIds.has(timelineEvent.id)),
   ];
+}
+
+function buildTimelineEventPlacementRankById(
+  timelineEvents: TimelineEvent[],
+  baseIndexById: Map<string, number>
+) {
+  const timelineEventById = new Map(
+    timelineEvents.map((timelineEvent) => [timelineEvent.id, timelineEvent])
+  );
+  const placementRankById = new Map<string, number>();
+
+  for (const timelineEvent of timelineEvents) {
+    const insertionRank = parseInsertionItemRank(
+      timelineEvent.sourceInsertionItemId,
+      timelineEventById,
+      baseIndexById
+    );
+
+    placementRankById.set(
+      timelineEvent.id,
+      insertionRank ?? (baseIndexById.get(timelineEvent.id) ?? Number.MAX_SAFE_INTEGER)
+    );
+  }
+
+  return placementRankById;
+}
+
+function parseInsertionItemRank(
+  sourceInsertionItemId: string | null,
+  timelineEventById: Map<string, TimelineEvent>,
+  baseIndexById: Map<string, number>
+) {
+  if (!sourceInsertionItemId || !sourceInsertionItemId.startsWith("notch-")) {
+    return null;
+  }
+
+  const notchBody = sourceInsertionItemId.slice("notch-".length);
+  const separatorIndexes: number[] = [];
+
+  for (let index = 0; index < notchBody.length; index += 1) {
+    if (notchBody[index] === "-") {
+      separatorIndexes.push(index);
+    }
+  }
+
+  for (const separatorIndex of separatorIndexes) {
+    const previousEventId = notchBody.slice(0, separatorIndex);
+    const nextEventId = notchBody.slice(separatorIndex + 1);
+
+    if (!timelineEventById.has(previousEventId) || !timelineEventById.has(nextEventId)) {
+      continue;
+    }
+
+    const previousIndex = baseIndexById.get(previousEventId);
+    const nextIndex = baseIndexById.get(nextEventId);
+
+    if (typeof previousIndex === "number" && typeof nextIndex === "number") {
+      return previousIndex + 0.5;
+    }
+
+    if (typeof previousIndex === "number") {
+      return previousIndex + 0.5;
+    }
+
+    if (typeof nextIndex === "number") {
+      return nextIndex - 0.5;
+    }
+  }
+
+  return null;
 }
 
 function addTimelineAdjacencyEdge(
@@ -559,14 +688,22 @@ function addTimelineAdjacencyEdge(
   indegreeById.set(toId, (indegreeById.get(toId) ?? 0) + 1);
 }
 
-function insertTimelineIdByBaseIndex(
+function insertTimelineIdByPlacement(
   readyIds: string[],
   nextId: string,
-  baseIndexById: Map<string, number>
+  placementRankById: Map<string, number>,
+  baseIndexById: Map<string, number>,
+  timelineEventById: Map<string, TimelineEvent>
 ) {
-  const nextIndex = baseIndexById.get(nextId) ?? Number.MAX_SAFE_INTEGER;
   const insertAt = readyIds.findIndex(
-    (readyId) => (baseIndexById.get(readyId) ?? Number.MAX_SAFE_INTEGER) > nextIndex
+    (readyId) =>
+      compareReadyTimelineIds(
+        readyId,
+        nextId,
+        placementRankById,
+        baseIndexById,
+        timelineEventById
+      ) > 0
   );
 
   if (insertAt === -1) {
@@ -575,6 +712,43 @@ function insertTimelineIdByBaseIndex(
   }
 
   readyIds.splice(insertAt, 0, nextId);
+}
+
+function compareReadyTimelineIds(
+  leftId: string,
+  rightId: string,
+  placementRankById: Map<string, number>,
+  baseIndexById: Map<string, number>,
+  timelineEventById: Map<string, TimelineEvent>
+) {
+  const leftPlacementRank = placementRankById.get(leftId) ?? Number.MAX_SAFE_INTEGER;
+  const rightPlacementRank = placementRankById.get(rightId) ?? Number.MAX_SAFE_INTEGER;
+
+  if (leftPlacementRank !== rightPlacementRank) {
+    return leftPlacementRank - rightPlacementRank;
+  }
+
+  const leftBaseIndex = baseIndexById.get(leftId) ?? Number.MAX_SAFE_INTEGER;
+  const rightBaseIndex = baseIndexById.get(rightId) ?? Number.MAX_SAFE_INTEGER;
+
+  if (leftBaseIndex !== rightBaseIndex) {
+    return leftBaseIndex - rightBaseIndex;
+  }
+
+  const leftTimelineEvent = timelineEventById.get(leftId);
+  const rightTimelineEvent = timelineEventById.get(rightId);
+
+  if (leftTimelineEvent && rightTimelineEvent) {
+    const createdAtComparison = compareTimelineEventCreatedAt(leftTimelineEvent, rightTimelineEvent);
+
+    if (createdAtComparison !== 0) {
+      return createdAtComparison;
+    }
+
+    return leftTimelineEvent.title.localeCompare(rightTimelineEvent.title);
+  }
+
+  return leftId.localeCompare(rightId);
 }
 
 function formatPartialTimelineDate(
@@ -629,16 +803,20 @@ function matchesTimelineWorkspaceFilters(
     return false;
   }
 
-  if (filters.dating === "dated" && getTimelineEventAnchorYear(timelineEvent) === null) {
+  if (filters.bookmarked && !timelineEvent.tags.includes("bookmarked")) {
     return false;
   }
 
-  if (filters.dating === "undated" && getTimelineEventAnchorYear(timelineEvent) !== null) {
-    return false;
-  }
+  if (filters.bookmarked && filters.bookmarkCollectionIds.length > 0) {
+    const bookmarkCollectionId = getTimelineEventBookmarkCollectionId(timelineEvent);
 
-  if (filters.linkScope !== "all" && !matchesLinkScope(timelineEvent, filters.linkScope)) {
-    return false;
+    if (!bookmarkCollectionId) {
+      return filters.bookmarkCollectionIds.includes(TIMELINE_BOOKMARK_COLLECTION_UNCATEGORIZED_ID);
+    }
+
+    if (!filters.bookmarkCollectionIds.includes(bookmarkCollectionId)) {
+      return false;
+    }
   }
 
   const normalizedSearch = filters.search.trim().toLowerCase();
@@ -653,45 +831,6 @@ function matchesTimelineWorkspaceFilters(
 function hasAnyOverlap(values: ReadonlyArray<string>, candidates: ReadonlyArray<string>) {
   const candidateSet = new Set(candidates);
   return values.some((value) => candidateSet.has(value));
-}
-
-function matchesLinkScope(
-  timelineEvent: TimelineEvent,
-  linkScope: TimelineWorkspaceLinkScopeFilter
-) {
-  if (linkScope === "manuscript") {
-    return (
-      timelineEvent.bookIds.length > 0 ||
-      timelineEvent.chapterIds.length > 0 ||
-      timelineEvent.sceneIds.length > 0
-    );
-  }
-
-  if (linkScope === "characters") {
-    return timelineEvent.characterIds.length > 0;
-  }
-
-  if (linkScope === "locations") {
-    return timelineEvent.locationIds.length > 0;
-  }
-
-  if (linkScope === "worldbuilding") {
-    return (
-      !!timelineEvent.eraId ||
-      timelineEvent.factionIds.length > 0 ||
-      timelineEvent.cultureIds.length > 0 ||
-      timelineEvent.technologyIds.length > 0 ||
-      timelineEvent.religionIds.length > 0 ||
-      timelineEvent.plotThreadIds.length > 0 ||
-      timelineEvent.themeIds.length > 0
-    );
-  }
-
-  if (linkScope === "continuity") {
-    return hasTimelineContinuityLinks(timelineEvent);
-  }
-
-  return true;
 }
 
 function buildSearchableTimelineText(timelineEvent: TimelineEvent) {

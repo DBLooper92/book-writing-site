@@ -2,8 +2,21 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { createTimelineEventForProject, updateTimelineEventForProject } from "@/lib/data/timeline-events";
+import {
+  createTimelineEventForProject,
+  getTimelineEventById,
+  updateTimelineEventForProject,
+} from "@/lib/data/timeline-events";
 import { applyAiDraftResolutionsToTimelineValues } from "@/lib/timeline/ai-draft-apply";
+import {
+  getInsertionBoundaryEventIds,
+  validateInsertionTimelineEventChronology,
+} from "@/lib/timeline/insertion-anchors";
+import { rewireTimelineInsertionBoundaryLinksForProject } from "@/lib/timeline/insertion-links-runtime";
+import {
+  getInsertionBoundaryChronologyParts,
+  type TimelineLayoutInsertionItem,
+} from "@/lib/timeline/layout";
 import type {
   AiMultiEventJobRecord,
   BrainDumpEntitySuggestion,
@@ -187,11 +200,84 @@ export function TimelineBrainDumpJobReview({
       }
     >();
     const relationWarnings: string[] = [];
+    const insertionBoundaryIds = getInsertionBoundaryEventIds(
+      job.input?.projectContext?.insertionContext ?? null
+    );
+    const expandedReviewState = expandedDraftId ? draftStateById[expandedDraftId] : null;
 
     setApplying(true);
     setError(null);
 
     try {
+      if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+        console.log("[timeline:multi-review] applying drafts", {
+          jobId: job.id,
+          insertionItemId: job.input?.timelineInsertionItemId ?? null,
+          draftCount: drafts.length,
+          expandedDraftId,
+          predecessorDraftIds: expandedReviewState?.predecessorDraftIds ?? [],
+          successorDraftIds: expandedReviewState?.successorDraftIds ?? [],
+          insertionBoundaryIds,
+        });
+      }
+
+      let insertionValidationItem: TimelineLayoutInsertionItem | null = null;
+
+      try {
+        insertionValidationItem = await buildInsertionValidationItem({
+          activeProjectId,
+          boundaryEventIds: insertionBoundaryIds,
+          uid,
+        });
+      } catch (error) {
+        setError(
+          error instanceof Error ? error.message : "Unable to read the insertion boundary dates."
+        );
+        return;
+      }
+
+      if (insertionValidationItem) {
+        for (const draft of drafts) {
+          const reviewState = draftStateById[draft.draftId];
+
+          if (!reviewState || reviewState.skipped) {
+            continue;
+          }
+
+          const unresolved = getUnresolvedCount(
+            draft.entitySuggestions,
+            reviewState.resolutionsBySuggestionId
+          );
+
+          if (unresolved > 0) {
+            continue;
+          }
+
+          const mergedDraftValues = mergeDraftValuesForApply(
+            draft.prefill,
+            reviewState.draftValues
+          );
+          const normalizedValues = normalizeTimelineEventFormValues(mergedDraftValues);
+          const validation = validateNormalizedTimelineEventFormValues(normalizedValues);
+
+          if (validation.errors.length > 0) {
+            continue;
+          }
+
+          const insertionError = validateInsertionTimelineEventChronology(
+            normalizedValues,
+            insertionValidationItem
+          );
+
+          if (insertionError) {
+            setError(
+              `Draft "${normalizedValues.title.trim() || draft.draftId}" does not fit the selected insertion gap. ${insertionError}`
+            );
+            return;
+          }
+        }
+      }
+
       for (const draft of drafts) {
         const reviewState = draftStateById[draft.draftId];
 
@@ -262,7 +348,13 @@ export function TimelineBrainDumpJobReview({
           const createdTimelineEventId = await createTimelineEventForProject(
             uid,
             activeProjectId,
-            valuesWithResolvedEntities
+            valuesWithResolvedEntities,
+            {
+              creationSource: "ai_multi",
+              sourceBrainDumpText: job.input?.brainDumpText ?? "",
+              sourceInsertionItemId: job.input?.timelineInsertionItemId ?? null,
+              sourceJobId: job.id,
+            }
           );
           createdByDraftId.set(draft.draftId, createdTimelineEventId);
           createdValuesByDraftId.set(draft.draftId, {
@@ -274,6 +366,15 @@ export function TimelineBrainDumpJobReview({
             createdTimelineEventId,
             draftId: draft.draftId,
           });
+
+          if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+            console.log("[timeline:multi-review] created draft", {
+              draftId: draft.draftId,
+              createdTimelineEventId,
+              predecessorEventIds: valuesWithResolvedEntities.predecessorEventIds,
+              successorEventIds: valuesWithResolvedEntities.successorEventIds,
+            });
+          }
         } catch (nextError) {
           report.failed.push({
             draftId: draft.draftId,
@@ -299,12 +400,24 @@ export function TimelineBrainDumpJobReview({
             .map((draftId) => createdByDraftId.get(draftId) ?? "")
             .filter(Boolean)
         );
+        const isFirstCreatedDraft = success.draftId === report.success[0]?.draftId;
+        const isLastCreatedDraft = success.draftId === report.success[report.success.length - 1]?.draftId;
 
         try {
           await updateTimelineEventForProject(uid, activeProjectId, success.createdTimelineEventId, {
             ...entry.values,
-            predecessorEventIds,
-            successorEventIds,
+            predecessorEventIds: unique([
+              ...predecessorEventIds,
+              ...(isFirstCreatedDraft && insertionBoundaryIds.previousEventId
+                ? [insertionBoundaryIds.previousEventId]
+                : []),
+            ]),
+            successorEventIds: unique([
+              ...successorEventIds,
+              ...(isLastCreatedDraft && insertionBoundaryIds.nextEventId
+                ? [insertionBoundaryIds.nextEventId]
+                : []),
+            ]),
           });
         } catch (nextError) {
           relationWarnings.push(
@@ -317,6 +430,33 @@ export function TimelineBrainDumpJobReview({
 
       setApplyReport(report);
       setPostApplyWarnings(relationWarnings);
+
+      if (report.success.length > 0) {
+        try {
+          await rewireTimelineInsertionBoundaryLinksForProject({
+            boundaryEventIds: insertionBoundaryIds,
+            insertedEventIds: report.success.map((success) => success.createdTimelineEventId),
+            projectId: activeProjectId,
+            uid,
+          });
+        } catch (error) {
+          relationWarnings.push(
+            error instanceof Error ? error.message : "Failed to rewire insertion boundary links."
+          );
+          setPostApplyWarnings(relationWarnings);
+        }
+      }
+
+      if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+        console.log("[timeline:multi-review] apply finished", {
+          jobId: job.id,
+          successCount: report.success.length,
+          failedCount: report.failed.length,
+          skippedCount: report.skipped.length,
+          relationWarnings,
+          createdTimelineEventIds: report.success.map((success) => success.createdTimelineEventId),
+        });
+      }
 
       if (report.success.length > 0 && report.failed.length === 0) {
         const appliedReviewState = serializeJobReviewState({
@@ -1137,6 +1277,59 @@ function buildResolutions(
 
 function unique(values: string[]) {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+async function buildInsertionValidationItem({
+  activeProjectId,
+  boundaryEventIds,
+  uid,
+}: {
+  activeProjectId: string;
+  boundaryEventIds: {
+    nextEventId: string | null;
+    previousEventId: string | null;
+  };
+  uid: string;
+}): Promise<TimelineLayoutInsertionItem | null> {
+  const [previousEvent, nextEvent] = await Promise.all([
+    boundaryEventIds.previousEventId
+      ? getTimelineEventById(uid, activeProjectId, boundaryEventIds.previousEventId)
+      : Promise.resolve(null),
+    boundaryEventIds.nextEventId
+      ? getTimelineEventById(uid, activeProjectId, boundaryEventIds.nextEventId)
+      : Promise.resolve(null),
+  ]);
+
+  if (!previousEvent && !nextEvent) {
+    return null;
+  }
+
+  const previousBoundary = getInsertionBoundaryChronologyParts(previousEvent, "end");
+  const nextBoundary = getInsertionBoundaryChronologyParts(nextEvent, "start");
+
+  return {
+    kind: "notch",
+    id: "multi-event-validation",
+    label: "Insert between events",
+    helperText: "",
+    fallbackYear: "",
+    previousEventId: previousEvent?.id ?? null,
+    nextEventId: nextEvent?.id ?? null,
+    previousEventTitle: previousEvent?.title ?? null,
+    nextEventTitle: nextEvent?.title ?? null,
+    prefilledYearStart: "",
+    prefilledMonthStart: "",
+    prefilledDayStart: "",
+    prefilledYearEnd: "",
+    prefilledMonthEnd: "",
+    prefilledDayEnd: "",
+    previousBoundaryYear: previousBoundary.year,
+    previousBoundaryMonth: previousBoundary.month,
+    previousBoundaryDay: previousBoundary.day,
+    nextBoundaryYear: nextBoundary.year,
+    nextBoundaryMonth: nextBoundary.month,
+    nextBoundaryDay: nextBoundary.day,
+  };
 }
 
 function buildInitialDraftReviewState(

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { GlossaryTerm } from "@/types/glossary-term";
 
 type GlossaryTermCardProps = {
@@ -31,6 +32,16 @@ export function GlossaryTermCard({ glossaryTerm }: GlossaryTermCardProps) {
       <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-500">
         <span>Title: {glossaryTerm.title}</span>
         <span>Project: {glossaryTerm.projectId}</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={glossaryTerm.id}
+          entityLabel="glossary term"
+          entityTitle={glossaryTerm.term || glossaryTerm.title}
+          redirectHref="/glossary-terms"
+          tableName="glossary_terms"
+        />
       </div>
     </article>
   );

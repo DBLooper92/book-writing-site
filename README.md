@@ -30,6 +30,12 @@ npm install
 npm run dev
 ```
 
+Production-like desktop preview:
+
+```bash
+npm run preview:desktop
+```
+
 Build desktop package:
 
 ```bash

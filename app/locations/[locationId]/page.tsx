@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { PageShell } from "@/components/layout/page-shell";
 import { LocationDetailSection } from "@/components/locations/location-detail-section";
 import { useLocation } from "@/hooks/use-location";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function LocationDetailPage() {
   const params = useParams<{ locationId: string }>();
@@ -46,12 +48,27 @@ export default function LocationDetailPage() {
               Back to locations
             </Link>
             {location ? (
-              <Link
-                href={`/locations/${location.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit location
-              </Link>
+              <>
+                <Link
+                  href={`/locations/${location.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit location
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="location"
+                  entityTitle={location.name}
+                  onDelete={() =>
+                    deleteEntityForProject(
+                      user?.uid ?? "",
+                      activeProjectId ?? "",
+                      "locations",
+                      location.id
+                    )
+                  }
+                  redirectHref="/locations"
+                />
+              </>
             ) : null}
           </div>
         </div>

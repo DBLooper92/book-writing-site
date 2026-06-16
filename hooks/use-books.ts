@@ -12,6 +12,7 @@ type UseBooksResult = {
   books: Book[];
   loading: boolean;
   error: string | null;
+  reload: () => void;
   user: AppAuthUser | null;
   uid: string | null;
   activeProjectId: string | null;
@@ -32,6 +33,7 @@ export function useBooks(): UseBooksResult {
     books: [],
     error: null,
   });
+  const [reloadToken, setReloadToken] = useState(0);
   const queryKey = uid && activeProjectId ? `${uid}:${activeProjectId}` : null;
 
   useEffect(() => {
@@ -68,7 +70,7 @@ export function useBooks(): UseBooksResult {
     return () => {
       cancelled = true;
     };
-  }, [activeProjectId, queryKey, uid]);
+  }, [activeProjectId, queryKey, reloadToken, uid]);
 
   const matchesCurrentQuery = state.key === queryKey;
   const loading = projectLoading || (!!queryKey && !matchesCurrentQuery);
@@ -77,6 +79,7 @@ export function useBooks(): UseBooksResult {
     books: matchesCurrentQuery ? state.books : [],
     loading,
     error: matchesCurrentQuery ? state.error : null,
+    reload: () => setReloadToken((current) => current + 1),
     user,
     uid,
     activeProjectId,

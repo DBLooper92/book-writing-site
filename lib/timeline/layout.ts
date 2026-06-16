@@ -2,8 +2,8 @@ import {
   formatDetailedTimelineEventRange,
   getTimelineEventAnchorYear,
   sortTimelineEvents,
-} from "@/lib/timeline/workspace";
-import type { TimelineEvent } from "@/types/timeline-event";
+} from "./workspace";
+import type { TimelineEvent } from "../../types/timeline-event";
 
 export type TimelineLayoutEventItem = {
   kind: "event";
@@ -34,7 +34,17 @@ export type TimelineLayoutInsertionItem = {
   previousEventTitle: string | null;
   nextEventTitle: string | null;
   prefilledYearStart: string;
+  prefilledMonthStart: string;
+  prefilledDayStart: string;
   prefilledYearEnd: string;
+  prefilledMonthEnd: string;
+  prefilledDayEnd: string;
+  previousBoundaryYear: number | null;
+  previousBoundaryMonth: number | null;
+  previousBoundaryDay: number | null;
+  nextBoundaryYear: number | null;
+  nextBoundaryMonth: number | null;
+  nextBoundaryDay: number | null;
 };
 
 export type TimelineLayoutItem =
@@ -111,16 +121,8 @@ function buildInsertionItem(
   nextTimelineEvent: TimelineEvent | null,
   fallbackAnchorYear: number | null
 ): TimelineLayoutInsertionItem {
-  const previousAnchorYear = previousTimelineEvent
-    ? getTimelineEventAnchorYear(previousTimelineEvent)
-    : null;
-  const nextAnchorYear = nextTimelineEvent ? getTimelineEventAnchorYear(nextTimelineEvent) : null;
-  const sharedAnchorYear =
-    typeof previousAnchorYear === "number" &&
-    typeof nextAnchorYear === "number" &&
-    previousAnchorYear === nextAnchorYear
-      ? String(previousAnchorYear)
-      : "";
+  const previousBoundary = getInsertionBoundaryChronologyParts(previousTimelineEvent, "end");
+  const nextBoundary = getInsertionBoundaryChronologyParts(nextTimelineEvent, "start");
 
   return {
     kind: "notch",
@@ -130,19 +132,67 @@ function buildInsertionItem(
       nextTimelineEvent?.id ?? "end",
     ].join("-"),
     label: buildInsertionLabel(previousTimelineEvent, nextTimelineEvent),
-    helperText: buildInsertionHelperText(
-      previousTimelineEvent,
-      nextTimelineEvent,
-      sharedAnchorYear
-    ),
+    helperText: buildInsertionHelperText(previousTimelineEvent, nextTimelineEvent),
     fallbackYear: typeof fallbackAnchorYear === "number" ? String(fallbackAnchorYear) : "",
     previousEventId: previousTimelineEvent?.id ?? null,
     nextEventId: nextTimelineEvent?.id ?? null,
     previousEventTitle: previousTimelineEvent?.title ?? null,
     nextEventTitle: nextTimelineEvent?.title ?? null,
-    prefilledYearStart: sharedAnchorYear,
-    prefilledYearEnd: sharedAnchorYear,
+    prefilledYearStart: "",
+    prefilledMonthStart: "",
+    prefilledDayStart: "",
+    prefilledYearEnd: "",
+    prefilledMonthEnd: "",
+    prefilledDayEnd: "",
+    previousBoundaryYear: previousBoundary.year,
+    previousBoundaryMonth: previousBoundary.month,
+    previousBoundaryDay: previousBoundary.day,
+    nextBoundaryYear: nextBoundary.year,
+    nextBoundaryMonth: nextBoundary.month,
+    nextBoundaryDay: nextBoundary.day,
   };
+}
+
+export function getInsertionBoundaryChronologyParts(
+  timelineEvent: TimelineEvent | null,
+  boundary: "start" | "end"
+) {
+  if (!timelineEvent) {
+    return {
+      day: null as number | null,
+      month: null as number | null,
+      year: null as number | null,
+    };
+  }
+
+  const primary =
+    boundary === "start"
+      ? {
+          day: timelineEvent.dayStart,
+          month: timelineEvent.monthStart,
+          year: timelineEvent.yearStart,
+        }
+      : {
+          day: timelineEvent.dayEnd,
+          month: timelineEvent.monthEnd,
+          year: timelineEvent.yearEnd,
+        };
+
+  if (primary.year !== null || primary.month !== null || primary.day !== null) {
+    return primary;
+  }
+
+  return boundary === "start"
+    ? {
+        day: timelineEvent.dayEnd,
+        month: timelineEvent.monthEnd,
+        year: timelineEvent.yearEnd,
+      }
+    : {
+        day: timelineEvent.dayStart,
+        month: timelineEvent.monthStart,
+        year: timelineEvent.yearStart,
+      };
 }
 
 function buildGapItem(leftTimelineEvent: TimelineEvent, rightTimelineEvent: TimelineEvent) {
@@ -191,14 +241,10 @@ function buildInsertionLabel(
 
 function buildInsertionHelperText(
   previousTimelineEvent: TimelineEvent | null,
-  nextTimelineEvent: TimelineEvent | null,
-  sharedAnchorYear: string
+  nextTimelineEvent: TimelineEvent | null
 ) {
   if (previousTimelineEvent && nextTimelineEvent) {
-    const dateHint = sharedAnchorYear
-      ? ` Prefills year ${sharedAnchorYear}.`
-      : "";
-    return `Between ${previousTimelineEvent.title} and ${nextTimelineEvent.title}.${dateHint}`;
+    return `Between ${previousTimelineEvent.title} and ${nextTimelineEvent.title}.`;
   }
 
   if (nextTimelineEvent) {

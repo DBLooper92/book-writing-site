@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { Location } from "@/types/location";
 
 type LocationCardProps = {
@@ -31,6 +32,16 @@ export function LocationCard({ location }: LocationCardProps) {
       <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-500">
         <span>Danger: {location.dangerLevel || "unknown"}</span>
         <span>Project: {location.projectId}</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={location.id}
+          entityLabel="location"
+          entityTitle={location.name}
+          redirectHref="/locations"
+          tableName="locations"
+        />
       </div>
     </article>
   );

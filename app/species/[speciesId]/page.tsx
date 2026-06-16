@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { PageShell } from "@/components/layout/page-shell";
 import { SpeciesDetailSection } from "@/components/species/species-detail-section";
 import { useSpeciesRecord } from "@/hooks/use-species-record";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function SpeciesDetailPage() {
   const params = useParams<{ speciesId: string }>();
@@ -46,12 +48,22 @@ export default function SpeciesDetailPage() {
               Back to species
             </Link>
             {species ? (
-              <Link
-                href={`/species/${species.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit species
-              </Link>
+              <>
+                <Link
+                  href={`/species/${species.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit species
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="species"
+                  entityTitle={species.name}
+                  onDelete={() =>
+                    deleteEntityForProject(user?.uid ?? "", activeProjectId ?? "", "species", species.id)
+                  }
+                  redirectHref="/species"
+                />
+              </>
             ) : null}
           </div>
         </div>

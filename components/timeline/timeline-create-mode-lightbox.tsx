@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { TimelineBrainDumpSessionComposer } from "@/components/timeline/timeline-brain-dump-session-composer";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { useOpenAiConfig } from "@/hooks/use-openai-config";
 import type {
   AiTimelineCreateDraftState,
@@ -13,9 +15,10 @@ import type {
   TimelineBrainDumpProjectContext,
   TimelineSingleEventBrainDumpReviewState,
 } from "@/types/ai-brain-dump";
-import type { TimelineEventFormValues } from "@/types/timeline-event";
+import type { TimelineEvent, TimelineEventFormValues } from "@/types/timeline-event";
 
 type TimelineCreateModeLightboxProps = {
+  activeProjectId: string;
   initialMode?: "aiMulti" | "aiSingle" | "chooser" | "manual";
   initialValues: TimelineEventFormValues;
   insertionContext?: TimelineBrainDumpInsertionContext | null;
@@ -23,6 +26,7 @@ type TimelineCreateModeLightboxProps = {
   resumeSingleReviewState?: TimelineSingleEventBrainDumpReviewState | null;
   open: boolean;
   onClose: () => void;
+  onMultiFlowPublished?: () => Promise<void> | void;
   onManual: (initialValues: TimelineEventFormValues) => void;
   onMultiJobStarted?: (jobId: string) => void;
   onSingleReviewStateChange?: (
@@ -30,6 +34,8 @@ type TimelineCreateModeLightboxProps = {
     state: TimelineSingleEventBrainDumpReviewState | null
   ) => void;
   onUseAiDraft: (draftState: AiTimelineCreateDraftState, initialValues: TimelineEventFormValues) => void;
+  timelineEvents: TimelineEvent[];
+  uid: string;
 };
 
 type LightboxStep = "chooser" | "multiInput" | "singleInput" | "singleReview";
@@ -41,6 +47,7 @@ type ReviewResolutionState = {
 };
 
 export function TimelineCreateModeLightbox({
+  activeProjectId,
   initialMode = "chooser",
   initialValues,
   insertionContext = null,
@@ -48,10 +55,13 @@ export function TimelineCreateModeLightbox({
   resumeSingleReviewState = null,
   open,
   onClose,
+  onMultiFlowPublished,
   onManual,
   onMultiJobStarted,
   onSingleReviewStateChange,
   onUseAiDraft,
+  uid,
+  timelineEvents,
 }: TimelineCreateModeLightboxProps) {
   const { config, loading: configLoading } = useOpenAiConfig();
   const [step, setStep] = useState<LightboxStep>("chooser");
@@ -64,16 +74,21 @@ export function TimelineCreateModeLightbox({
   const autoModeHandledRef = useRef(false);
   const resumeStateHandledRef = useRef<string | null>(null);
   const singleReviewCreatedAtRef = useRef<string | null>(null);
+  const singleReviewSavedAtRef = useRef<string | null>(null);
+  const lastSingleReviewSnapshotRef = useRef<string | null>(null);
 
   const reviewSuggestions = useMemo(() => preview?.entitySuggestions ?? [], [preview?.entitySuggestions]);
   const canUseAi = !configLoading && Boolean(config?.configured);
   const insertionContextEvents = insertionContext?.surroundingEvents ?? [];
+  useScrollLock(open);
 
   useEffect(() => {
     if (!open) {
       autoModeHandledRef.current = false;
       resumeStateHandledRef.current = null;
       singleReviewCreatedAtRef.current = null;
+      singleReviewSavedAtRef.current = null;
+      lastSingleReviewSnapshotRef.current = null;
       return;
     }
 
@@ -83,6 +98,8 @@ export function TimelineCreateModeLightbox({
       if (resumeStateHandledRef.current !== resumeKey) {
         resumeStateHandledRef.current = resumeKey;
         singleReviewCreatedAtRef.current = resumeSingleReviewState.createdAt;
+        singleReviewSavedAtRef.current = resumeSingleReviewState.savedAt;
+        lastSingleReviewSnapshotRef.current = null;
         setSingleBrainDumpText(resumeSingleReviewState.brainDumpText);
         setPreview(resumeSingleReviewState.preview);
         setResolutionState(
@@ -189,6 +206,16 @@ export function TimelineCreateModeLightbox({
     setError(null);
 
     try {
+      if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+        console.log("[timeline:single-review] generating preview", {
+          insertionItemId: timelineInsertionItemId,
+          insertionContext: insertionContext?.surroundingEvents.map((event) => ({
+            id: event.id,
+            position: event.position,
+            relation: event.relation,
+          })) ?? [],
+        });
+      }
       const nextPreview = await window.bookBible.ai.previewTimelineBrainDump({
         brainDumpText: normalized,
         projectContext: buildTimelineBrainDumpProjectContext(
@@ -196,7 +223,20 @@ export function TimelineCreateModeLightbox({
           insertionContext
         ),
       });
-      singleReviewCreatedAtRef.current = new Date().toISOString();
+      if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+        console.log("[timeline:single-review] preview ready", {
+          insertionItemId: timelineInsertionItemId,
+          prefill: {
+            predecessorEventIds: nextPreview.prefill.predecessorEventIds,
+            successorEventIds: nextPreview.prefill.successorEventIds,
+            title: nextPreview.prefill.title,
+          },
+          suggestions: nextPreview.entitySuggestions.length,
+        });
+      }
+      const createdAt = new Date().toISOString();
+      singleReviewCreatedAtRef.current = createdAt;
+      singleReviewSavedAtRef.current = createdAt;
       setPreview(nextPreview);
       setResolutionState(buildInitialResolutionState(nextPreview.entitySuggestions));
       setStep("singleReview");
@@ -225,12 +265,12 @@ export function TimelineCreateModeLightbox({
           initialValues,
           insertionContext
         ),
-        timelineInsertionItemId,
+        timelineInsertionItemId: timelineInsertionItemId ?? undefined,
       });
       onClose();
       onMultiJobStarted?.(result.jobId);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Unable to start multi-event job.");
+      setError(nextError instanceof Error ? nextError.message : "Unable to start the card composer.");
     } finally {
       setWorking(false);
     }
@@ -276,6 +316,14 @@ export function TimelineCreateModeLightbox({
     const prefilledValues = {
       ...initialValues,
       ...preview.prefill,
+      chronologyOrder:
+        preview.prefill.chronologyOrder.trim() || initialValues.chronologyOrder,
+      dayEnd: preview.prefill.dayEnd.trim() || initialValues.dayEnd,
+      dayStart: preview.prefill.dayStart.trim() || initialValues.dayStart,
+      monthEnd: preview.prefill.monthEnd.trim() || initialValues.monthEnd,
+      monthStart: preview.prefill.monthStart.trim() || initialValues.monthStart,
+      yearEnd: preview.prefill.yearEnd.trim() || initialValues.yearEnd,
+      yearStart: preview.prefill.yearStart.trim() || initialValues.yearStart,
       predecessorEventIds:
         preview.prefill.predecessorEventIds.length > 0
           ? preview.prefill.predecessorEventIds
@@ -285,6 +333,37 @@ export function TimelineCreateModeLightbox({
           ? preview.prefill.successorEventIds
           : initialValues.successorEventIds,
     };
+    if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+      console.log("[timeline:single-review] approving", {
+        insertionItemId: timelineInsertionItemId,
+        previewChronology: {
+          chronologyOrder: preview.prefill.chronologyOrder,
+          dayEnd: preview.prefill.dayEnd,
+          dayStart: preview.prefill.dayStart,
+          monthEnd: preview.prefill.monthEnd,
+          monthStart: preview.prefill.monthStart,
+          yearEnd: preview.prefill.yearEnd,
+          yearStart: preview.prefill.yearStart,
+        },
+        previewPrefill: {
+          predecessorEventIds: preview.prefill.predecessorEventIds,
+          successorEventIds: preview.prefill.successorEventIds,
+        },
+        resolvedChronology: {
+          chronologyOrder: prefilledValues.chronologyOrder,
+          dayEnd: prefilledValues.dayEnd,
+          dayStart: prefilledValues.dayStart,
+          monthEnd: prefilledValues.monthEnd,
+          monthStart: prefilledValues.monthStart,
+          yearEnd: prefilledValues.yearEnd,
+          yearStart: prefilledValues.yearStart,
+        },
+        resolvedPrefill: {
+          predecessorEventIds: prefilledValues.predecessorEventIds,
+          successorEventIds: prefilledValues.successorEventIds,
+        },
+      });
+    }
     if (timelineInsertionItemId) {
       onSingleReviewStateChange?.(timelineInsertionItemId, null);
     }
@@ -296,18 +375,33 @@ export function TimelineCreateModeLightbox({
       return;
     }
 
-      onSingleReviewStateChange?.(
-        timelineInsertionItemId,
-        buildCurrentSingleReviewState({
-          brainDumpText: singleBrainDumpText,
-          createdAt: singleReviewCreatedAtRef.current ?? new Date().toISOString(),
-          initialValues,
-          insertionItemId: timelineInsertionItemId,
-          preview,
-          resolutionState,
-          insertionContext,
-      })
-    );
+    const nextState = buildCurrentSingleReviewState({
+      brainDumpText: singleBrainDumpText,
+      createdAt: singleReviewCreatedAtRef.current ?? new Date().toISOString(),
+      initialValues,
+      insertionItemId: timelineInsertionItemId,
+      preview,
+      resolutionState,
+      insertionContext,
+      savedAt: singleReviewSavedAtRef.current ?? singleReviewCreatedAtRef.current ?? new Date().toISOString(),
+    });
+    const nextSnapshotKey = buildSingleReviewStateSnapshotKey(nextState);
+
+    if (lastSingleReviewSnapshotRef.current === nextSnapshotKey) {
+      return;
+    }
+
+    lastSingleReviewSnapshotRef.current = nextSnapshotKey;
+
+    if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+      console.log("[timeline:single-review] persisting review state", {
+        insertionItemId: timelineInsertionItemId,
+        snapshotKey: nextSnapshotKey,
+        suggestionCount: Object.keys(resolutionState).length,
+      });
+    }
+
+    onSingleReviewStateChange?.(timelineInsertionItemId, nextState);
   }, [
     initialValues,
     insertionContext,
@@ -325,16 +419,16 @@ export function TimelineCreateModeLightbox({
   }
 
   return (
-    <div className="fixed inset-0 z-[65] overflow-y-auto bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[65] overflow-y-auto overscroll-contain bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
       <section className="relative z-10 mx-auto my-auto flex w-full max-w-3xl max-h-[calc(100vh-3rem)] flex-col overflow-hidden rounded-4xl border border-zinc-200 bg-[#fffdf9] shadow-2xl">
-        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
           {step === "chooser" ? (
             <>
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Create timeline event</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Choose creation mode</h2>
               <p className="mt-3 text-sm leading-6 text-zinc-600">
-                Manual opens the editor directly. AI Single-Event drafts one timeline event. AI Multi-Event starts a background job for large dumps and sends you to review queue.
+                Manual opens the editor directly. AI Single-Event drafts one timeline event. AI Multi-Event opens the card composer for one-card-per-event drafting.
               </p>
               {renderInsertionContextSummary()}
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -359,7 +453,7 @@ export function TimelineCreateModeLightbox({
                   disabled={!canUseAi}
                   className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-800 px-5 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
                 >
-                  AI Multi-Event
+                  Card Composer
                 </button>
               </div>
               {!canUseAi ? (
@@ -411,18 +505,25 @@ export function TimelineCreateModeLightbox({
 
           {step === "multiInput" ? (
             <>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">AI Multi-Event BrainDump</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Paste large timeline brain dump</h2>
-              <p className="mt-3 text-sm leading-6 text-zinc-600">
-                This mode can split one dump into multiple events, but every extracted event should stay between the before/after anchors in the insertion context.
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                AI Multi-Event BrainDump
               </p>
-              {renderInsertionContextSummary()}
-              <textarea
-                value={multiBrainDumpText}
-                onChange={(event) => setMultiBrainDumpText(event.target.value)}
-                className="mt-4 min-h-[18rem] w-full rounded-3xl border border-zinc-200 bg-white p-4 font-mono text-sm leading-6 text-zinc-900 outline-none transition focus:border-zinc-400"
-                placeholder="Paste a long dump with multiple events. This will run in a background AI job."
-                spellCheck={false}
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+                Card-based session composer
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-zinc-600">
+                Each card is its own event. Process the cards one at a time, then publish them in
+                order when the stack looks right.
+              </p>
+              <TimelineBrainDumpSessionComposer
+                activeProjectId={activeProjectId}
+                initialValues={initialValues}
+                insertionContext={insertionContext}
+                insertionItemId={timelineInsertionItemId}
+                onClose={onClose}
+                onPublished={onMultiFlowPublished ?? onClose}
+                timelineEvents={timelineEvents}
+                uid={uid}
               />
               <div className="mt-5 flex flex-wrap gap-3">
                 <button
@@ -431,14 +532,6 @@ export function TimelineCreateModeLightbox({
                   className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
                 >
                   Back
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleStartMultiJob()}
-                  disabled={working}
-                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
-                >
-                  {working ? "Starting..." : "Start Background Job"}
                 </button>
               </div>
             </>
@@ -530,6 +623,7 @@ function buildCurrentSingleReviewState({
   insertionItemId,
   preview,
   resolutionState,
+  savedAt,
 }: {
   brainDumpText: string;
   createdAt: string;
@@ -538,6 +632,7 @@ function buildCurrentSingleReviewState({
   insertionItemId: string;
   preview: BrainDumpPreviewResult;
   resolutionState: Record<string, ReviewResolutionState>;
+  savedAt: string;
 }) {
   return {
     brainDumpText: brainDumpText.trim(),
@@ -547,7 +642,7 @@ function buildCurrentSingleReviewState({
     preview,
     projectContext: buildTimelineBrainDumpProjectContext(initialValues, insertionContext),
     resolutionStateBySuggestionId: resolutionState,
-    savedAt: new Date().toISOString(),
+    savedAt,
     status: "pending" as const,
   };
 }
@@ -565,6 +660,22 @@ function buildReviewStateFromSavedRecord(
       } satisfies ReviewResolutionState,
     ])
   ) as Record<string, ReviewResolutionState>;
+}
+
+function buildSingleReviewStateSnapshotKey(
+  state: TimelineSingleEventBrainDumpReviewState
+) {
+  return JSON.stringify({
+    brainDumpText: state.brainDumpText,
+    createdAt: state.createdAt,
+    initialValues: state.initialValues,
+    insertionItemId: state.insertionItemId,
+    preview: state.preview,
+    projectContext: state.projectContext,
+    resolutionStateBySuggestionId: state.resolutionStateBySuggestionId,
+    savedAt: state.savedAt,
+    status: state.status,
+  });
 }
 
 function buildInitialResolutionState(suggestions: BrainDumpEntitySuggestion[]) {

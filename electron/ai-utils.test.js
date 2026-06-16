@@ -209,6 +209,45 @@ describe("ai-utils brain dump helpers", () => {
     expect(userPrompt).toContain("Do not infer year values from series premise");
   });
 
+  it("includes session reference context when present", () => {
+    const prompt = buildTimelineBrainDumpUserPrompt({
+      brainDumpText: "Mara returns to the flooded hall.",
+      projectContext: {
+        referenceContext: {
+          cards: [
+            {
+              bookmarked: true,
+              cardId: "card-1",
+              cardType: "manual",
+              publishedTimelineEventId: null,
+              status: "ready",
+              summary: "Mara finds the key in the chapel.",
+              text: "Mara finds the key in the chapel.",
+              title: "Manual note",
+            },
+          ],
+          relatedEvents: [
+            {
+              bookmarkCollectionId: null,
+              bookmarked: false,
+              description: "The chapel floods and the key is lost again.",
+              eventId: "event-1",
+              relation: "description",
+              summary: "The chapel floods.",
+              title: "Flooded Chapel",
+            },
+          ],
+        },
+      },
+    });
+
+    expect(prompt).toContain("Session reference context:");
+    expect(prompt).toContain("Earlier cards in this composer:");
+    expect(prompt).toContain("Potentially related timeline events discovered from linked entities:");
+    expect(prompt).toContain("Manual note");
+    expect(prompt).toContain("Flooded Chapel");
+  });
+
   it("normalizes section output into exact paragraph references", () => {
     const paragraphs = splitBrainDumpIntoParagraphBlocks(
       "Premise line.\n\nMilo is a mechanic.\n\nThe ship leaves at night."

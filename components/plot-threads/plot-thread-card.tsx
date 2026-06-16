@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { PlotThread } from "@/types/plot-thread";
 
 type PlotThreadCardProps = {
@@ -31,6 +32,16 @@ export function PlotThreadCard({ plotThread }: PlotThreadCardProps) {
       <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-500">
         <span>Slug: {plotThread.slug}</span>
         <span>Project: {plotThread.projectId}</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={plotThread.id}
+          entityLabel="plot thread"
+          entityTitle={plotThread.title}
+          redirectHref="/plot-threads"
+          tableName="plot_threads"
+        />
       </div>
     </article>
   );

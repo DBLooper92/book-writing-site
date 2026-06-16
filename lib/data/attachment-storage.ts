@@ -10,7 +10,9 @@ export const ATTACHMENT_IMAGE_ALLOWED_MIME_TYPES = [
 
 export const ATTACHMENT_DOCUMENT_BUCKET_ID = "project-documents";
 export const ATTACHMENT_DOCUMENT_MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+export const ATTACHMENT_DOCUMENT_MIME_TYPE =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 export const ATTACHMENT_DOCUMENT_ALLOWED_MIME_TYPES = [
   "text/plain",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ATTACHMENT_DOCUMENT_MIME_TYPE,
 ] as const;

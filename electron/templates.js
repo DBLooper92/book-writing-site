@@ -145,7 +145,7 @@ function buildBootstrapScript() {
 )
 
 Write-Host "The desktop app owns SQLite bootstrap for this project."
-Write-Host "Open the project in Book Bible Desktop to initialize or repair the local database."
+Write-Host "Open the project in BuildaBook to initialize or repair the local database."
 `;
 }
 
@@ -272,9 +272,9 @@ function buildMigrationFile() {
 function buildReadme(title) {
   return `# ${title}
 
-This folder is a local-first Book Bible project.
+This folder is a local-first BuildaBook project.
 
-- Open it in Book Bible Desktop to edit canon.
+- Open it in BuildaBook to edit canon.
 - Use Codex against this folder for search, proposal drafting, and review support.
 - Review generated proposals in the desktop app before apply.
 `;

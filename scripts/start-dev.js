@@ -77,7 +77,11 @@ async function waitForUrl(url, timeoutMs) {
 }
 
 async function main() {
-  const port = await findAvailablePort();
+  const configuredPort = Number(process.env.BOOK_BIBLE_DEV_PORT);
+  const port =
+    Number.isInteger(configuredPort) && configuredPort > 0
+      ? configuredPort
+      : await findAvailablePort();
   const repoRoot = path.resolve(__dirname, "..");
 
   if (!port) {
@@ -85,7 +89,7 @@ async function main() {
   }
 
   const rendererUrl = `http://${PREVIEW_HOST}:${port}`;
-  console.log(`Launching Book Bible Desktop dev server on ${rendererUrl}`);
+  console.log(`Launching BuildaBook dev server on ${rendererUrl}`);
 
   const sharedEnv = {
     ...process.env,

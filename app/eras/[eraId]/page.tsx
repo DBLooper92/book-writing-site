@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { EraDetailSection } from "@/components/eras/era-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useEra } from "@/hooks/use-era";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function EraDetailPage() {
   const params = useParams<{ eraId: string }>();
@@ -45,12 +47,22 @@ export default function EraDetailPage() {
               Back to eras
             </Link>
             {era ? (
-              <Link
-                href={`/eras/${era.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit era
-              </Link>
+              <>
+                <Link
+                  href={`/eras/${era.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit era
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="era"
+                  entityTitle={era.name}
+                  onDelete={() =>
+                    deleteEntityForProject(user?.uid ?? "", activeProjectId ?? "", "eras", era.id)
+                  }
+                  redirectHref="/eras"
+                />
+              </>
             ) : null}
           </div>
         </div>

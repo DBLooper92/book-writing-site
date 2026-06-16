@@ -6,8 +6,11 @@ import type { ReactNode } from "react";
 
 import { AttachmentImagePreview } from "@/components/attachments/attachment-image-preview";
 import { AttachmentDetailSection } from "@/components/attachments/attachment-detail-section";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { PageShell } from "@/components/layout/page-shell";
 import { useAttachment } from "@/hooks/use-attachment";
+import { deleteAttachmentForProject } from "@/lib/data/attachments";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function AttachmentDetailPage() {
   const params = useParams<{ attachmentId: string }>();
@@ -46,12 +49,32 @@ export default function AttachmentDetailPage() {
               Back to attachments
             </Link>
             {attachment ? (
-              <Link
-                href={`/attachments/${attachment.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit attachment
-              </Link>
+              <>
+                <Link
+                  href={`/attachments/${attachment.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit attachment
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="attachment"
+                  entityTitle={attachment.title}
+                  onDelete={async () => {
+                    await deleteAttachmentForProject(
+                      user?.uid ?? "",
+                      activeProjectId ?? "",
+                      attachment.id
+                    );
+                    await deleteEntityForProject(
+                      user?.uid ?? "",
+                      activeProjectId ?? "",
+                      "attachments",
+                      attachment.id
+                    );
+                  }}
+                  redirectHref="/attachments"
+                />
+              </>
             ) : null}
           </div>
         </div>

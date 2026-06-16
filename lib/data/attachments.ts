@@ -6,6 +6,7 @@ import {
   ATTACHMENT_DOCUMENT_ALLOWED_MIME_TYPES,
   ATTACHMENT_DOCUMENT_BUCKET_ID,
   ATTACHMENT_DOCUMENT_MAX_FILE_SIZE_BYTES,
+  ATTACHMENT_DOCUMENT_MIME_TYPE,
   ATTACHMENT_IMAGE_ALLOWED_MIME_TYPES,
   ATTACHMENT_IMAGE_BUCKET_ID,
   ATTACHMENT_IMAGE_MAX_FILE_SIZE_BYTES,
@@ -28,6 +29,7 @@ export {
   ATTACHMENT_DOCUMENT_ALLOWED_MIME_TYPES,
   ATTACHMENT_DOCUMENT_BUCKET_ID,
   ATTACHMENT_DOCUMENT_MAX_FILE_SIZE_BYTES,
+  ATTACHMENT_DOCUMENT_MIME_TYPE,
   ATTACHMENT_IMAGE_ALLOWED_MIME_TYPES,
   ATTACHMENT_IMAGE_BUCKET_ID,
   ATTACHMENT_IMAGE_MAX_FILE_SIZE_BYTES,
@@ -375,6 +377,121 @@ export async function uploadDocumentAttachmentForEntity(
   }
 
   return attachmentId;
+}
+
+export async function upsertDocumentAttachmentForEntity(
+  uid: string,
+  projectId: string,
+  input: {
+    attachmentId: string;
+    bodyText: string;
+    entityId: string;
+    entityType: string;
+    title: string;
+  }
+) {
+  const attachmentTitle = input.title.trim();
+
+  if (!attachmentTitle) {
+    throw new Error("Attachment title is required.");
+  }
+
+  const fileName = `${sanitizeStorageFileName(attachmentTitle)}.docx`;
+  const storagePath = buildAttachmentDocumentStoragePath({
+    uid,
+    projectId,
+    entityType: input.entityType,
+    entityId: input.entityId,
+    attachmentId: input.attachmentId,
+    fileName,
+  });
+  const supabase = getSupabaseBrowserClient();
+  const { data: existingRow, error: existingRowError } = await supabase
+    .from("attachments")
+    .select("created_at")
+    .eq("user_id", uid)
+    .eq("project_id", projectId)
+    .eq("id", input.attachmentId)
+    .maybeSingle();
+
+  if (existingRowError) {
+    throw existingRowError;
+  }
+
+  const writeDocument = window.bookBible?.attachments?.writeDocument;
+
+  if (typeof writeDocument !== "function") {
+    const attachmentKeys = Object.keys(window.bookBible?.attachments ?? {});
+    console.error("[chapter:attachment-write] missing writeDocument bridge", {
+      attachmentKeys,
+      entityId: input.entityId,
+      entityType: input.entityType,
+      projectId,
+      title: attachmentTitle,
+      uid,
+    });
+    throw new Error(
+      "Chapter DOCX bridge is unavailable. Restart the desktop app so preload.js can load the latest attachments API."
+    );
+  }
+
+  const { fileSizeBytes } = await writeDocument({
+    bucketId: ATTACHMENT_DOCUMENT_BUCKET_ID,
+    bodyText: input.bodyText,
+    storagePath,
+  });
+
+  const now = new Date().toISOString();
+
+  try {
+    const { error } = await supabase.from("attachments").upsert({
+      user_id: uid,
+      project_id: projectId,
+      id: input.attachmentId,
+      title: attachmentTitle,
+      slug: slugifyAttachmentTitle(attachmentTitle),
+      summary: "",
+      description: "",
+      status: "active",
+      tags: [],
+      is_archived: false,
+      canon_level: "working",
+      confidence: "medium",
+      attachment_type: "document",
+      storage_status: "uploaded",
+      file_name: fileName,
+      mime_type: ATTACHMENT_DOCUMENT_MIME_TYPE,
+      source_note: "Chapter draft document.",
+      url: null,
+      storage_bucket: ATTACHMENT_DOCUMENT_BUCKET_ID,
+      storage_path: storagePath,
+      file_size_bytes: fileSizeBytes,
+      linked_entity_type: input.entityType,
+      linked_entity_id: input.entityId,
+      linked_note_ids: [],
+      linked_outline_ids: [],
+      created_at: typeof existingRow?.created_at === "string" ? existingRow.created_at : now,
+      updated_at: now,
+    });
+
+    if (error) {
+      throw error;
+    }
+  } catch (error) {
+    console.error("[chapter:attachment-write] upsert failed, cleaning up file", {
+      attachmentId: input.attachmentId,
+      error,
+      storagePath,
+      uid,
+    });
+    await window.bookBible.attachments.remove({
+      bucketId: ATTACHMENT_DOCUMENT_BUCKET_ID,
+      storagePaths: [storagePath],
+    });
+    throw error;
+  }
+
+  return input.attachmentId;
 }
 
 export async function deleteAttachmentForProject(

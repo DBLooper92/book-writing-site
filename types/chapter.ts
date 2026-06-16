@@ -32,6 +32,8 @@ export type Chapter = {
   slug: string;
   summary: string;
   description: string;
+  draftText: string;
+  draftAttachmentId: string | null;
   status: ChapterStatus;
   tags: string[];
   isArchived: boolean;
@@ -77,6 +79,8 @@ export type NormalizedChapterFormValues = {
 type BuildChapterDocumentInput = {
   id: string;
   projectId: string;
+  draftAttachmentId?: string | null;
+  draftText?: string;
   values: NormalizedChapterFormValues;
 };
 
@@ -142,6 +146,8 @@ export function normalizeChapterFormValues(
 export function buildChapterDocument({
   id,
   projectId,
+  draftAttachmentId = null,
+  draftText = "",
   values,
 }: BuildChapterDocumentInput): ChapterDocumentData {
   return {
@@ -151,6 +157,8 @@ export function buildChapterDocument({
     slug: slugify(values.title),
     summary: values.summary,
     description: values.description,
+    draftText,
+    draftAttachmentId,
     status: values.status,
     tags: [],
     isArchived: values.status === "archived",

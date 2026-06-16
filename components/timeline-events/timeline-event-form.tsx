@@ -16,6 +16,7 @@ import { ReligionForm } from "@/components/religions/religion-form";
 import { SceneForm } from "@/components/scenes/scene-form";
 import { TechnologyForm } from "@/components/technologies/technology-form";
 import { ThemeForm } from "@/components/themes/theme-form";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import {
   useTimelineFormOptions,
   type TimelineFormOptionsResult,
@@ -1322,8 +1323,9 @@ function InlineCreateShell({
   onClose: () => void;
   title: string;
 }) {
+  useScrollLock(true);
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-60 flex items-center justify-center overscroll-contain bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
 
       <div className="relative z-10 flex max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-4xl border border-zinc-200 bg-[#fffdf9] shadow-2xl">

@@ -1,5 +1,30 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
+let spellCheckerPromise = null;
+
+async function loadSpellChecker() {
+  if (!spellCheckerPromise) {
+    spellCheckerPromise = Promise.all([import("nspell"), import("dictionary-en")])
+      .then(([nspellModule, dictionaryModule]) => {
+        const createSpellChecker = nspellModule.default;
+        const dictionary = dictionaryModule.default;
+
+        if (typeof createSpellChecker !== "function" || !dictionary) {
+          throw new Error("Dictionary spell checker could not be initialized.");
+        }
+
+        return createSpellChecker(dictionary);
+      })
+      .catch((error) => {
+        spellCheckerPromise = null;
+        console.error("[book-bible] failed to load dictionary spellchecker", error);
+        return null;
+      });
+  }
+
+  return spellCheckerPromise;
+}
+
 function createSubscription(channelName) {
   return (listener) => {
     const wrappedListener = () => {
@@ -15,6 +40,14 @@ function createSubscription(channelName) {
 }
 
 contextBridge.exposeInMainWorld("bookBible", {
+  app: {
+    getSettings: () => ipcRenderer.invoke("app:get-settings"),
+    setAutoCorrectTyping: (enabled) => ipcRenderer.invoke("app:set-auto-correct-typing", enabled),
+    addPenName: (penName) => ipcRenderer.invoke("app:add-pen-name", penName),
+    setDefaultPenName: (penName) => ipcRenderer.invoke("app:set-default-pen-name", penName),
+    updateProfileInfo: (input) => ipcRenderer.invoke("app:update-profile-info", input),
+    subscribeSettings: createSubscription("app:settings:changed"),
+  },
   launcher: {
     createProject: (input) => ipcRenderer.invoke("launcher:create-project", input),
     listRecentProjects: () => ipcRenderer.invoke("launcher:list-recent-projects"),
@@ -46,7 +79,18 @@ contextBridge.exposeInMainWorld("bookBible", {
     createPreviewUrl: (bucketId, storagePath) =>
       ipcRenderer.invoke("attachments:create-preview-url", { bucketId, storagePath }),
     remove: (input) => ipcRenderer.invoke("attachments:remove", input),
+    writeDocument: (input) => ipcRenderer.invoke("attachments:write-document", input),
     upload: (input) => ipcRenderer.invoke("attachments:upload", input),
+  },
+  spellcheck: {
+    correct: async (word) => {
+      const spellChecker = await loadSpellChecker();
+      return spellChecker ? spellChecker.correct(String(word ?? "")) : false;
+    },
+    suggest: async (word) => {
+      const spellChecker = await loadSpellChecker();
+      return spellChecker ? spellChecker.suggest(String(word ?? "")) : [];
+    },
   },
   drafts: {
     apply: (draftId) => ipcRenderer.invoke("drafts:apply", draftId),
@@ -56,6 +100,9 @@ contextBridge.exposeInMainWorld("bookBible", {
     reject: (draftId) => ipcRenderer.invoke("drafts:reject", draftId),
     save: (input) => ipcRenderer.invoke("drafts:save", input),
     subscribe: createSubscription("drafts:changed"),
+  },
+  manuscript: {
+    openWindow: (routePath) => ipcRenderer.invoke("manuscript:open-window", routePath),
   },
   exports: {
     getStatus: () => ipcRenderer.invoke("exports:get-status"),

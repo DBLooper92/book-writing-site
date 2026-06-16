@@ -1,18 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { ChapterDraftWorkspace } from "@/components/manuscript/chapter-draft-workspace";
 import { TimelineBrainDumpJobReview } from "@/components/timeline/timeline-brain-dump-job-review";
+import { TimelineBookmarkCollectionPicker } from "@/components/timeline/timeline-bookmark-collection-picker";
 import { TimelineCreateModeLightbox } from "@/components/timeline/timeline-create-mode-lightbox";
+import { TimelineEntityEditorLightbox } from "@/components/timeline/timeline-entity-editor-lightbox";
 import { TimelineEventComposerSheet } from "@/components/timeline/timeline-event-composer-sheet";
 import { TimelineEventDetailLightbox } from "@/components/timeline/timeline-event-detail-lightbox";
+import { TimelineDraftMenu } from "@/components/timeline/timeline-draft-menu";
 import { TimelineWorkspaceControls } from "@/components/timeline/timeline-workspace-controls";
 import { TimelineWorkspaceEventCard } from "@/components/timeline/timeline-workspace-event-card";
+import {
+  createTimelineBookmarkCollection,
+  getTimelineEventBookmarkCollectionId,
+  hexToRgba,
+  isTimelineEventBookmarked,
+  useTimelineBookmarkCollections,
+} from "@/lib/timeline/bookmark-collections";
+import type { TimelineEntitySliceType } from "@/lib/timeline/entity-editor";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { useTimelineFormOptions } from "@/hooks/use-timeline-form-options";
 import {
   deleteTimelineEventForProject,
+  setTimelineEventBookmarkedForProject,
   updateTimelineEventSummaryAndDescriptionForProject,
 } from "@/lib/data/timeline-events";
 import {
@@ -26,6 +40,10 @@ import {
   savePendingSingleReviewMap,
 } from "@/lib/timeline/pending-single-review";
 import {
+  saveTimelineWorkspacePreferences,
+  useTimelineWorkspacePreferences,
+} from "@/lib/timeline/workspace-preferences";
+import {
   buildTimelineCreateHref,
   buildTimelineCreateInitialValuesFromSearchParams,
   clearTimelineCreateSearchParams,
@@ -34,6 +52,7 @@ import {
 } from "@/lib/timeline/create-route";
 import { formatDetailedTimelineEventRange } from "@/lib/timeline/workspace";
 import {
+  getTimelineWorkspaceBookmarkAccentColor,
   type TimelineWorkspaceFilters,
   type TimelineWorkspaceStats,
 } from "@/lib/timeline/workspace";
@@ -45,6 +64,20 @@ import type {
   TimelineSingleEventBrainDumpReviewState,
 } from "@/types/ai-brain-dump";
 import type { TimelineEvent, TimelineEventFormValues } from "@/types/timeline-event";
+
+const TIMELINE_SELECTION_ACCENT = "#c86a2e";
+
+function isKeyboardScrollTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (target.closest("button, a, input, textarea, select, [contenteditable='true']")) {
+    return true;
+  }
+
+  return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+}
 
 type TimelineWorkspaceVisualProps = {
   activeProjectId: string;
@@ -76,8 +109,20 @@ export function TimelineWorkspaceVisual({
   const searchParams = useSearchParams();
   const [filtersPinned, setFiltersPinned] = useState(false);
   const [viewMode, setViewMode] = useState<TimelineWorkspaceViewMode>("timeline");
+  const [timelineZoom, setTimelineZoom] = useState(100);
+  const [zoomPopoverOpen, setZoomPopoverOpen] = useState(false);
+  const [activeSplitPane, setActiveSplitPane] = useState<"scroll" | "draft">("scroll");
+  const splitScrollPaneRef = useRef<HTMLDivElement | null>(null);
+  const splitDraftScrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const splitPaneInitializedRef = useRef(false);
+  const [bookmarkPickerState, setBookmarkPickerState] = useState<{
+    timelineEventId: string;
+    currentCollectionId: string | null;
+  } | null>(null);
   const [requestedSelectedEventId, setRequestedSelectedEventId] = useState<string | null>(null);
   const [viewerEventId, setViewerEventId] = useState<string | null>(null);
+  const [activeEntityEditorSlice, setActiveEntityEditorSlice] =
+    useState<TimelineEntitySliceType | null>(null);
   const [localComposerState, setLocalComposerState] = useState<
     | {
         aiDraftState?: AiTimelineCreateDraftState | null;
@@ -108,6 +153,13 @@ export function TimelineWorkspaceVisual({
     useState<Record<string, TimelineSingleEventBrainDumpReviewState>>({});
   const pendingSingleReviewHydratedRef = useRef(false);
   const pendingSingleReviewLoadTokenRef = useRef(0);
+  const zoomPopoverHideTimeoutRef = useRef<number | null>(null);
+  const lastLoggedSnapshotKeyRef = useRef<string | null>(null);
+  const bookmarkCollections = useTimelineBookmarkCollections(activeProjectId);
+  const activeBookmarkAccentColor = useMemo(
+    () => getTimelineWorkspaceBookmarkAccentColor(filters, bookmarkCollections),
+    [bookmarkCollections, filters]
+  );
   const visibleRestoredBrainDumpJobsByInsertionItemId = useMemo(
     () => (uid && activeProjectId ? restoredBrainDumpJobsByInsertionItemId : {}),
     [activeProjectId, restoredBrainDumpJobsByInsertionItemId, uid]
@@ -177,8 +229,60 @@ export function TimelineWorkspaceVisual({
       .filter((itemId) => pendingIds.has(itemId));
   }, [layout.items, visiblePendingSingleReviewByInsertionItemId, visibleRestoredBrainDumpJobsByInsertionItemId]);
   const firstPendingInsertionItemId = pendingInsertionItemIds[0] ?? null;
+  const timelineEventIdsKey = timelineEvents.map((timelineEvent) => timelineEvent.id).join("|");
+  const layoutItemIdsKey = layout.items
+    .map((item) => `${item.kind}:${item.id}`)
+    .join("|");
 
   const activeBrainDumpJobId = activeBrainDumpJob?.jobId ?? null;
+
+  function clearZoomPopoverHideTimeout() {
+    if (zoomPopoverHideTimeoutRef.current !== null) {
+      window.clearTimeout(zoomPopoverHideTimeoutRef.current);
+      zoomPopoverHideTimeoutRef.current = null;
+    }
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined" || process.env.NODE_ENV === "production") {
+      return;
+    }
+
+    const snapshotKey = [activeProjectId, viewMode, timelineEventIdsKey, layoutItemIdsKey].join(
+      "::"
+    );
+
+    if (lastLoggedSnapshotKeyRef.current === snapshotKey) {
+      return;
+    }
+
+    lastLoggedSnapshotKeyRef.current = snapshotKey;
+
+    const timelineEventIds = timelineEvents.map((timelineEvent) => timelineEvent.id);
+    const layoutEventIds = layout.items
+      .filter((item): item is TimelineLayoutEventItem => item.kind === "event")
+      .map((item) => item.id);
+    const duplicateTimelineEventIds = findDuplicateValues(timelineEventIds);
+    const duplicateLayoutEventIds = findDuplicateValues(layoutEventIds);
+    const duplicateLayoutIds = findDuplicateValues(layout.items.map((item) => item.id));
+
+    console.log("[timeline:workspace] render snapshot", {
+      activeProjectId,
+      viewMode,
+      totalTimelineEvents: timelineEvents.length,
+      totalLayoutItems: layout.items.length,
+      eventItemCount: layoutEventIds.length,
+      duplicateTimelineEventIds,
+      duplicateLayoutEventIds,
+      duplicateLayoutIds,
+      firstTimelineEventIds: timelineEventIds.slice(0, 5),
+      lastTimelineEventIds: timelineEventIds.slice(-5),
+      layoutTail: layout.items.slice(-8).map((item) => ({
+        id: item.id,
+        kind: item.kind,
+      })),
+    });
+  }, [activeProjectId, layoutItemIdsKey, timelineEventIdsKey, timelineEvents, viewMode]);
 
   useEffect(() => {
     if (!activeBrainDumpJobId) {
@@ -217,6 +321,12 @@ export function TimelineWorkspaceVisual({
       unsubscribe();
     };
   }, [activeBrainDumpJobId]);
+
+  useEffect(() => {
+    return () => {
+      clearZoomPopoverHideTimeout();
+    };
+  }, []);
 
   useEffect(() => {
     if (!uid || !activeProjectId) {
@@ -400,6 +510,74 @@ export function TimelineWorkspaceVisual({
     await onRefreshTimelineEvents();
   }
 
+  async function handleToggleBookmark(timelineEventId: string, bookmarked: boolean) {
+    if (bookmarked) {
+      setBookmarkPickerState({ timelineEventId, currentCollectionId: null });
+      return;
+    }
+
+    await setTimelineEventBookmarkedForProject(uid, activeProjectId, timelineEventId, false);
+    await onRefreshTimelineEvents();
+  }
+
+  function handleOpenBookmarkCollectionPicker(timelineEvent: TimelineEvent) {
+    setBookmarkPickerState({
+      timelineEventId: timelineEvent.id,
+      currentCollectionId: getTimelineEventBookmarkCollectionId(timelineEvent),
+    });
+  }
+
+  async function handleSaveBookmarkCollection(selection:
+    | { mode: "existing"; collectionId: string }
+    | { mode: "new"; collectionColor: string; collectionName: string }
+  ) {
+    if (!bookmarkPickerState) {
+      return;
+    }
+
+    const timelineEventId = bookmarkPickerState.timelineEventId;
+
+    try {
+      if (selection.mode === "existing") {
+        await setTimelineEventBookmarkedForProject(
+          uid,
+          activeProjectId,
+          timelineEventId,
+          true,
+          selection.collectionId
+        );
+      } else {
+        const collection = createTimelineBookmarkCollection(activeProjectId, {
+          color: selection.collectionColor,
+          name: selection.collectionName,
+        });
+
+        await setTimelineEventBookmarkedForProject(
+          uid,
+          activeProjectId,
+          timelineEventId,
+          true,
+          collection.id
+        );
+      }
+
+      setBookmarkPickerState(null);
+      await onRefreshTimelineEvents();
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "Unable to save this bookmark collection."
+      );
+    }
+  }
+
+  function openEntityEditor(sliceType: TimelineEntitySliceType) {
+    setActiveEntityEditorSlice(sliceType);
+  }
+
+  function closeEntityEditor() {
+    setActiveEntityEditorSlice(null);
+  }
+
   function closeComposer() {
     setLocalComposerState(null);
   }
@@ -431,6 +609,25 @@ export function TimelineWorkspaceVisual({
     aiDraftState?: AiTimelineCreateDraftState | null
   ) {
     const source = createFlowState?.source ?? "local";
+    if (typeof window !== "undefined") {
+      console.log("[timeline:create-flow] opening composer", {
+        aiDraft: Boolean(aiDraftState),
+        insertionItem: createFlowState?.insertionItem
+          ? {
+              fallbackYear: createFlowState.insertionItem.fallbackYear,
+              helperText: createFlowState.insertionItem.helperText,
+              id: createFlowState.insertionItem.id,
+              nextEventId: createFlowState.insertionItem.nextEventId,
+              nextEventTitle: createFlowState.insertionItem.nextEventTitle,
+              previousEventId: createFlowState.insertionItem.previousEventId,
+              previousEventTitle: createFlowState.insertionItem.previousEventTitle,
+              prefilledYearEnd: createFlowState.insertionItem.prefilledYearEnd,
+              prefilledYearStart: createFlowState.insertionItem.prefilledYearStart,
+            }
+          : null,
+        source,
+      });
+    }
     setLocalCreateFlowState(null);
     clearCreateQueryIfNeeded(source);
     setLocalComposerState({
@@ -458,33 +655,67 @@ export function TimelineWorkspaceVisual({
     });
   }
 
-  function handlePendingSingleReviewStateChange(
-    insertionItemId: string,
-    state: TimelineSingleEventBrainDumpReviewState | null
-  ) {
-    setPendingSingleReviewByInsertionItemId((current) => {
-      if (!state) {
-        if (!(insertionItemId in current)) {
+  const handlePendingSingleReviewStateChange = useCallback(
+    (insertionItemId: string, state: TimelineSingleEventBrainDumpReviewState | null) => {
+      if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+        console.log("[timeline:single-review] pending state change", {
+          hasState: Boolean(state),
+          insertionItemId,
+        });
+      }
+
+      setPendingSingleReviewByInsertionItemId((current) => {
+        if (!state) {
+          if (!(insertionItemId in current)) {
+            return current;
+          }
+
+          const next = { ...current };
+          delete next[insertionItemId];
+          return next;
+        }
+
+        if (current[insertionItemId] === state) {
           return current;
         }
 
-        const next = { ...current };
-        delete next[insertionItemId];
-        return next;
-      }
-
-      return {
-        ...current,
-        [insertionItemId]: state,
-      };
-    });
-  }
+        return {
+          ...current,
+          [insertionItemId]: state,
+        };
+      });
+    },
+    []
+  );
 
   function openPendingSingleReview(
     insertionItem: TimelineLayoutInsertionItem,
     state: TimelineSingleEventBrainDumpReviewState
   ) {
     const insertionContext = buildInsertionBrainDumpContext(orderedTimelineEvents, insertionItem);
+
+    if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+      console.log("[timeline:single-review] opening review", {
+        insertionContext:
+          insertionContext?.surroundingEvents.map((event) => ({
+            id: event.id,
+            position: event.position,
+            relation: event.relation,
+            title: event.title,
+          })) ?? [],
+        insertionItem: {
+          fallbackYear: insertionItem.fallbackYear,
+          helperText: insertionItem.helperText,
+          id: insertionItem.id,
+          nextEventId: insertionItem.nextEventId,
+          nextEventTitle: insertionItem.nextEventTitle,
+          previousEventId: insertionItem.previousEventId,
+          previousEventTitle: insertionItem.previousEventTitle,
+          prefilledYearEnd: insertionItem.prefilledYearEnd,
+          prefilledYearStart: insertionItem.prefilledYearStart,
+        },
+      });
+    }
 
     setLocalCreateFlowState({
       createMode: "aiSingle",
@@ -502,351 +733,1406 @@ export function TimelineWorkspaceVisual({
   }
 
   const isScrollMode = viewMode === "scroll";
+  const isDraftSplitScreen = searchParams.get("draftPane") === "split";
+  const effectiveActiveSplitPane = isDraftSplitScreen ? activeSplitPane : "scroll";
+  const chronologyRange = formatChronologySpan(timelineEvents);
   const filterBarClassName =
     filtersPinned
       ? "xl:sticky xl:top-0 xl:z-20 xl:shadow-[0_18px_45px_-36px_rgba(24,24,27,0.55)]"
       : "";
+  const showSplitPaneShadows = isDraftSplitScreen;
+  const filtersPreferences = useTimelineWorkspacePreferences();
+  const scrollEventDisplayMode = filtersPreferences.scrollEventDisplayMode;
 
-  return (
-    <>
-      {isScrollMode ? (
-        <section className="flex min-h-[calc(100vh-6rem)] flex-1 flex-col bg-[linear-gradient(180deg,#fcfbf7_0%,#f6f3ec_100%)]">
-          <div className={filterBarClassName}>
-            <TimelineWorkspaceControls
-              filters={filters}
-              totalCount={stats.totalEvents}
-              visibleCount={stats.visibleEvents}
-              hasActiveFilters={hasActiveFilters}
-              pinned={filtersPinned}
-              viewMode={viewMode}
-              onChange={onChange}
-              onReset={onReset}
-              onTogglePinned={() => setFiltersPinned((current) => !current)}
-              onViewModeChange={setViewMode}
-            />
-          </div>
+  function renderWorkspaceControls(splitLayout: boolean) {
+    return (
+      <div className={filterBarClassName}>
+        <TimelineWorkspaceControls
+          bookOptions={formOptions.bookOptions}
+          chapterBookIdById={formOptions.chapterBookIdById}
+          chapterOptions={formOptions.chapterOptions}
+          createHref={buildTimelineCreateHref({ createMode: "manual" })}
+          bookmarkCollections={bookmarkCollections}
+          filters={filters}
+          chronologyRange={chronologyRange}
+          totalCount={stats.totalEvents}
+          visibleCount={stats.visibleEvents}
+          hasActiveFilters={hasActiveFilters}
+          optionsError={formOptions.error}
+          optionsLoading={formOptions.loading}
+          collapsed={filtersPreferences.filtersCollapsed}
+          splitLayout={splitLayout}
+          forceExpanded={splitLayout}
+          showCollapsedHint={showCollapsedFiltersHint}
+          pinned={filtersPinned}
+          viewMode={viewMode}
+          onChange={onChange}
+          onOpenEntityEditor={openEntityEditor}
+          onReset={onReset}
+          onToggleCollapsed={handleToggleFiltersCollapsed}
+          onTogglePinned={() => setFiltersPinned((current) => !current)}
+          onViewModeChange={setViewMode}
+        />
+      </div>
+    );
+  }
 
-          <div className="flex-1">
-            <div className="min-w-0 px-4 py-6 sm:px-6 xl:px-8 xl:py-8">
-              <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm leading-6 text-zinc-600">
-                    {stats.totalEvents === 0
-                      ? `No timeline events exist in ${activeProjectTitle} yet.`
-                      : timelineEvents.length === 0
-                        ? "No timeline events match the current filters."
-                        : `Reading ${timelineEvents.length} event description${timelineEvents.length === 1 ? "" : "s"} in chronological order.`}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      href={buildTimelineCreateHref({ createMode: "manual" })}
-                      className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-900 transition hover:bg-zinc-50"
-                    >
-                      Create event
-                    </Link>
-                  </div>
-                </div>
+  useScrollLock(isDraftSplitScreen);
 
-                {stats.totalEvents === 0 ? (
-                  <TimelineStateCard>
-                    No timeline events exist in {activeProjectTitle} yet. Use the insertion plus at
-                    the top to start the chronology.
-                  </TimelineStateCard>
-                ) : null}
+  useEffect(() => {
+    if (splitPaneInitializedRef.current) {
+      return;
+    }
 
-                {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
-                  <TimelineStateCard>
-                    No timeline events match the current filters. Switch back to Timeline mode or
-                    reset the filters to bring descriptions back into view.
-                  </TimelineStateCard>
-                ) : null}
+    splitPaneInitializedRef.current = true;
 
-                {timelineEvents.length > 0 || stats.totalEvents === 0 ? (
-                  <div className="overflow-hidden rounded-[2rem] border border-zinc-200/80 bg-white/70 shadow-[0_24px_70px_-52px_rgba(24,24,27,0.55)]">
-                    <div className="px-5 py-4 sm:px-6">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                        Scroll mode
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-zinc-600">
-                        A stripped reading view for draft-style review and inline description edits.
-                      </p>
-                    </div>
+    if (!isDraftSplitScreen) {
+      return;
+    }
 
-                    <div className="border-t border-zinc-200/80">
-                      {layout.items
-                        .filter(
-                          (
-                            item
-                          ): item is TimelineLayoutEventItem | TimelineLayoutInsertionItem =>
-                            item.kind !== "gap"
-                        )
-                        .map((item) => {
-                          if (item.kind === "notch") {
-                            const pendingSingleReviewState =
-                              visiblePendingSingleReviewByInsertionItemId[item.id] ?? null;
+    if (
+      typeof window !== "undefined" &&
+      window.sessionStorage.getItem("bookBible.timelineSplitPane") !== "1"
+    ) {
+      const nextSearchParams = new URLSearchParams(searchParams.toString());
+      nextSearchParams.delete("draftPane");
 
-                            return (
-                              <TimelineInsertionRow
-                                key={item.id}
-                                activeJob={
-                                  activeBrainDumpJob?.insertionItemId === item.id
-                                    ? activeBrainDumpJob.job
-                                    : visibleRestoredBrainDumpJobsByInsertionItemId[item.id] ?? null
-                                }
-                                activeProjectId={activeProjectId}
-                                compact
-                                insertionRef={(node) => registerInsertionRef(item.id, node)}
-                                insertionItem={item}
-                                pendingSingleReviewState={pendingSingleReviewState}
-                                onApproved={handleTimelineBrainDumpApproved}
-                                onOpenPendingSingleReview={() =>
-                                  pendingSingleReviewState
-                                    ? openPendingSingleReview(item, pendingSingleReviewState)
-                                    : undefined
-                                }
-                                onJobReplaced={(jobId, job) =>
-                                  setActiveBrainDumpJob({
-                                    insertionItemId: item.id,
-                                    job,
-                                    jobId,
-                                  })
-                                }
-                                onOpenComposer={(nextInsertionItem) =>
-                                  setLocalCreateFlowState({
-                                    createMode: "chooser",
-                                    insertionContext: buildInsertionBrainDumpContext(
-                                      orderedTimelineEvents,
-                                      nextInsertionItem
-                                    ),
-                                    initialValuesOverride: null,
-                                    insertionItem: nextInsertionItem,
-                                    source: "local",
-                                  })
-                                }
-                                uid={uid}
-                              />
-                            );
-                          }
+      const nextUrl =
+        nextSearchParams.toString().length > 0
+          ? `${pathname}?${nextSearchParams.toString()}`
+          : pathname;
 
-                          return (
-                            <TimelineScrollEventSection
-                              key={item.id}
-                              onEditDescription={handleUpdateEventCardSummaryDescription}
-                              onEditEvent={openEditComposer}
-                              timelineEvent={item.timelineEvent}
-                            />
-                          );
-                        })}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
+      router.replace(nextUrl, { scroll: false });
+    }
+  }, [isDraftSplitScreen, pathname, router, searchParams]);
+
+  useEffect(() => {
+    if (!isDraftSplitScreen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || isKeyboardScrollTarget(event.target)) {
+        return;
+      }
+
+      const scrollContainer =
+        effectiveActiveSplitPane === "draft"
+          ? splitDraftScrollContainerRef.current
+          : splitScrollPaneRef.current;
+
+      if (!scrollContainer) {
+        return;
+      }
+
+      const pageStep = Math.max(240, Math.floor(scrollContainer.clientHeight * 0.85));
+
+      switch (event.key) {
+        case "ArrowDown":
+          scrollContainer.scrollBy({ top: 56, behavior: "auto" });
+          break;
+        case "ArrowUp":
+          scrollContainer.scrollBy({ top: -56, behavior: "auto" });
+          break;
+        case "PageDown":
+          scrollContainer.scrollBy({ top: pageStep, behavior: "auto" });
+          break;
+        case "PageUp":
+          scrollContainer.scrollBy({ top: -pageStep, behavior: "auto" });
+          break;
+        case " ":
+          scrollContainer.scrollBy({
+            top: event.shiftKey ? -pageStep : pageStep,
+            behavior: "auto",
+          });
+          break;
+        case "Home":
+          scrollContainer.scrollTo({ top: 0, behavior: "auto" });
+          break;
+        case "End":
+          scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: "auto" });
+          break;
+        default:
+          return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [effectiveActiveSplitPane, isDraftSplitScreen]);
+
+  function handleToggleFiltersCollapsed() {
+    saveTimelineWorkspacePreferences({
+      filtersCollapsed: !filtersPreferences.filtersCollapsed,
+      filtersHintSeen:
+        filtersPreferences.filtersHintSeen || filtersPreferences.filtersCollapsed,
+      scrollEventDisplayMode: filtersPreferences.scrollEventDisplayMode,
+    });
+  }
+
+  function handleScrollEventDisplayModeChange(
+    nextScrollEventDisplayMode: typeof filtersPreferences.scrollEventDisplayMode
+  ) {
+    saveTimelineWorkspacePreferences({
+      filtersCollapsed: filtersPreferences.filtersCollapsed,
+      filtersHintSeen: filtersPreferences.filtersHintSeen,
+      scrollEventDisplayMode: nextScrollEventDisplayMode,
+    });
+  }
+
+  function updateDraftPane(nextDraftPane: "split" | null) {
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+
+    if (nextDraftPane) {
+      nextSearchParams.set("draftPane", nextDraftPane);
+    } else {
+      nextSearchParams.delete("draftPane");
+    }
+
+    const nextUrl =
+      nextSearchParams.toString().length > 0
+        ? `${pathname}?${nextSearchParams.toString()}`
+        : pathname;
+
+    router.replace(nextUrl, { scroll: false });
+  }
+
+  async function handleOpenManuscriptWindow() {
+    await window.bookBible.manuscript.openWindow();
+  }
+
+  function handleOpenManuscriptSplitScreen() {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem("bookBible.timelineSplitPane", "1");
+    }
+
+    setActiveSplitPane("draft");
+    updateDraftPane("split");
+  }
+
+  function handleCloseManuscriptSplitScreen() {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem("bookBible.timelineSplitPane");
+    }
+
+    setActiveSplitPane("scroll");
+    updateDraftPane(null);
+  }
+
+  const showCollapsedFiltersHint =
+    filtersPreferences.filtersCollapsed && !filtersPreferences.filtersHintSeen;
+  const timelineDensity = Math.max(0.2, Math.min(1, timelineZoom / 100));
+
+  function openZoomPopover() {
+    clearZoomPopoverHideTimeout();
+    setZoomPopoverOpen(true);
+  }
+
+  function scheduleCloseZoomPopover() {
+    clearZoomPopoverHideTimeout();
+    zoomPopoverHideTimeoutRef.current = window.setTimeout(() => {
+      setZoomPopoverOpen(false);
+      zoomPopoverHideTimeoutRef.current = null;
+    }, 1800);
+  }
+
+  function renderSplitShell(leftPane: ReactNode) {
+    return (
+      <section className="flex min-h-0 flex-1 flex-col">
+        <div className="relative grid h-full flex-1 min-h-0 gap-0 overflow-hidden lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)]">
+          <div
+            className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden ${
+              showSplitPaneShadows && effectiveActiveSplitPane === "scroll"
+                ? "relative z-10 shadow-[24px_0_60px_-42px_rgba(24,24,27,0.8)]"
+                : ""
+            }`}
+            onPointerEnter={() => setActiveSplitPane("scroll")}
+            onPointerDown={() => setActiveSplitPane("scroll")}
+          >
+            <div className="flex-none">{renderWorkspaceControls(true)}</div>
+
+            <div
+              ref={splitScrollPaneRef}
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-1 pb-1 sm:px-6 sm:pt-2 sm:pb-2 xl:px-8 xl:pt-3 xl:pb-3"
+              onPointerEnter={() => setActiveSplitPane("scroll")}
+            >
+              {leftPane}
             </div>
           </div>
-        </section>
-      ) : (
-        <section className="grid flex-1 xl:grid-cols-[22rem_minmax(0,1fr)] xl:overflow-hidden">
-          <aside className="border-b border-zinc-200 bg-[#fafaf8] xl:h-full xl:overflow-hidden xl:border-b-0 xl:border-r xl:shadow-[20px_0_40px_-32px_rgba(24,24,27,0.55)]">
-            <div className="flex h-full flex-col xl:sticky xl:top-0 xl:overflow-y-auto">
-            <div className="border-b border-zinc-200 px-5 py-5 sm:px-6">
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <QuickMapStat label="Total events" value={String(stats.totalEvents)} />
-                <QuickMapStat label="Showing now" value={String(stats.visibleEvents)} />
-              </div>
-                <div className="mt-3">
-                  <QuickMapStat
-                    label="Chronology range"
-                    value={formatChronologySpan(timelineEvents)}
-                    fullWidth
+
+          <div className="hidden bg-zinc-300/70 lg:block" aria-hidden="true" />
+
+          <div
+            className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden ${
+              showSplitPaneShadows && effectiveActiveSplitPane === "draft"
+                ? "relative z-10 shadow-[-24px_0_60px_-42px_rgba(24,24,27,0.8)]"
+                : ""
+            }`}
+            onPointerEnter={() => setActiveSplitPane("draft")}
+            onPointerDown={() => setActiveSplitPane("draft")}
+          >
+            <ChapterDraftWorkspace
+              activeProjectId={activeProjectId}
+              layoutMode="embedded"
+              scrollContainerRef={splitDraftScrollContainerRef}
+              onCloseEmbedded={handleCloseManuscriptSplitScreen}
+              uid={uid}
+            />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function renderScrollSplitLeftPane() {
+    return (
+      <div className="mx-auto flex w-full max-w-none flex-col gap-2">
+        <div className="flex w-full flex-wrap items-start justify-between gap-2">
+          <div className="inline-flex rounded-full border border-zinc-200 bg-white/85 p-1 shadow-[0_12px_24px_-18px_rgba(24,24,27,0.4)] backdrop-blur">
+            {(["descriptions", "both", "summary"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => handleScrollEventDisplayModeChange(mode)}
+                className={`inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-medium transition ${
+                  scrollEventDisplayMode === mode
+                    ? "bg-zinc-950 text-white shadow-sm"
+                    : "text-zinc-600 hover:text-zinc-950"
+                }`}
+              >
+                {mode === "descriptions" ? "Descriptions" : mode === "both" ? "Both" : "Summary"}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <TimelineDraftMenu
+              onNewWindow={() => void handleOpenManuscriptWindow()}
+              onSplitScreen={handleOpenManuscriptSplitScreen}
+            />
+          </div>
+        </div>
+
+        {stats.totalEvents === 0 ? (
+          <TimelineStateCard>
+            No timeline events exist in {activeProjectTitle} yet. Use the insertion plus at the top
+            to start the chronology.
+          </TimelineStateCard>
+        ) : null}
+
+        {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
+          <TimelineStateCard>
+            No timeline events match the current filters. Switch back to Timeline mode or reset the
+            filters to bring descriptions back into view.
+          </TimelineStateCard>
+        ) : null}
+
+        {timelineEvents.length > 0 || stats.totalEvents === 0 ? (
+          <div className="rounded-[2rem] border border-zinc-200/80 bg-white/70 shadow-[0_24px_70px_-52px_rgba(24,24,27,0.55)]">
+            <div>
+              {layout.items
+                .filter(
+                  (item): item is TimelineLayoutEventItem | TimelineLayoutInsertionItem =>
+                    item.kind !== "gap"
+                )
+                .map((item) => {
+                  if (item.kind === "notch") {
+                    const pendingSingleReviewState =
+                      visiblePendingSingleReviewByInsertionItemId[item.id] ?? null;
+
+                    return (
+                      <TimelineInsertionRow
+                        key={item.id}
+                        activeJob={
+                          activeBrainDumpJob?.insertionItemId === item.id
+                            ? activeBrainDumpJob.job
+                            : visibleRestoredBrainDumpJobsByInsertionItemId[item.id] ?? null
+                        }
+                        activeProjectId={activeProjectId}
+                        insertionRef={(node) => registerInsertionRef(item.id, node)}
+                        insertionItem={item}
+                        pendingSingleReviewState={pendingSingleReviewState}
+                        onApproved={handleTimelineBrainDumpApproved}
+                        onOpenPendingSingleReview={() =>
+                          pendingSingleReviewState
+                            ? openPendingSingleReview(item, pendingSingleReviewState)
+                            : undefined
+                        }
+                        onJobReplaced={(jobId, job) =>
+                          setActiveBrainDumpJob({
+                            insertionItemId: item.id,
+                            job,
+                            jobId,
+                          })
+                        }
+                        onOpenComposer={(nextInsertionItem) =>
+                          setLocalCreateFlowState({
+                            createMode: "chooser",
+                            insertionContext: buildInsertionBrainDumpContext(
+                              orderedTimelineEvents,
+                              nextInsertionItem
+                            ),
+                            initialValuesOverride: null,
+                            insertionItem: nextInsertionItem,
+                            source: "local",
+                          })
+                        }
+                        uid={uid}
+                      />
+                    );
+                  }
+
+                  return (
+                    <TimelineScrollEventSection
+                      key={item.id}
+                      onEditDescription={handleUpdateEventCardSummaryDescription}
+                      onEditSummary={handleUpdateEventCardSummaryDescription}
+                      onEditEvent={openEditComposer}
+                      onOpenBookmarkCollectionPicker={handleOpenBookmarkCollectionPicker}
+                      displayMode={scrollEventDisplayMode}
+                      timelineEvent={item.timelineEvent}
+                      bookmarkAccentColor={activeBookmarkAccentColor}
+                    />
+                  );
+                })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderTimelineSplitLeftPane() {
+    return (
+      <div className="relative mx-auto flex w-full max-w-none flex-col gap-2">
+        <div className="flex w-full flex-wrap items-start gap-2 pr-12">
+          {firstPendingInsertionItemId ? (
+            <button
+              type="button"
+              onClick={() => focusPendingInsertionItem(firstPendingInsertionItemId)}
+              className="inline-flex h-11 items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-4 text-sm font-medium text-amber-900 transition hover:bg-amber-100"
+            >
+              Go To Pending Event
+            </button>
+          ) : null}
+        </div>
+
+        <div className="absolute right-0 top-0 z-20 flex flex-wrap items-center justify-end gap-3">
+          <TimelineDraftMenu
+            onNewWindow={() => void handleOpenManuscriptWindow()}
+            onSplitScreen={handleOpenManuscriptSplitScreen}
+          />
+        </div>
+
+        <div className="pointer-events-none fixed bottom-5 left-5 z-40 hidden xl:block">
+          <div
+            className="pointer-events-auto relative"
+            onPointerEnter={openZoomPopover}
+            onPointerLeave={scheduleCloseZoomPopover}
+            onFocusCapture={openZoomPopover}
+            onBlurCapture={(event) => {
+              const nextTarget = event.relatedTarget as Node | null;
+
+              if (!event.currentTarget.contains(nextTarget)) {
+                scheduleCloseZoomPopover();
+              }
+            }}
+          >
+            <button
+              type="button"
+              onClick={openZoomPopover}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white/95 text-zinc-600 shadow-[0_16px_40px_-24px_rgba(24,24,27,0.5)] backdrop-blur transition hover:border-zinc-300 hover:text-zinc-950 focus-visible:border-zinc-300 focus-visible:text-zinc-950"
+              aria-label="Show timeline zoom controls"
+            >
+              <ZoomIcon />
+            </button>
+
+            <div
+              className={`absolute bottom-full left-0 mb-3 w-[19rem] transition-all duration-300 ${
+                zoomPopoverOpen
+                  ? "pointer-events-auto translate-y-0 opacity-100"
+                  : "pointer-events-none translate-y-2 opacity-0"
+              }`}
+              onPointerEnter={openZoomPopover}
+              onPointerLeave={scheduleCloseZoomPopover}
+            >
+              <div className="rounded-[1.6rem] border border-zinc-200 bg-white/92 px-4 py-3 shadow-[0_16px_40px_-24px_rgba(24,24,27,0.5)] backdrop-blur">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Timeline zoom
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <span className="text-xs font-medium text-zinc-500">{Math.round(timelineZoom)}%</span>
+                  <input
+                    type="range"
+                    min={20}
+                    max={100}
+                    step={1}
+                    value={timelineZoom}
+                    onChange={(event) => setTimelineZoom(Number(event.target.value))}
+                    className="h-2 w-44 cursor-pointer accent-zinc-950"
+                    aria-label="Timeline zoom"
                   />
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
 
-              <div className="flex-1">
-                {layout.quickNavItems.length > 0 ? (
-                  <div className="border-b border-zinc-200">
-                    {layout.quickNavItems.map((quickNavItem, index) => {
-                      const isSelected = quickNavItem.eventId === selectedEventId;
+        {stats.totalEvents === 0 ? (
+          <TimelineStateCard>
+            No timeline events exist in {activeProjectTitle} yet. Use the create button or the first
+            insertion notch below to start the chronology.
+          </TimelineStateCard>
+        ) : null}
 
-                      return (
-                        <button
-                          key={quickNavItem.eventId}
-                          type="button"
-                          onClick={() => focusEvent(quickNavItem.eventId)}
-                          className={`w-full border-t border-zinc-200 px-5 py-4 text-left transition ${
-                            isSelected
-                              ? "bg-zinc-950 text-white"
-                              : index % 2 === 0
-                                ? "bg-white text-zinc-700 hover:bg-zinc-100"
-                                : "bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
-                          }`}
-                        >
-                          <div className="min-w-0">
-                            <p
-                              className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${
-                                isSelected ? "text-white/70" : "text-zinc-500"
+        {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
+          <TimelineStateCard>
+            No timeline events match the current filters. Reset or adjust the filters to bring
+            blocks back into view.
+          </TimelineStateCard>
+        ) : null}
+
+        {(stats.totalEvents === 0 || timelineEvents.length > 0) && (
+          <section className="pb-0">
+            <div
+              className="relative"
+              style={{
+                zoom: timelineDensity,
+              }}
+            >
+              <div className="absolute bottom-10 left-6 top-10 w-px bg-linear-to-b from-zinc-300 via-zinc-200 to-zinc-300 md:left-1/2 md:-translate-x-1/2" />
+
+              <div
+                className="flex flex-col"
+                style={{
+                  gap: `${Math.round(16 * timelineDensity)}px`,
+                }}
+              >
+                {layout.items.map((item) => {
+                  if (item.kind === "event") {
+                    return (
+                      <TimelineEventRow
+                        chapterLabelsById={chapterLabelsById}
+                        key={item.id}
+                        bookLabelsById={bookLabelsById}
+                        eventItem={item}
+                        isSelected={item.timelineEvent.id === selectedEventId}
+                        onDelete={handleDeleteTimelineEvent}
+                        onSaveSummaryDescription={handleUpdateEventCardSummaryDescription}
+                        onSelect={focusEvent}
+                        onView={openViewer}
+                        onOpenBookmarkCollectionPicker={handleOpenBookmarkCollectionPicker}
+                        registerRef={registerEventRef}
+                        density={timelineDensity}
+                        bookmarkAccentColor={activeBookmarkAccentColor}
+                      />
+                    );
+                  }
+
+                  if (item.kind === "gap") {
+                    return (
+                      <TimelineGapRow key={item.id} density={timelineDensity} gapItem={item} />
+                    );
+                  }
+
+                  const pendingSingleReviewState =
+                    visiblePendingSingleReviewByInsertionItemId[item.id] ?? null;
+
+                  return (
+                    <TimelineInsertionRow
+                      key={item.id}
+                      activeJob={
+                        activeBrainDumpJob?.insertionItemId === item.id
+                          ? activeBrainDumpJob.job
+                          : visibleRestoredBrainDumpJobsByInsertionItemId[item.id] ?? null
+                      }
+                      activeProjectId={activeProjectId}
+                      insertionRef={(node) => registerInsertionRef(item.id, node)}
+                      insertionItem={item}
+                      pendingSingleReviewState={pendingSingleReviewState}
+                      onApproved={handleTimelineBrainDumpApproved}
+                      onOpenPendingSingleReview={() =>
+                        pendingSingleReviewState
+                          ? openPendingSingleReview(item, pendingSingleReviewState)
+                          : undefined
+                      }
+                      onJobReplaced={(jobId, job) =>
+                        setActiveBrainDumpJob({
+                          insertionItemId: item.id,
+                          job,
+                          jobId,
+                        })
+                      }
+                      onOpenComposer={(nextInsertionItem) =>
+                        setLocalCreateFlowState({
+                          createMode: "chooser",
+                          insertionContext: buildInsertionBrainDumpContext(
+                            orderedTimelineEvents,
+                            nextInsertionItem
+                          ),
+                          initialValuesOverride: null,
+                          insertionItem: nextInsertionItem,
+                          source: "local",
+                        })
+                      }
+                      uid={uid}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
+    );
+  }
+
+  if (isDraftSplitScreen) {
+    return (
+      <section
+        className={`flex flex-1 flex-col bg-transparent ${
+          isDraftSplitScreen ? "h-full overflow-hidden" : "min-h-[calc(100vh-6rem)]"
+        }`}
+      >
+        {renderSplitShell(isScrollMode ? renderScrollSplitLeftPane() : renderTimelineSplitLeftPane())}
+        {composerState ? (
+          <TimelineEventComposerSheet
+            activeProjectId={activeProjectId}
+            aiDraftState={composerState.mode === "create" ? composerState.aiDraftState ?? null : null}
+            initialValuesOverride={
+              composerState.mode === "create" ? composerState.initialValuesOverride ?? null : null
+            }
+            insertionItem={composerState.mode === "create" ? composerState.insertionItem : null}
+            mode={composerState.mode}
+            onClose={closeComposer}
+            onSaved={handleSaved}
+            timelineEvent={editingTimelineEvent}
+            uid={uid}
+          />
+        ) : null}
+
+        {createFlowState ? (
+          <TimelineCreateModeLightbox
+            activeProjectId={activeProjectId}
+            initialValues={
+              createFlowState.initialValuesOverride ??
+              buildInsertionInitialValuesForCreateFlow(createFlowState.insertionItem ?? null)
+            }
+            insertionContext={createFlowState.insertionContext ?? null}
+            resumeSingleReviewState={createFlowState.pendingSingleReviewState ?? null}
+            timelineInsertionItemId={createFlowState.insertionItem?.id ?? null}
+            initialMode={createFlowState.createMode}
+            open
+            onClose={closeCreateFlow}
+            onMultiFlowPublished={handleTimelineBrainDumpApproved}
+            onManual={(nextInitialValues) => openCreateComposerFromFlow(nextInitialValues, null)}
+            onMultiJobStarted={(jobId) => void handleMultiBrainDumpJobStarted(jobId)}
+            onSingleReviewStateChange={handlePendingSingleReviewStateChange}
+            onUseAiDraft={(draftState, nextInitialValues) =>
+              openCreateComposerFromFlow(nextInitialValues, draftState)
+            }
+            timelineEvents={timelineEvents}
+            uid={uid}
+          />
+        ) : null}
+
+        {viewingTimelineEvent && availableReferenceMaps && availableReferenceSets ? (
+          <TimelineEventDetailLightbox
+            knownTimelineEventIds={knownTimelineEventIds}
+            onClose={() => setViewerEventId(null)}
+            onDelete={handleDeleteTimelineEvent}
+            onEdit={() => openEditComposer(viewingTimelineEvent.id)}
+            referenceMaps={availableReferenceMaps}
+            referenceSets={availableReferenceSets}
+            timelineEvent={viewingTimelineEvent}
+          />
+        ) : null}
+
+        {viewingTimelineEvent && (!availableReferenceMaps || !availableReferenceSets) ? (
+          <TimelineEventPendingLightbox
+            message={
+              formOptions.error
+                ? "Event detail references could not be loaded right now."
+                : "Loading event details..."
+            }
+            onClose={() => setViewerEventId(null)}
+            onEdit={() => openEditComposer(viewingTimelineEvent.id)}
+            title={viewingTimelineEvent.title}
+          />
+        ) : null}
+
+        {bookmarkPickerState ? (
+          <TimelineBookmarkCollectionPicker
+            collections={bookmarkCollections}
+            initialCollectionId={bookmarkPickerState.currentCollectionId}
+            open
+            onClose={() => setBookmarkPickerState(null)}
+            onSave={handleSaveBookmarkCollection}
+          />
+        ) : null}
+
+        {activeEntityEditorSlice ? (
+          <TimelineEntityEditorLightbox
+            activeProjectId={activeProjectId}
+            onClose={closeEntityEditor}
+            sliceType={activeEntityEditorSlice}
+            uid={uid}
+          />
+        ) : null}
+      </section>
+    );
+  }
+
+  return (
+    <section
+      className={`flex flex-1 flex-col bg-transparent ${
+        isDraftSplitScreen
+          ? "h-full overflow-hidden"
+          : "min-h-[calc(100vh-6rem)]"
+      }`}
+    >
+      {isScrollMode ? (
+        <section className="flex min-h-0 flex-1 flex-col">
+          {!isDraftSplitScreen ? renderWorkspaceControls(false) : null}
+
+          <div className="flex flex-1 min-h-0 flex-col">
+            {isDraftSplitScreen ? (
+              <div className="relative grid h-full flex-1 min-h-0 gap-0 overflow-hidden lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)]">
+                <div
+                  className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden ${
+                    showSplitPaneShadows && effectiveActiveSplitPane === "scroll"
+                      ? "relative z-10 shadow-[24px_0_60px_-42px_rgba(24,24,27,0.8)]"
+                      : ""
+                  }`}
+                  onPointerEnter={() => setActiveSplitPane("scroll")}
+                  onPointerDown={() => setActiveSplitPane("scroll")}
+                >
+                  <div className="flex-none">{renderWorkspaceControls(true)}</div>
+
+                  <div
+                    ref={splitScrollPaneRef}
+                    className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-3 pb-4 sm:px-6 sm:pt-4 sm:pb-4 xl:px-8 xl:pt-5 xl:pb-5"
+                    onPointerEnter={() => setActiveSplitPane("scroll")}
+                  >
+                    <div className="mx-auto flex w-full max-w-none flex-col gap-4">
+                      <div className="flex w-full flex-wrap items-start justify-between gap-3">
+                        <div className="inline-flex rounded-full border border-zinc-200 bg-white/85 p-1 shadow-[0_12px_24px_-18px_rgba(24,24,27,0.4)] backdrop-blur">
+                          {(["descriptions", "both", "summary"] as const).map((mode) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => handleScrollEventDisplayModeChange(mode)}
+                              className={`inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-medium transition ${
+                                scrollEventDisplayMode === mode
+                                  ? "bg-zinc-950 text-white shadow-sm"
+                                  : "text-zinc-600 hover:text-zinc-950"
                               }`}
                             >
-                              Block {quickNavItem.position}
-                            </p>
-                            <p
-                              className={`mt-2 truncate text-sm font-semibold tracking-tight ${
-                                isSelected ? "text-white" : "text-zinc-950"
-                              }`}
-                            >
-                              {quickNavItem.title}
-                            </p>
-                            <p
-                              className={`mt-2 text-[11px] uppercase tracking-[0.18em] ${
-                                isSelected ? "text-white/65" : "text-zinc-500"
-                              }`}
-                            >
-                              {quickNavItem.chronologyLabel}
-                            </p>
+                              {mode === "descriptions"
+                                ? "Descriptions"
+                                : mode === "both"
+                                  ? "Both"
+                                  : "Summary"}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-end gap-3">
+                          <TimelineDraftMenu
+                            onNewWindow={() => void handleOpenManuscriptWindow()}
+                            onSplitScreen={handleOpenManuscriptSplitScreen}
+                          />
+                        </div>
+                      </div>
+
+                      {stats.totalEvents === 0 ? (
+                        <TimelineStateCard>
+                          No timeline events exist in {activeProjectTitle} yet. Use the insertion plus
+                          at the top to start the chronology.
+                        </TimelineStateCard>
+                      ) : null}
+
+                      {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
+                        <TimelineStateCard>
+                          No timeline events match the current filters. Switch back to Timeline mode or
+                          reset the filters to bring descriptions back into view.
+                        </TimelineStateCard>
+                      ) : null}
+
+                      {timelineEvents.length > 0 || stats.totalEvents === 0 ? (
+                        <div className="rounded-[2rem] border border-zinc-200/80 bg-white/70 shadow-[0_24px_70px_-52px_rgba(24,24,27,0.55)]">
+                          <div>
+                            {layout.items
+                              .filter(
+                                (
+                                  item
+                                ): item is TimelineLayoutEventItem | TimelineLayoutInsertionItem =>
+                                  item.kind !== "gap"
+                              )
+                              .map((item) => {
+                                if (item.kind === "notch") {
+                                  const pendingSingleReviewState =
+                                    visiblePendingSingleReviewByInsertionItemId[item.id] ?? null;
+
+                                  return (
+                                    <TimelineInsertionRow
+                                      key={item.id}
+                                      activeJob={
+                                        activeBrainDumpJob?.insertionItemId === item.id
+                                          ? activeBrainDumpJob.job
+                                          : visibleRestoredBrainDumpJobsByInsertionItemId[item.id] ??
+                                            null
+                                      }
+                                      activeProjectId={activeProjectId}
+                                      compact
+                                      insertionRef={(node) => registerInsertionRef(item.id, node)}
+                                      insertionItem={item}
+                                      pendingSingleReviewState={pendingSingleReviewState}
+                                      onApproved={handleTimelineBrainDumpApproved}
+                                      onOpenPendingSingleReview={() =>
+                                        pendingSingleReviewState
+                                          ? openPendingSingleReview(item, pendingSingleReviewState)
+                                          : undefined
+                                      }
+                                      onJobReplaced={(jobId, job) =>
+                                        setActiveBrainDumpJob({
+                                          insertionItemId: item.id,
+                                          job,
+                                          jobId,
+                                        })
+                                      }
+                                      onOpenComposer={(nextInsertionItem) =>
+                                        setLocalCreateFlowState({
+                                          createMode: "chooser",
+                                          insertionContext: buildInsertionBrainDumpContext(
+                                            orderedTimelineEvents,
+                                            nextInsertionItem
+                                          ),
+                                          initialValuesOverride: null,
+                                          insertionItem: nextInsertionItem,
+                                          source: "local",
+                                        })
+                                      }
+                                      uid={uid}
+                                    />
+                                  );
+                                }
+
+                                return (
+                                  <TimelineScrollEventSection
+                                    key={item.id}
+                                    onEditDescription={handleUpdateEventCardSummaryDescription}
+                                    onEditSummary={handleUpdateEventCardSummaryDescription}
+                                    onEditEvent={openEditComposer}
+                                    onOpenBookmarkCollectionPicker={
+                                      handleOpenBookmarkCollectionPicker
+                                    }
+                                    displayMode={scrollEventDisplayMode}
+                                    timelineEvent={item.timelineEvent}
+                                    bookmarkAccentColor={activeBookmarkAccentColor}
+                                  />
+                                );
+                              })}
                           </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="hidden bg-zinc-300/70 lg:block" aria-hidden="true" />
+
+                <div
+                  className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden ${
+                    showSplitPaneShadows && effectiveActiveSplitPane === "draft"
+                      ? "relative z-10 shadow-[-24px_0_60px_-42px_rgba(24,24,27,0.8)]"
+                      : ""
+                  }`}
+                  onPointerEnter={() => setActiveSplitPane("draft")}
+                  onPointerDown={() => setActiveSplitPane("draft")}
+                >
+                  <ChapterDraftWorkspace
+                    activeProjectId={activeProjectId}
+                    layoutMode="embedded"
+                    scrollContainerRef={splitDraftScrollContainerRef}
+                    onCloseEmbedded={handleCloseManuscriptSplitScreen}
+                    uid={uid}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-6 sm:px-6 xl:px-8 xl:py-8">
+                  <div className="inline-flex rounded-full border border-zinc-200 bg-white/85 p-1 shadow-[0_12px_24px_-18px_rgba(24,24,27,0.4)] backdrop-blur">
+                    {(["descriptions", "both", "summary"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => handleScrollEventDisplayModeChange(mode)}
+                        className={`inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-medium transition ${
+                          scrollEventDisplayMode === mode
+                            ? "bg-zinc-950 text-white shadow-sm"
+                            : "text-zinc-600 hover:text-zinc-950"
+                        }`}
+                      >
+                        {mode === "descriptions"
+                          ? "Descriptions"
+                          : mode === "both"
+                            ? "Both"
+                            : "Summary"}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <TimelineDraftMenu
+                      onNewWindow={() => void handleOpenManuscriptWindow()}
+                      onSplitScreen={handleOpenManuscriptSplitScreen}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  ref={isDraftSplitScreen ? splitScrollPaneRef : undefined}
+                  className={`flex-1 ${isDraftSplitScreen ? "min-h-0 overflow-y-auto overscroll-contain" : ""}`}
+                >
+                  <div className="min-w-0 px-4 py-6 sm:px-6 xl:px-8 xl:py-8">
+                    <div className="pointer-events-none fixed bottom-5 left-5 z-40 hidden xl:block">
+                      <div
+                        className="pointer-events-auto relative"
+                        onPointerEnter={openZoomPopover}
+                        onPointerLeave={scheduleCloseZoomPopover}
+                        onFocusCapture={openZoomPopover}
+                        onBlurCapture={(event) => {
+                          const nextTarget = event.relatedTarget as Node | null;
+
+                          if (!event.currentTarget.contains(nextTarget)) {
+                            scheduleCloseZoomPopover();
+                          }
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={openZoomPopover}
+                          className="flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white/95 text-zinc-600 shadow-[0_16px_40px_-24px_rgba(24,24,27,0.5)] backdrop-blur transition hover:border-zinc-300 hover:text-zinc-950 focus-visible:border-zinc-300 focus-visible:text-zinc-950"
+                          aria-label="Show timeline zoom controls"
+                        >
+                          <ZoomIcon />
                         </button>
-                      );
-                    })}
+
+                        <div
+                          className={`absolute bottom-full left-0 mb-3 w-[19rem] transition-all duration-300 ${
+                            zoomPopoverOpen
+                              ? "pointer-events-auto translate-y-0 opacity-100"
+                              : "pointer-events-none translate-y-2 opacity-0"
+                          }`}
+                          onPointerEnter={openZoomPopover}
+                          onPointerLeave={scheduleCloseZoomPopover}
+                        >
+                          <div className="rounded-[1.6rem] border border-zinc-200 bg-white/92 px-4 py-3 shadow-[0_16px_40px_-24px_rgba(24,24,27,0.5)] backdrop-blur">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                              Timeline zoom
+                            </p>
+                            <div className="mt-3 flex items-center gap-3">
+                              <span className="text-xs font-medium text-zinc-500">
+                                {Math.round(timelineZoom)}%
+                              </span>
+                              <input
+                                type="range"
+                                min={20}
+                                max={100}
+                                step={1}
+                                value={timelineZoom}
+                                onChange={(event) => setTimelineZoom(Number(event.target.value))}
+                                className="h-2 w-44 cursor-pointer accent-zinc-950"
+                                aria-label="Timeline zoom"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+                      {stats.totalEvents === 0 ? (
+                        <TimelineStateCard>
+                          No timeline events exist in {activeProjectTitle} yet. Use the insertion plus
+                          at the top to start the chronology.
+                        </TimelineStateCard>
+                      ) : null}
+
+                      {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
+                        <TimelineStateCard>
+                          No timeline events match the current filters. Switch back to Timeline mode
+                          or reset the filters to bring descriptions back into view.
+                        </TimelineStateCard>
+                      ) : null}
+
+                      {timelineEvents.length > 0 || stats.totalEvents === 0 ? (
+                        <div className="rounded-[2rem] border border-zinc-200/80 bg-white/70 shadow-[0_24px_70px_-52px_rgba(24,24,27,0.55)]">
+                          <div>
+                            {layout.items
+                              .filter(
+                                (
+                                  item
+                                ): item is TimelineLayoutEventItem | TimelineLayoutInsertionItem =>
+                                  item.kind !== "gap"
+                              )
+                              .map((item) => {
+                                if (item.kind === "notch") {
+                                  const pendingSingleReviewState =
+                                    visiblePendingSingleReviewByInsertionItemId[item.id] ?? null;
+
+                                  return (
+                                    <TimelineInsertionRow
+                                      key={item.id}
+                                      activeJob={
+                                        activeBrainDumpJob?.insertionItemId === item.id
+                                          ? activeBrainDumpJob.job
+                                          : visibleRestoredBrainDumpJobsByInsertionItemId[item.id] ??
+                                            null
+                                      }
+                                      activeProjectId={activeProjectId}
+                                      compact
+                                      insertionRef={(node) => registerInsertionRef(item.id, node)}
+                                      insertionItem={item}
+                                      pendingSingleReviewState={pendingSingleReviewState}
+                                      onApproved={handleTimelineBrainDumpApproved}
+                                      onOpenPendingSingleReview={() =>
+                                        pendingSingleReviewState
+                                          ? openPendingSingleReview(item, pendingSingleReviewState)
+                                          : undefined
+                                      }
+                                      onJobReplaced={(jobId, job) =>
+                                        setActiveBrainDumpJob({
+                                          insertionItemId: item.id,
+                                          job,
+                                          jobId,
+                                        })
+                                      }
+                                      onOpenComposer={(nextInsertionItem) =>
+                                        setLocalCreateFlowState({
+                                          createMode: "chooser",
+                                          insertionContext: buildInsertionBrainDumpContext(
+                                            orderedTimelineEvents,
+                                            nextInsertionItem
+                                          ),
+                                          initialValuesOverride: null,
+                                          insertionItem: nextInsertionItem,
+                                          source: "local",
+                                        })
+                                      }
+                                      uid={uid}
+                                    />
+                                  );
+                                }
+
+                                return (
+                                  <TimelineScrollEventSection
+                                    key={item.id}
+                                    onEditDescription={handleUpdateEventCardSummaryDescription}
+                                    onEditSummary={handleUpdateEventCardSummaryDescription}
+                                    onEditEvent={openEditComposer}
+                                    onOpenBookmarkCollectionPicker={handleOpenBookmarkCollectionPicker}
+                                    displayMode={scrollEventDisplayMode}
+                                    timelineEvent={item.timelineEvent}
+                                    bookmarkAccentColor={activeBookmarkAccentColor}
+                                  />
+                                );
+                              })}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      ) : (
+        <section className="flex min-h-0 flex-1 flex-col">
+          {!isDraftSplitScreen ? renderWorkspaceControls(false) : null}
+
+          {!isDraftSplitScreen ? (
+            <div className="flex justify-end px-4 py-6 sm:px-6 xl:px-8 xl:py-8">
+              <TimelineDraftMenu
+                onNewWindow={() => void handleOpenManuscriptWindow()}
+                onSplitScreen={handleOpenManuscriptSplitScreen}
+              />
+            </div>
+          ) : null}
+
+          <div
+            className={
+              isDraftSplitScreen
+                ? "relative grid h-full flex-1 min-h-0 gap-0 overflow-hidden lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)]"
+                : "flex-1"
+            }
+          >
+            <div
+              className={
+                isDraftSplitScreen
+                  ? `flex h-full min-h-0 min-w-0 flex-col overflow-hidden ${
+                      showSplitPaneShadows && effectiveActiveSplitPane === "scroll"
+                        ? "relative z-10 shadow-[24px_0_60px_-42px_rgba(24,24,27,0.8)]"
+                        : ""
+                    }`
+                  : "min-w-0 px-4 py-6 sm:px-6 xl:px-8 xl:py-8"
+              }
+              onPointerEnter={isDraftSplitScreen ? () => setActiveSplitPane("scroll") : undefined}
+              onPointerDown={isDraftSplitScreen ? () => setActiveSplitPane("scroll") : undefined}
+            >
+              {isDraftSplitScreen ? <div className="flex-none">{renderWorkspaceControls(true)}</div> : null}
+
+              <div
+                ref={isDraftSplitScreen ? splitScrollPaneRef : undefined}
+                className={
+                  isDraftSplitScreen
+                    ? "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-6 xl:px-8 xl:py-8"
+                    : ""
+                }
+              >
+                {isDraftSplitScreen ? (
+                  <div className="mx-auto flex w-full max-w-none flex-col gap-6">
+                    <div className="flex flex-wrap justify-end gap-3">
+                      {firstPendingInsertionItemId ? (
+                        <button
+                          type="button"
+                          onClick={() => focusPendingInsertionItem(firstPendingInsertionItemId)}
+                          className="inline-flex h-11 items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-4 text-sm font-medium text-amber-900 transition hover:bg-amber-100"
+                        >
+                          Go To Pending Event
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {stats.totalEvents === 0 ? (
+                      <TimelineStateCard>
+                        No timeline events exist in {activeProjectTitle} yet. Use the create button or
+                        the first insertion notch below to start the chronology.
+                      </TimelineStateCard>
+                    ) : null}
+
+                    {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
+                      <TimelineStateCard>
+                        No timeline events match the current filters. Reset or adjust the filters to
+                        bring blocks back into view.
+                      </TimelineStateCard>
+                    ) : null}
+
+                    {(stats.totalEvents === 0 || timelineEvents.length > 0) && (
+                      <section className="pb-4">
+                        <div
+                          className="relative"
+                          style={{
+                            zoom: timelineDensity,
+                          }}
+                        >
+                          <div className="absolute bottom-10 left-6 top-10 w-px bg-linear-to-b from-zinc-300 via-zinc-200 to-zinc-300 md:left-1/2 md:-translate-x-1/2" />
+
+                          <div
+                            className="flex flex-col"
+                            style={{
+                              gap: `${Math.round(16 * timelineDensity)}px`,
+                            }}
+                          >
+                            {layout.items.map((item) => {
+                              if (item.kind === "event") {
+                                return (
+                                <TimelineEventRow
+                                  chapterLabelsById={chapterLabelsById}
+                                  key={item.id}
+                                  bookLabelsById={bookLabelsById}
+                                  eventItem={item}
+                                  isSelected={item.timelineEvent.id === selectedEventId}
+                                  onDelete={handleDeleteTimelineEvent}
+                                  onSaveSummaryDescription={handleUpdateEventCardSummaryDescription}
+                                  onSelect={focusEvent}
+                                  onView={openViewer}
+                                  onOpenBookmarkCollectionPicker={handleOpenBookmarkCollectionPicker}
+                                  registerRef={registerEventRef}
+                                  density={timelineDensity}
+                                  bookmarkAccentColor={activeBookmarkAccentColor}
+                                />
+                              );
+                              }
+
+                              if (item.kind === "gap") {
+                                return (
+                                  <TimelineGapRow
+                                    key={item.id}
+                                    density={timelineDensity}
+                                    gapItem={item}
+                                  />
+                                );
+                              }
+
+                              const pendingSingleReviewState =
+                                visiblePendingSingleReviewByInsertionItemId[item.id] ?? null;
+
+                              return (
+                                <TimelineInsertionRow
+                                  key={item.id}
+                                  activeJob={
+                                    activeBrainDumpJob?.insertionItemId === item.id
+                                      ? activeBrainDumpJob.job
+                                      : visibleRestoredBrainDumpJobsByInsertionItemId[item.id] ?? null
+                                  }
+                                  activeProjectId={activeProjectId}
+                                  insertionRef={(node) => registerInsertionRef(item.id, node)}
+                                  insertionItem={item}
+                                  pendingSingleReviewState={pendingSingleReviewState}
+                                  onApproved={handleTimelineBrainDumpApproved}
+                                  onOpenPendingSingleReview={() =>
+                                    pendingSingleReviewState
+                                      ? openPendingSingleReview(item, pendingSingleReviewState)
+                                      : undefined
+                                  }
+                                  onJobReplaced={(jobId, job) =>
+                                    setActiveBrainDumpJob({
+                                      insertionItemId: item.id,
+                                      job,
+                                      jobId,
+                                    })
+                                  }
+                                  onOpenComposer={(nextInsertionItem) =>
+                                    setLocalCreateFlowState({
+                                      createMode: "chooser",
+                                      insertionContext: buildInsertionBrainDumpContext(
+                                        orderedTimelineEvents,
+                                        nextInsertionItem
+                                      ),
+                                      initialValuesOverride: null,
+                                      insertionItem: nextInsertionItem,
+                                      source: "local",
+                                    })
+                                  }
+                                  uid={uid}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </section>
+                    )}
                   </div>
                 ) : (
-                  <div className="rounded-3xl border border-dashed border-zinc-300 bg-white px-4 py-5 text-sm leading-6 text-zinc-600">
-                    No visible blocks yet. Create a timeline event or loosen the filters to
-                    rebuild the quick map.
-                  </div>
+                  <>
+                    <div className="pointer-events-none fixed bottom-5 left-5 z-40 hidden xl:block">
+                      <div
+                        className="pointer-events-auto relative"
+                        onPointerEnter={openZoomPopover}
+                        onPointerLeave={scheduleCloseZoomPopover}
+                        onFocusCapture={openZoomPopover}
+                        onBlurCapture={(event) => {
+                          const nextTarget = event.relatedTarget as Node | null;
+
+                          if (!event.currentTarget.contains(nextTarget)) {
+                            scheduleCloseZoomPopover();
+                          }
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={openZoomPopover}
+                          className="flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white/95 text-zinc-600 shadow-[0_16px_40px_-24px_rgba(24,24,27,0.5)] backdrop-blur transition hover:border-zinc-300 hover:text-zinc-950 focus-visible:border-zinc-300 focus-visible:text-zinc-950"
+                          aria-label="Show timeline zoom controls"
+                        >
+                          <ZoomIcon />
+                        </button>
+
+                        <div
+                          className={`absolute bottom-full left-0 mb-3 w-[19rem] transition-all duration-300 ${
+                            zoomPopoverOpen
+                              ? "pointer-events-auto translate-y-0 opacity-100"
+                              : "pointer-events-none translate-y-2 opacity-0"
+                          }`}
+                          onPointerEnter={openZoomPopover}
+                          onPointerLeave={scheduleCloseZoomPopover}
+                        >
+                          <div className="rounded-[1.6rem] border border-zinc-200 bg-white/92 px-4 py-3 shadow-[0_16px_40px_-24px_rgba(24,24,27,0.5)] backdrop-blur">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                              Timeline zoom
+                            </p>
+                            <div className="mt-3 flex items-center gap-3">
+                              <span className="text-xs font-medium text-zinc-500">
+                                {Math.round(timelineZoom)}%
+                              </span>
+                              <input
+                                type="range"
+                                min={20}
+                                max={100}
+                                step={1}
+                                value={timelineZoom}
+                                onChange={(event) => setTimelineZoom(Number(event.target.value))}
+                                className="h-2 w-44 cursor-pointer accent-zinc-950"
+                                aria-label="Timeline zoom"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mx-auto flex w-full max-w-none flex-col gap-4">
+                      <div className="flex flex-wrap justify-end gap-3">
+                        {firstPendingInsertionItemId ? (
+                          <button
+                            type="button"
+                            onClick={() => focusPendingInsertionItem(firstPendingInsertionItemId)}
+                            className="inline-flex h-11 items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-4 text-sm font-medium text-amber-900 transition hover:bg-amber-100"
+                          >
+                            Go To Pending Event
+                          </button>
+                        ) : null}
+                      </div>
+
+                      {stats.totalEvents === 0 ? (
+                        <TimelineStateCard>
+                          No timeline events exist in {activeProjectTitle} yet. Use the create button or
+                          the first insertion notch below to start the chronology.
+                        </TimelineStateCard>
+                      ) : null}
+
+                      {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
+                        <TimelineStateCard>
+                          No timeline events match the current filters. Reset or adjust the filters to
+                          bring blocks back into view.
+                        </TimelineStateCard>
+                      ) : null}
+
+                      {(stats.totalEvents === 0 || timelineEvents.length > 0) && (
+                        <section className="pb-4">
+                          <div
+                            className="relative"
+                            style={{
+                              zoom: timelineDensity,
+                            }}
+                          >
+                            <div className="absolute bottom-10 left-6 top-10 w-px bg-linear-to-b from-zinc-300 via-zinc-200 to-zinc-300 md:left-1/2 md:-translate-x-1/2" />
+
+                            <div
+                              className="flex flex-col"
+                              style={{
+                              gap: `${Math.round(16 * timelineDensity)}px`,
+                              }}
+                            >
+                              {layout.items.map((item) => {
+                                if (item.kind === "event") {
+                                  return (
+                                    <TimelineEventRow
+                                      chapterLabelsById={chapterLabelsById}
+                                      key={item.id}
+                                      bookLabelsById={bookLabelsById}
+                                      eventItem={item}
+                                      isSelected={item.timelineEvent.id === selectedEventId}
+                                      onDelete={handleDeleteTimelineEvent}
+                                      onSaveSummaryDescription={handleUpdateEventCardSummaryDescription}
+                                      onSelect={focusEvent}
+                                      onView={openViewer}
+                                      onOpenBookmarkCollectionPicker={handleOpenBookmarkCollectionPicker}
+                                      registerRef={registerEventRef}
+                                      density={timelineDensity}
+                                      bookmarkAccentColor={activeBookmarkAccentColor}
+                                    />
+                                  );
+                                }
+
+                                if (item.kind === "gap") {
+                                  return (
+                                    <TimelineGapRow
+                                      key={item.id}
+                                      density={timelineDensity}
+                                      gapItem={item}
+                                    />
+                                  );
+                                }
+
+                                const pendingSingleReviewState =
+                                  visiblePendingSingleReviewByInsertionItemId[item.id] ?? null;
+
+                                return (
+                                  <TimelineInsertionRow
+                                    key={item.id}
+                                    activeJob={
+                                      activeBrainDumpJob?.insertionItemId === item.id
+                                        ? activeBrainDumpJob.job
+                                        : visibleRestoredBrainDumpJobsByInsertionItemId[item.id] ?? null
+                                  }
+                                  activeProjectId={activeProjectId}
+                                  insertionRef={(node) => registerInsertionRef(item.id, node)}
+                                  insertionItem={item}
+                                    pendingSingleReviewState={pendingSingleReviewState}
+                                    onApproved={handleTimelineBrainDumpApproved}
+                                    onOpenPendingSingleReview={() =>
+                                      pendingSingleReviewState
+                                        ? openPendingSingleReview(item, pendingSingleReviewState)
+                                        : undefined
+                                    }
+                                    onJobReplaced={(jobId, job) =>
+                                      setActiveBrainDumpJob({
+                                        insertionItemId: item.id,
+                                        job,
+                                        jobId,
+                                      })
+                                    }
+                                    onOpenComposer={(nextInsertionItem) =>
+                                      setLocalCreateFlowState({
+                                        createMode: "chooser",
+                                        insertionContext: buildInsertionBrainDumpContext(
+                                          orderedTimelineEvents,
+                                          nextInsertionItem
+                                        ),
+                                        initialValuesOverride: null,
+                                        insertionItem: nextInsertionItem,
+                                        source: "local",
+                                      })
+                                    }
+                                    uid={uid}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </section>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
-          </aside>
-
-          <section className="min-h-0 bg-[linear-gradient(180deg,#fcfcfb_0%,#f8f8f6_100%)] xl:overflow-y-auto">
-            <div className={filterBarClassName}>
-              <TimelineWorkspaceControls
-                filters={filters}
-                totalCount={stats.totalEvents}
-                visibleCount={stats.visibleEvents}
-                hasActiveFilters={hasActiveFilters}
-                pinned={filtersPinned}
-                viewMode={viewMode}
-                onChange={onChange}
-                onReset={onReset}
-                onTogglePinned={() => setFiltersPinned((current) => !current)}
-                onViewModeChange={setViewMode}
-              />
-            </div>
-
-            <div className="space-y-6 p-4 sm:p-6 xl:p-8">
-              <div className="flex flex-wrap justify-end gap-3">
-                {firstPendingInsertionItemId ? (
-                  <button
-                    type="button"
-                    onClick={() => focusPendingInsertionItem(firstPendingInsertionItemId)}
-                    className="inline-flex h-11 items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-4 text-sm font-medium text-amber-900 transition hover:bg-amber-100"
-                  >
-                    Go To Pending Event
-                  </button>
-                ) : null}
-                <Link
-                  href={buildTimelineCreateHref({ createMode: "manual" })}
-                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+            {isDraftSplitScreen ? (
+              <>
+                <div className="hidden bg-zinc-300/70 lg:block" aria-hidden="true" />
+                <div
+                  className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden ${
+                    showSplitPaneShadows && effectiveActiveSplitPane === "draft"
+                      ? "relative z-10 shadow-[-24px_0_60px_-42px_rgba(24,24,27,0.8)]"
+                      : ""
+                  }`}
+                  onPointerEnter={() => setActiveSplitPane("draft")}
+                  onPointerDown={() => setActiveSplitPane("draft")}
                 >
-                  Create timeline event
-                </Link>
-              </div>
-
-              {stats.totalEvents === 0 ? (
-                <TimelineStateCard>
-                  No timeline events exist in {activeProjectTitle} yet. Use the create button or
-                  the first insertion notch below to start the chronology.
-                </TimelineStateCard>
-              ) : null}
-
-              {stats.totalEvents > 0 && timelineEvents.length === 0 ? (
-                <TimelineStateCard>
-                  No timeline events match the current filters. Reset or adjust the filters to
-                  bring blocks back into view.
-                </TimelineStateCard>
-              ) : null}
-
-              {(stats.totalEvents === 0 || timelineEvents.length > 0) && (
-                <section className="pb-8">
-                  <div className="relative">
-                    <div className="absolute bottom-10 left-6 top-10 w-px bg-linear-to-b from-zinc-300 via-zinc-200 to-zinc-300 md:left-1/2 md:-translate-x-1/2" />
-
-                    <div className="space-y-5 md:space-y-6">
-                      {layout.items.map((item) => {
-                        if (item.kind === "event") {
-                          return (
-                            <TimelineEventRow
-                              chapterLabelsById={chapterLabelsById}
-                              key={item.id}
-                              bookLabelsById={bookLabelsById}
-                              eventItem={item}
-                              isSelected={item.timelineEvent.id === selectedEventId}
-                              onSaveSummaryDescription={handleUpdateEventCardSummaryDescription}
-                              onSelect={focusEvent}
-                              onView={openViewer}
-                              registerRef={registerEventRef}
-                            />
-                          );
-                        }
-
-                        if (item.kind === "gap") {
-                          return <TimelineGapRow key={item.id} gapItem={item} />;
-                        }
-
-                        const pendingSingleReviewState =
-                          visiblePendingSingleReviewByInsertionItemId[item.id] ?? null;
-
-                        return (
-                          <TimelineInsertionRow
-                            key={item.id}
-                            activeJob={
-                              activeBrainDumpJob?.insertionItemId === item.id
-                                ? activeBrainDumpJob.job
-                                : visibleRestoredBrainDumpJobsByInsertionItemId[item.id] ?? null
-                            }
-                            activeProjectId={activeProjectId}
-                            insertionRef={(node) => registerInsertionRef(item.id, node)}
-                            insertionItem={item}
-                            pendingSingleReviewState={pendingSingleReviewState}
-                            onApproved={handleTimelineBrainDumpApproved}
-                            onOpenPendingSingleReview={() =>
-                              pendingSingleReviewState
-                                ? openPendingSingleReview(item, pendingSingleReviewState)
-                                : undefined
-                            }
-                            onJobReplaced={(jobId, job) =>
-                              setActiveBrainDumpJob({
-                                insertionItemId: item.id,
-                                job,
-                                jobId,
-                              })
-                            }
-                            onOpenComposer={(nextInsertionItem) =>
-                              setLocalCreateFlowState({
-                                createMode: "chooser",
-                                insertionContext: buildInsertionBrainDumpContext(
-                                  orderedTimelineEvents,
-                                  nextInsertionItem
-                                ),
-                                initialValuesOverride: null,
-                                insertionItem: nextInsertionItem,
-                                source: "local",
-                              })
-                            }
-                            uid={uid}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                </section>
-              )}
-            </div>
-          </section>
+                  <ChapterDraftWorkspace
+                    activeProjectId={activeProjectId}
+                    layoutMode="embedded"
+                    scrollContainerRef={splitDraftScrollContainerRef}
+                    onCloseEmbedded={handleCloseManuscriptSplitScreen}
+                    uid={uid}
+                  />
+                </div>
+              </>
+            ) : null}
+          </div>
         </section>
       )}
-
       {composerState ? (
         <TimelineEventComposerSheet
           activeProjectId={activeProjectId}
@@ -865,6 +2151,7 @@ export function TimelineWorkspaceVisual({
 
         {createFlowState ? (
           <TimelineCreateModeLightbox
+            activeProjectId={activeProjectId}
             initialValues={
               createFlowState.initialValuesOverride ??
               buildInsertionInitialValuesForCreateFlow(createFlowState.insertionItem ?? null)
@@ -875,12 +2162,15 @@ export function TimelineWorkspaceVisual({
             initialMode={createFlowState.createMode}
             open
             onClose={closeCreateFlow}
+            onMultiFlowPublished={handleTimelineBrainDumpApproved}
             onManual={(nextInitialValues) => openCreateComposerFromFlow(nextInitialValues, null)}
             onMultiJobStarted={(jobId) => void handleMultiBrainDumpJobStarted(jobId)}
             onSingleReviewStateChange={handlePendingSingleReviewStateChange}
             onUseAiDraft={(draftState, nextInitialValues) =>
               openCreateComposerFromFlow(nextInitialValues, draftState)
             }
+            timelineEvents={timelineEvents}
+            uid={uid}
           />
         ) : null}
 
@@ -907,31 +2197,27 @@ export function TimelineWorkspaceVisual({
           onEdit={() => openEditComposer(viewingTimelineEvent.id)}
           title={viewingTimelineEvent.title}
         />
-      ) : null}
-    </>
-  );
-}
+        ) : null}
 
-function QuickMapStat({
-  label,
-  value,
-  fullWidth = false,
-}: {
-  label: string;
-  value: string;
-  fullWidth?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-[1.25rem] border border-zinc-200 bg-white px-4 py-3 ${
-        fullWidth ? "w-full" : ""
-      }`}
-    >
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-        {label}
-      </p>
-      <p className="mt-2 text-lg font-semibold tracking-tight text-zinc-950">{value}</p>
-    </div>
+      {bookmarkPickerState ? (
+        <TimelineBookmarkCollectionPicker
+          collections={bookmarkCollections}
+          initialCollectionId={bookmarkPickerState.currentCollectionId}
+          open
+          onClose={() => setBookmarkPickerState(null)}
+          onSave={handleSaveBookmarkCollection}
+        />
+      ) : null}
+
+      {activeEntityEditorSlice ? (
+        <TimelineEntityEditorLightbox
+          activeProjectId={activeProjectId}
+          onClose={closeEntityEditor}
+          sliceType={activeEntityEditorSlice}
+          uid={uid}
+        />
+      ) : null}
+    </section>
   );
 }
 
@@ -952,10 +2238,10 @@ function buildInsertionInitialValuesForCreateFlow(
     description: "",
     status: "active",
     eventType: "other",
-    yearStart: insertionItem?.prefilledYearStart ?? "",
+    yearStart: "",
     monthStart: "",
     dayStart: "",
-    yearEnd: insertionItem?.prefilledYearEnd ?? "",
+    yearEnd: "",
     monthEnd: "",
     dayEnd: "",
     chronologyOrder: "",
@@ -1034,22 +2320,32 @@ function buildInsertionBrainDumpContext(
 function TimelineEventRow({
   chapterLabelsById,
   bookLabelsById,
+  compact = false,
   eventItem,
+  density,
+  bookmarkAccentColor,
   isSelected,
+  onDelete,
   onSaveSummaryDescription,
   onSelect,
+  onOpenBookmarkCollectionPicker,
   onView,
   registerRef,
 }: {
   chapterLabelsById: ReadonlyMap<string, string>;
   bookLabelsById: ReadonlyMap<string, string>;
+  compact?: boolean;
   eventItem: TimelineLayoutEventItem;
+  density: number;
+  bookmarkAccentColor?: string | null;
   isSelected: boolean;
+  onDelete: (timelineEvent: TimelineEvent) => Promise<void>;
   onSaveSummaryDescription: (
     timelineEventId: string,
     payload: { summary: string; description: string }
   ) => Promise<void>;
   onSelect: (eventId: string) => void;
+  onOpenBookmarkCollectionPicker: (timelineEvent: TimelineEvent) => void;
   onView: (eventId: string) => void;
   registerRef: (eventId: string, node: HTMLDivElement | null) => void;
 }) {
@@ -1058,17 +2354,31 @@ function TimelineEventRow({
   return (
     <div
       ref={(node) => registerRef(eventItem.timelineEvent.id, node)}
-      className="relative grid gap-4 md:grid-cols-[minmax(0,1fr)_5rem_minmax(0,1fr)] md:items-start"
+      className={`relative grid ${
+        compact
+          ? "gap-3 md:grid-cols-[minmax(0,1fr)_4rem_minmax(0,1fr)]"
+          : "gap-4 md:grid-cols-[minmax(0,1fr)_5rem_minmax(0,1fr)]"
+      } md:items-start`}
     >
-      <div className={`pl-16 md:pl-0 ${isLeft ? "md:col-start-1" : "md:col-start-3"}`}>
+      <div
+        className={`${
+          compact ? "pl-12" : "pl-16"
+        } md:pl-0 ${
+          isLeft ? "md:col-start-1 md:justify-self-end" : "md:col-start-3 md:justify-self-start"
+        }`}
+      >
         <TimelineWorkspaceEventCard
           chapterLabelsById={chapterLabelsById}
           bookLabelsById={bookLabelsById}
+          onDelete={onDelete}
           onSaveSummaryDescription={onSaveSummaryDescription}
+          onOpenBookmarkCollectionPicker={onOpenBookmarkCollectionPicker}
           onView={onView}
           position={eventItem.position}
           selected={isSelected}
           timelineEvent={eventItem.timelineEvent}
+          density={density}
+          bookmarkAccentColor={bookmarkAccentColor}
         />
       </div>
 
@@ -1076,12 +2386,24 @@ function TimelineEventRow({
         <button
           type="button"
           onClick={() => onSelect(eventItem.timelineEvent.id)}
-          className={`flex min-h-12 min-w-12 items-center justify-center rounded-full border-4 px-2 text-sm font-semibold tabular-nums transition ${
+          className={`flex items-center justify-center rounded-full border-4 px-2 font-semibold tabular-nums transition ${
+            compact ? "min-h-10 min-w-10 text-[0.95rem]" : "min-h-12 min-w-12 text-sm"
+          } ${
             isSelected
               ? "border-zinc-200 bg-zinc-950 text-white"
               : "border-white bg-zinc-300 text-zinc-950 hover:bg-zinc-400"
           }`}
           aria-label={`Focus ${eventItem.timelineEvent.title}`}
+          style={
+            isSelected
+              ? {
+                  backgroundColor: TIMELINE_SELECTION_ACCENT,
+                  borderColor: TIMELINE_SELECTION_ACCENT,
+                  color: "#ffffff",
+                  boxShadow: `0 0 0 4px rgba(200, 106, 46, 0.18), 0 0 0 8px rgba(200, 106, 46, 0.08), 0 10px 24px -10px rgba(200, 106, 46, 0.35)`,
+                }
+              : undefined
+          }
         >
           {eventItem.position}
         </button>
@@ -1090,12 +2412,18 @@ function TimelineEventRow({
   );
 }
 
-function TimelineGapRow({ gapItem }: { gapItem: TimelineLayoutGapItem }) {
+function TimelineGapRow({
+  density,
+  gapItem,
+}: {
+  density: number;
+  gapItem: TimelineLayoutGapItem;
+}) {
   return (
     <div
       className="relative"
       style={{
-        height: `${gapItem.heightPx}px`,
+        height: `${Math.round(gapItem.heightPx * density)}px`,
       }}
     >
       <div className="absolute left-6 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center md:left-1/2">
@@ -1340,36 +2668,56 @@ function TimelineInsertionRow({
 }
 
 function TimelineScrollEventSection({
+  compact = false,
+  displayMode,
   onEditDescription,
+  onEditSummary,
   onEditEvent,
+  onOpenBookmarkCollectionPicker,
+  bookmarkAccentColor,
   timelineEvent,
 }: {
+  compact?: boolean;
+  displayMode: "descriptions" | "both" | "summary";
   onEditDescription: (
     timelineEventId: string,
     payload: { summary: string; description: string }
   ) => Promise<void>;
+  onEditSummary: (
+    timelineEventId: string,
+    payload: { summary: string; description: string }
+  ) => Promise<void>;
   onEditEvent: (timelineEventId: string) => void;
+  onOpenBookmarkCollectionPicker: (timelineEvent: TimelineEvent) => void;
+  bookmarkAccentColor?: string | null;
   timelineEvent: TimelineEvent;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [editingDescription, setEditingDescription] = useState(false);
+  const [editingField, setEditingField] = useState<"summary" | "description" | null>(null);
+  const [draftSummary, setDraftSummary] = useState(timelineEvent.summary);
   const [draftDescription, setDraftDescription] = useState(timelineEvent.description);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [savingDescription, setSavingDescription] = useState(false);
+  const [saving, setSaving] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const summaryEditorRef = useRef<HTMLTextAreaElement | null>(null);
   const descriptionEditorRef = useRef<HTMLTextAreaElement | null>(null);
+  const normalizedSummary = timelineEvent.summary.trim();
   const normalizedDescription = timelineEvent.description.trim();
+  const isBookmarked = isTimelineEventBookmarked(timelineEvent);
+  const hasBookmarkAccent = typeof bookmarkAccentColor === "string";
+  const bookmarkColor = bookmarkAccentColor ?? "#f59e0b";
 
   useEffect(() => {
+    setDraftSummary(timelineEvent.summary);
     setDraftDescription(timelineEvent.description);
-    setEditingDescription(false);
+    setEditingField(null);
     setMenuOpen(false);
     setSaveError(null);
   }, [timelineEvent.description, timelineEvent.id]);
 
   useEffect(() => {
-    if (!menuOpen && !editingDescription) {
+    if (!menuOpen && !editingField) {
       return;
     }
 
@@ -1386,7 +2734,7 @@ function TimelineScrollEventSection({
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setMenuOpen(false);
-        setEditingDescription(false);
+        setEditingField(null);
       }
     }
 
@@ -1397,10 +2745,10 @@ function TimelineScrollEventSection({
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [editingDescription, menuOpen]);
+  }, [editingField, menuOpen]);
 
   useEffect(() => {
-    if (!editingDescription) {
+    if (editingField !== "description") {
       return;
     }
 
@@ -1412,37 +2760,60 @@ function TimelineScrollEventSection({
 
     textarea.style.height = "0px";
     textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [draftDescription, editingDescription]);
+  }, [draftDescription, editingField]);
 
-  async function handleSaveDescription(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (editingField !== "summary") {
+      return;
+    }
+
+    const textarea = summaryEditorRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = "0px";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [draftSummary, editingField]);
+
+  async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSavingDescription(true);
+    setSaving(true);
     setSaveError(null);
 
     try {
-      await onEditDescription(timelineEvent.id, {
-        summary: timelineEvent.summary,
-        description: draftDescription,
-      });
-      setEditingDescription(false);
+      if (editingField === "summary") {
+        await onEditSummary(timelineEvent.id, {
+          summary: draftSummary,
+          description: timelineEvent.description,
+        });
+      } else if (editingField === "description") {
+        await onEditDescription(timelineEvent.id, {
+          summary: timelineEvent.summary,
+          description: draftDescription,
+        });
+      }
+
+      setEditingField(null);
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "Unable to update this description.");
+      setSaveError(error instanceof Error ? error.message : "Unable to update this event.");
     } finally {
-      setSavingDescription(false);
+      setSaving(false);
     }
   }
 
   return (
     <article
       ref={containerRef}
-      className="relative px-5 py-6 sm:px-6"
+      className={`relative ${compact ? "px-4 py-4 sm:px-5" : "px-5 py-6 sm:px-6"}`}
     >
-      <div className="absolute right-4 top-4 z-20">
+      <div className="absolute right-4 top-1 z-20 -translate-y-1/2">
         <button
           ref={menuButtonRef}
           type="button"
           onClick={() => setMenuOpen((current) => !current)}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-transparent text-zinc-500 transition hover:border-zinc-200 hover:bg-zinc-50 hover:text-zinc-800"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-none border-0 bg-transparent text-zinc-500 shadow-none transition hover:text-zinc-800"
           aria-label={`Event actions for ${timelineEvent.title}`}
           aria-expanded={menuOpen}
           aria-haspopup="menu"
@@ -1466,7 +2837,27 @@ function TimelineScrollEventSection({
               type="button"
               onClick={() => {
                 setMenuOpen(false);
-                setEditingDescription(true);
+                setEditingField("summary");
+              }}
+              className="block w-full px-4 py-3 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
+            >
+              Edit Summary
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                onOpenBookmarkCollectionPicker(timelineEvent);
+              }}
+              className="block w-full px-4 py-3 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
+            >
+              {isBookmarked ? "Edit Bookmark Collection" : "Bookmark"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                setEditingField("description");
               }}
               className="block w-full px-4 py-3 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
             >
@@ -1476,51 +2867,113 @@ function TimelineScrollEventSection({
         ) : null}
       </div>
 
-      {editingDescription ? (
-        <form onSubmit={handleSaveDescription} className="pr-14">
-          <label className="block">
-            <span className="sr-only">Edit description</span>
-            <textarea
-              ref={descriptionEditorRef}
-              value={draftDescription}
-              onChange={(event) => setDraftDescription(event.target.value)}
-              className="min-h-40 w-full resize-none overflow-hidden rounded-3xl border border-zinc-200 bg-white px-4 py-4 font-serif text-[1.02rem] leading-8 text-zinc-900 outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-950/10"
-              placeholder="Write the event description."
-            />
-          </label>
+      <div
+        className={`transition ${compact ? "pr-12" : "pr-14"} ${
+          isBookmarked
+            ? "rounded-[2rem] border border-zinc-200 bg-zinc-50/60 px-5 py-4"
+            : ""
+        }`}
+        style={
+          isBookmarked
+            ? hasBookmarkAccent
+              ? {
+                  backgroundColor: hexToRgba(bookmarkColor, 0.04),
+                  boxShadow: `0 0 0 4px ${bookmarkColor}, 0 0 0 5px ${hexToRgba(
+                    bookmarkColor,
+                    0.22
+                  )}, 0 0 34px ${hexToRgba(bookmarkColor, 0.16)}`,
+                }
+              : {
+                  backgroundColor: "rgba(244, 244, 245, 0.7)",
+                  boxShadow:
+                    "0 0 0 1px rgba(228, 228, 231, 0.95), 0 16px 32px -24px rgba(24,24,27,0.24)",
+                }
+            : undefined
+        }
+      >
+        {editingField ? (
+          <form onSubmit={handleSave}>
+            <label className="block">
+              <span className="sr-only">
+                {editingField === "summary" ? "Edit summary" : "Edit description"}
+              </span>
+              <textarea
+                ref={editingField === "summary" ? summaryEditorRef : descriptionEditorRef}
+                value={editingField === "summary" ? draftSummary : draftDescription}
+                onChange={(event) =>
+                  editingField === "summary"
+                    ? setDraftSummary(event.target.value)
+                    : setDraftDescription(event.target.value)
+                }
+                className={`w-full resize-none overflow-hidden rounded-3xl border border-zinc-200 bg-white px-4 py-4 outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-950/10 ${
+                  editingField === "summary"
+                    ? "min-h-28 text-[1.03rem] font-semibold leading-7 text-zinc-950"
+                    : "min-h-40 font-serif text-[1.02rem] leading-8 text-zinc-900"
+                }`}
+                placeholder={
+                  editingField === "summary"
+                    ? "Write the event summary."
+                    : "Write the event description."
+                }
+              />
+            </label>
 
-          {saveError ? (
-            <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {saveError}
-            </p>
-          ) : null}
+            {saveError ? (
+              <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {saveError}
+              </p>
+            ) : null}
 
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              type="submit"
-              disabled={savingDescription}
-              className="inline-flex h-10 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {savingDescription ? "Saving..." : "Save description"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingDescription(false);
-                setDraftDescription(timelineEvent.description);
-                setSaveError(null);
-              }}
-              className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-            >
-              Cancel
-            </button>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex h-10 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {saving ? "Saving..." : "Save changes"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingField(null);
+                  setDraftSummary(timelineEvent.summary);
+                  setDraftDescription(timelineEvent.description);
+                  setSaveError(null);
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className={compact ? "space-y-3" : "space-y-4"}>
+            {displayMode !== "descriptions" ? (
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Summary
+                </p>
+                <p className="mt-2 text-[1.03rem] font-semibold leading-7 text-zinc-950">
+                  {normalizedSummary || "No summary yet."}
+                </p>
+              </div>
+            ) : null}
+
+            {displayMode !== "summary" ? (
+              <div>
+                {displayMode === "both" ? (
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Description
+                  </p>
+                ) : null}
+                <p className="mt-2 whitespace-pre-wrap font-serif text-[1.02rem] leading-8 text-zinc-900">
+                  {normalizedDescription || "No description yet."}
+                </p>
+              </div>
+            ) : null}
           </div>
-        </form>
-      ) : (
-        <p className="pr-14 font-serif text-[1.02rem] leading-8 text-zinc-900">
-          {normalizedDescription || "No description yet."}
-        </p>
-      )}
+        )}
+      </div>
     </article>
   );
 }
@@ -1566,6 +3019,42 @@ function TimelineFailureAttentionIcon() {
   );
 }
 
+function findDuplicateValues(values: string[]) {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const value of values) {
+    if (seen.has(value)) {
+      duplicates.add(value);
+      continue;
+    }
+
+    seen.add(value);
+  }
+
+  return Array.from(duplicates);
+}
+
+function ZoomIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="7" cy="7" r="4.5" />
+      <path d="m10.5 10.5 2.8 2.8" />
+      <path d="M7 5.1v3.8" />
+      <path d="M5.1 7h3.8" />
+    </svg>
+  );
+}
+
 function TimelineBrainDumpReviewLightbox({
   activeProjectId,
   job,
@@ -1585,6 +3074,7 @@ function TimelineBrainDumpReviewLightbox({
 }) {
   const [rerunning, setRerunning] = useState(false);
   const [rerunError, setRerunError] = useState<string | null>(null);
+  useScrollLock(true);
 
   async function handleRerunBrainDump() {
     const brainDumpText = job.input?.brainDumpText?.trim();
@@ -1615,7 +3105,7 @@ function TimelineBrainDumpReviewLightbox({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[70] overflow-y-auto overscroll-contain bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
 
       <div className="relative z-10 mx-auto w-full max-w-5xl rounded-4xl border border-zinc-200 bg-[#fffdf9] shadow-2xl">
@@ -1643,7 +3133,7 @@ function TimelineBrainDumpReviewLightbox({
           </button>
         </div>
 
-        <div className="max-h-[calc(100vh-10rem)] overflow-y-auto px-6 py-6">
+        <div className="max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain px-6 py-6">
           <TimelineBrainDumpJobReview
             activeProjectId={activeProjectId}
             job={job}
@@ -1675,6 +3165,7 @@ function TimelineBrainDumpFailureLightbox({
 }) {
   const [rerunning, setRerunning] = useState(false);
   const [rerunError, setRerunError] = useState<string | null>(null);
+  useScrollLock(true);
 
   async function handleRerunBrainDump() {
     const brainDumpText = job.input?.brainDumpText?.trim();
@@ -1708,7 +3199,7 @@ function TimelineBrainDumpFailureLightbox({
   const chunkMetrics = Array.isArray(job.chunkMetrics) ? job.chunkMetrics : [];
 
   return (
-    <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[70] overflow-y-auto overscroll-contain bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
 
       <div className="relative z-10 mx-auto w-full max-w-5xl rounded-4xl border border-rose-200 bg-[#fffdf9] shadow-2xl">
@@ -1736,7 +3227,7 @@ function TimelineBrainDumpFailureLightbox({
           </button>
         </div>
 
-        <div className="max-h-[calc(100vh-10rem)] overflow-y-auto px-6 py-6">
+        <div className="max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain px-6 py-6">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.6fr)]">
             <section className="rounded-3xl border border-rose-200 bg-white p-5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-500">
@@ -1851,8 +3342,9 @@ function TimelineEventPendingLightbox({
   onEdit: () => void;
   title: string;
 }) {
+  useScrollLock(true);
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overscroll-contain bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
 
       <div className="relative z-10 w-full max-w-xl rounded-4xl border border-zinc-200 bg-[#fffdf9] p-6 shadow-2xl">

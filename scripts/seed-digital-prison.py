@@ -182,7 +182,7 @@ Do not edit exports directly unless the user explicitly asks for a manual correc
     )
     write_text(
         PROJECT_DIR / "scripts/bootstrap.ps1",
-        "Write-Host 'Open the project in Book Bible Desktop to initialize or repair the database.'\n",
+        "Write-Host 'Open the project in BuildaBook to initialize or repair the database.'\n",
     )
 
 

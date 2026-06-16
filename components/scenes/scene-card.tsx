@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EntityCardDeleteButton } from "@/components/layout/entity-card-delete-button";
 import type { Scene } from "@/types/scene";
 
 type SceneCardProps = {
@@ -37,6 +38,16 @@ export function SceneCard({ scene }: SceneCardProps) {
         <span>Project: {scene.projectId}</span>
         <span>Book: {scene.bookId ?? "n/a"}</span>
         <span>POV: {scene.pointOfViewCharacterId ?? "n/a"}</span>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <EntityCardDeleteButton
+          entityId={scene.id}
+          entityLabel="scene"
+          entityTitle={scene.title}
+          redirectHref="/scenes"
+          tableName="scenes"
+        />
       </div>
     </article>
   );

@@ -73,6 +73,7 @@ export async function createBookForProject(
     id: bookId,
     title: bookDocument.title,
     slug: bookDocument.slug,
+    pen_name: bookDocument.penName,
     summary: bookDocument.summary,
     description: bookDocument.description,
     status: bookDocument.status,
@@ -146,6 +147,28 @@ export async function updateBookForProject(
   }
 }
 
+export async function updateBookPenNameForProject(
+  uid: string,
+  projectId: string,
+  bookId: string,
+  penName: string | null
+) {
+  const supabase = getSupabaseBrowserClient();
+  const { error } = await supabase
+    .from("books")
+    .update({
+      pen_name: penName,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", uid)
+    .eq("project_id", projectId)
+    .eq("id", bookId);
+
+  if (error) {
+    throw error;
+  }
+}
+
 async function getAvailableBookId(uid: string, projectId: string, title: string) {
   const baseId = buildBookId(title);
   const supabase = getSupabaseBrowserClient();
@@ -179,6 +202,7 @@ function normalizeBookRow(row: BookRow): Book {
     projectId: row.project_id,
     title: row.title,
     slug: row.slug || slugifyBookTitle(row.title),
+    penName: row.pen_name ?? null,
     summary: row.summary || "",
     description: row.description || "",
     status,

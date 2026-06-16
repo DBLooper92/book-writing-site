@@ -14,7 +14,7 @@ export default function ProjectOverviewPage() {
   return (
     <PageShell
       eyebrow="Project"
-      title={projectRecord?.title ?? activeProject?.title ?? "Project overview"}
+      title="Project overview"
       description="Review the current local project metadata, writing defaults, and canon runtime settings."
     >
       {loading ? (

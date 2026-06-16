@@ -7,6 +7,8 @@ import { PageShell } from "@/components/layout/page-shell";
 import { useActiveProject } from "@/hooks/use-active-project";
 import { createTimelineEventForProject, updateTimelineEventForProject } from "@/lib/data/timeline-events";
 import { applyAiDraftResolutionsToTimelineValues } from "@/lib/timeline/ai-draft-apply";
+import { getInsertionBoundaryEventIds } from "@/lib/timeline/insertion-anchors";
+import { rewireTimelineInsertionBoundaryLinksForProject } from "@/lib/timeline/insertion-links-runtime";
 import type {
   AiMultiEventJobRecord,
   BrainDumpEntitySuggestion,
@@ -167,6 +169,11 @@ export function AiJobReviewPage({ jobId }: AiJobReviewPageProps) {
       return;
     }
 
+    if (!job) {
+      setError("The AI job is no longer available.");
+      return;
+    }
+
     const report: MultiEventApplyReport = {
       failed: [],
       skipped: [],
@@ -183,6 +190,9 @@ export function AiJobReviewPage({ jobId }: AiJobReviewPageProps) {
       }
     >();
     const relationWarnings: string[] = [];
+    const insertionBoundaryIds = getInsertionBoundaryEventIds(
+      job.input?.projectContext?.insertionContext ?? null
+    );
     setApplying(true);
     setError(null);
 
@@ -312,6 +322,22 @@ export function AiJobReviewPage({ jobId }: AiJobReviewPageProps) {
 
       setApplyReport(report);
       setPostApplyWarnings(relationWarnings);
+
+      if (report.success.length > 0) {
+        try {
+          await rewireTimelineInsertionBoundaryLinksForProject({
+            boundaryEventIds: insertionBoundaryIds,
+            insertedEventIds: report.success.map((success) => success.createdTimelineEventId),
+            projectId: activeProjectId,
+            uid,
+          });
+        } catch (error) {
+          relationWarnings.push(
+            error instanceof Error ? error.message : "Failed to rewire insertion boundary links."
+          );
+          setPostApplyWarnings(relationWarnings);
+        }
+      }
     } finally {
       setApplying(false);
     }

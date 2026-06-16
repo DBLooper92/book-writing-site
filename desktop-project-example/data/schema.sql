@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS books (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
+  pen_name TEXT,
   summary TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'planning',
   sort_order INTEGER NOT NULL DEFAULT 0,
@@ -42,6 +43,17 @@ CREATE TABLE IF NOT EXISTS chapters (
   title TEXT NOT NULL,
   chapter_number INTEGER,
   summary TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS manuscripts (
+  id TEXT PRIMARY KEY,
+  book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+  chapter_number INTEGER NOT NULL,
+  chapter_id TEXT,
+  chapter_title TEXT NOT NULL DEFAULT '',
+  body_text TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -120,8 +132,9 @@ CREATE TABLE IF NOT EXISTS ai_proposals (
 );
 
 CREATE INDEX IF NOT EXISTS idx_chapters_book_id ON chapters(book_id);
+CREATE INDEX IF NOT EXISTS idx_manuscripts_book_id ON manuscripts(book_id);
+CREATE INDEX IF NOT EXISTS idx_manuscripts_book_chapter ON manuscripts(book_id, chapter_number);
 CREATE INDEX IF NOT EXISTS idx_scenes_chapter_id ON scenes(chapter_id);
 CREATE INDEX IF NOT EXISTS idx_timeline_events_start_year ON timeline_events(start_year);
 CREATE INDEX IF NOT EXISTS idx_ai_proposals_session_id ON ai_proposals(session_id);
 CREATE INDEX IF NOT EXISTS idx_ai_proposals_target_slice ON ai_proposals(target_slice);
-

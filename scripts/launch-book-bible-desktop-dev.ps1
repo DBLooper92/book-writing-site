@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$env:BOOK_BIBLE_SKIP_RESTORE_CURRENT_PROJECT = "1"
+$env:BOOK_BIBLE_DEV_PORT = "3210"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
@@ -22,7 +22,7 @@ if (-not (Test-Path $binDir)) {
 
 $env:PATH = "$binDir;$env:PATH"
 
-Write-Host "Launching Book Bible Desktop in dev mode from $repoRoot" -ForegroundColor Cyan
+Write-Host "Launching BuildaBook in dev mode from $repoRoot" -ForegroundColor Cyan
 
 & $nodeCommand.Source $startDevScript
 

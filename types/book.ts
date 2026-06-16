@@ -38,6 +38,7 @@ export type Book = {
   projectId: string;
   title: string;
   slug: string;
+  penName: string | null;
   summary: string;
   description: string;
   status: BookStatus;
@@ -194,6 +195,7 @@ export function buildBookDocument({
     projectId,
     title: values.title,
     slug: slugify(values.title),
+    penName: null,
     summary: values.summary,
     description: values.description,
     status: values.status,

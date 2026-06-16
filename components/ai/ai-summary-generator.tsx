@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { useOpenAiConfig } from "@/hooks/use-openai-config";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 
 type AiSummaryGeneratorProps = {
   description: string;
@@ -24,6 +25,7 @@ export function AiSummaryGenerator({
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [generatedSummary, setGeneratedSummary] = useState<string | null>(null);
+  useScrollLock(previewOpen);
 
   const normalizedDescription = description.trim();
   const hasExistingSummary = summary.trim().length > 0;
@@ -109,7 +111,7 @@ export function AiSummaryGenerator({
       ) : null}
 
       {previewOpen && generatedSummary ? (
-        <div className="fixed inset-0 z-[60] overflow-y-auto bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
           <div
             className="absolute inset-0"
             onClick={() => setPreviewOpen(false)}

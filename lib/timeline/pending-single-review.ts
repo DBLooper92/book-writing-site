@@ -14,15 +14,14 @@ export function loadPendingSingleReviewMap(projectId: string) {
   }
 
   try {
-    const parsed = JSON.parse(rawValue) as {
-      records?: Record<string, TimelineSingleEventBrainDumpReviewState>;
-    } | Record<string, TimelineSingleEventBrainDumpReviewState>;
+    const parsed = JSON.parse(rawValue) as unknown;
 
-    if (parsed && typeof parsed === "object" && "records" in parsed) {
-      return normalizeRecordMap(parsed.records);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && "records" in parsed) {
+      const records = (parsed as { records?: unknown }).records;
+      return normalizeRecordMap(records);
     }
 
-    return normalizeRecordMap(parsed as Record<string, TimelineSingleEventBrainDumpReviewState>);
+    return normalizeRecordMap(parsed);
   } catch {
     return {} as Record<string, TimelineSingleEventBrainDumpReviewState>;
   }
@@ -49,15 +48,21 @@ function getStorageKey(projectId: string) {
 }
 
 function normalizeRecordMap(
-  records: Record<string, TimelineSingleEventBrainDumpReviewState> | null | undefined
+  records: unknown
 ) {
-  if (!records || typeof records !== "object") {
+  if (!records || typeof records !== "object" || Array.isArray(records)) {
     return {} as Record<string, TimelineSingleEventBrainDumpReviewState>;
   }
 
   return Object.fromEntries(
     Object.entries(records).filter(([insertionItemId, record]) => {
-      return Boolean(insertionItemId.trim()) && Boolean(record) && record.status === "pending";
+      return (
+        Boolean(insertionItemId.trim()) &&
+        Boolean(record) &&
+        typeof record === "object" &&
+        !Array.isArray(record) &&
+        (record as TimelineSingleEventBrainDumpReviewState).status === "pending"
+      );
     })
   ) as Record<string, TimelineSingleEventBrainDumpReviewState>;
 }

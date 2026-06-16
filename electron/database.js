@@ -7,6 +7,7 @@ const DOCUMENT_TABLES = [
   "projects",
   "books",
   "chapters",
+  "manuscripts",
   "scenes",
   "characters",
   "relationships",

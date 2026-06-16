@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { EntityImageGallery } from "@/components/attachments/entity-image-gallery";
+import { EntityDeleteButton } from "@/components/layout/entity-delete-button";
 import { CultureDetailSection } from "@/components/cultures/culture-detail-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { useCulture } from "@/hooks/use-culture";
+import { deleteEntityForProject } from "@/lib/data/entity-deletions";
 
 export default function CultureDetailPage() {
   const params = useParams<{ cultureId: string }>();
@@ -46,12 +48,27 @@ export default function CultureDetailPage() {
               Back to cultures
             </Link>
             {culture ? (
-              <Link
-                href={`/cultures/${culture.id}/edit`}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                Edit culture
-              </Link>
+              <>
+                <Link
+                  href={`/cultures/${culture.id}/edit`}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  Edit culture
+                </Link>
+                <EntityDeleteButton
+                  entityLabel="culture"
+                  entityTitle={culture.name}
+                  onDelete={() =>
+                    deleteEntityForProject(
+                      user?.uid ?? "",
+                      activeProjectId ?? "",
+                      "cultures",
+                      culture.id
+                    )
+                  }
+                  redirectHref="/cultures"
+                />
+              </>
             ) : null}
           </div>
         </div>
