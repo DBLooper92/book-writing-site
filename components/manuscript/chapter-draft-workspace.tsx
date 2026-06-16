@@ -53,7 +53,7 @@ export function ChapterDraftWorkspace({
 }: ChapterDraftWorkspaceProps) {
   const booksState = useBooks();
   const chaptersState = useChapters();
-  const { settings: appSettings } = useAppSettings();
+  const { addPenName, settings: appSettings } = useAppSettings();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -66,6 +66,7 @@ export function ChapterDraftWorkspace({
   );
   const [chapterCreateModalState, setChapterCreateModalState] =
     useState<ChapterCreateModalState | null>(null);
+  const [penNameLightboxOpen, setPenNameLightboxOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [pageCountsByChapterId, setPageCountsByChapterId] = useState<Record<string, number>>({});
   const chapterRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
@@ -99,7 +100,6 @@ export function ChapterDraftWorkspace({
     [chaptersState.chapters, visibleSelectedBookId]
   );
   const profileDefaultPenName = appSettings?.profile.defaultPenName ?? null;
-  const savedPenNames = appSettings?.profile.penNames ?? [];
   const selectedBookPenName = selectedBook?.penName ?? null;
   const effectivePenName = selectedBookPenName ?? profileDefaultPenName;
   const searchMatches = useMemo(() => {
@@ -118,6 +118,8 @@ export function ChapterDraftWorkspace({
   const visiblePenNames = useMemo(() => {
     const nextNames: string[] = [];
 
+    const savedPenNames = appSettings?.profile.penNames ?? [];
+
     for (const penName of savedPenNames) {
       const normalizedPenName = penName.trim();
 
@@ -133,7 +135,7 @@ export function ChapterDraftWorkspace({
     }
 
     return nextNames;
-  }, [savedPenNames]);
+  }, [appSettings?.profile.penNames]);
   const visibleFocusedChapterId = chapterFromQuery?.id ?? focusedChapterId;
   const focusedChapter = useMemo(
     () => bookChapters.find((chapter) => chapter.id === visibleFocusedChapterId) ?? null,
@@ -296,6 +298,24 @@ export function ChapterDraftWorkspace({
     setSearchQuery("");
     setNotice(null);
     setSettingsMenuOpen(false);
+  }
+
+  async function handleCreatePenNameFromLightbox(penName: string) {
+    if (!selectedBook) {
+      throw new Error("Select a book before adding a pen name.");
+    }
+
+    await addPenName(penName);
+    await updateBookPenNameForProject(uid, activeProjectId, selectedBook.id, penName);
+    booksState.reload();
+    setPenNameLightboxOpen(false);
+    setNotice({
+      message:
+        visiblePenNames.length === 0
+          ? `${penName} was added as your profile default and ${selectedBook.title}'s pen name.`
+          : `${selectedBook.title} will use ${penName}.`,
+      tone: "success",
+    });
   }
 
   function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -471,6 +491,24 @@ export function ChapterDraftWorkspace({
                               No pen names saved
                             </div>
                           )}
+
+                          <div className="my-1 border-t border-zinc-100" />
+
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setSettingsMenuOpen(false);
+                              setPenNameLightboxOpen(true);
+                            }}
+                            disabled={!selectedBook}
+                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-zinc-900 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:text-zinc-400"
+                          >
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-950 text-[0.95rem] leading-none text-white">
+                              +
+                            </span>
+                            <span>Add pen name</span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -624,6 +662,15 @@ export function ChapterDraftWorkspace({
           initialBookId={chapterCreateModalState.bookId}
           onClose={() => setChapterCreateModalState(null)}
           onCreate={async (values) => handleCreateChapterFromModal(values, chapterCreateModalState)}
+        />
+      ) : null}
+
+      {penNameLightboxOpen ? (
+        <PenNameCreateLightbox
+          bookTitle={selectedBook?.title ?? "this book"}
+          hasSavedPenNames={visiblePenNames.length > 0}
+          onClose={() => setPenNameLightboxOpen(false)}
+          onCreate={handleCreatePenNameFromLightbox}
         />
       ) : null}
     </section>
@@ -1083,6 +1130,139 @@ function BlankChapterPage({
 function getVisibleManuscriptPageCount(text: string) {
   const manuscriptPages = paginateManuscriptText(text, CHAPTER_HEADING_RESERVED_LINES);
   return manuscriptPages.length > 0 ? manuscriptPages.length + 1 : 1;
+}
+
+function PenNameCreateLightbox({
+  bookTitle,
+  hasSavedPenNames,
+  onClose,
+  onCreate,
+}: {
+  bookTitle: string;
+  hasSavedPenNames: boolean;
+  onClose: () => void;
+  onCreate: (penName: string) => Promise<void>;
+}) {
+  const [penName, setPenName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const penNameInputRef = useRef<HTMLInputElement | null>(null);
+
+  useScrollLock(true);
+
+  useEffect(() => {
+    penNameInputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const normalizedPenName = penName.trim();
+
+    if (!normalizedPenName) {
+      setError("Enter a pen name first.");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await onCreate(normalizedPenName);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Unable to add this pen name.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[80] overflow-y-auto overscroll-contain bg-zinc-950/55 px-4 py-6 backdrop-blur-[8px]">
+      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
+
+      <div className="relative z-10 mx-auto w-full max-w-xl rounded-[2rem] border border-zinc-200 bg-white shadow-[0_30px_90px_-45px_rgba(24,24,27,0.55)]">
+        <div className="flex items-start justify-between gap-4 border-b border-zinc-200 px-6 py-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+              Pen Name
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+              Add pen name
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-zinc-600">
+              {hasSavedPenNames
+                ? `This will be saved to your profile and used by ${bookTitle}. Your profile default will stay the same.`
+                : `This will be saved as your profile default and used by ${bookTitle}.`}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 text-lg text-zinc-700 transition hover:bg-zinc-50"
+            aria-label="Close pen name dialog"
+          >
+            x
+          </button>
+        </div>
+
+        <form onSubmit={(event) => void handleSubmit(event)} className="space-y-5 px-6 py-5">
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-zinc-700">Pen name</span>
+            <input
+              ref={penNameInputRef}
+              value={penName}
+              onChange={(event) => setPenName(event.target.value)}
+              placeholder="Author name, alias, or imprint"
+              className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none transition focus:border-zinc-400"
+            />
+          </label>
+
+          {error ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+            >
+              {saving ? "Adding..." : "Add pen name"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
 }
 
 function ChapterCreateLightbox({
