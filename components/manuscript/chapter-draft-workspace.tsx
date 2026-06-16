@@ -31,7 +31,6 @@ const PAGE_HEIGHT = 1056;
 const PAGE_GAP = 24;
 const PAGE_MARGIN_X = 96;
 const PAGE_MARGIN_Y = 96;
-const PAGE_CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN_X * 2;
 const PAGE_CONTENT_HEIGHT = PAGE_HEIGHT - PAGE_MARGIN_Y * 2;
 const PAGE_FONT_SIZE = 16;
 const PAGE_LINE_HEIGHT = 32;
@@ -708,10 +707,13 @@ function ChapterDraftBlock({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [editorSelection, setEditorSelection] = useState({ start: 0, end: 0 });
   const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const [pageWidth, setPageWidth] = useState(PAGE_WIDTH);
+  const documentFrameRef = useRef<HTMLDivElement | null>(null);
   const saveTokenRef = useRef(0);
+  const pageContentWidth = Math.max(1, pageWidth - PAGE_MARGIN_X * 2);
   const manuscriptPages = useMemo(
-    () => paginateManuscriptText(draftText, CHAPTER_HEADING_RESERVED_LINES),
-    [draftText]
+    () => paginateManuscriptText(draftText, CHAPTER_HEADING_RESERVED_LINES, pageContentWidth),
+    [draftText, pageContentWidth]
   );
   const visiblePages = useMemo(
     () =>
@@ -740,6 +742,43 @@ function ChapterDraftBlock({
       end: target.selectionEnd ?? 0,
     });
   };
+
+  useLayoutEffect(() => {
+    const node = documentFrameRef.current;
+
+    if (!node || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const updatePageWidth = (nextWidth: number) => {
+      if (!Number.isFinite(nextWidth) || nextWidth <= 0) {
+        return;
+      }
+
+      const normalizedWidth = Math.min(PAGE_WIDTH, Math.max(1, nextWidth));
+      setPageWidth((currentWidth) =>
+        Math.abs(currentWidth - normalizedWidth) < 0.5 ? currentWidth : normalizedWidth
+      );
+    };
+
+    updatePageWidth(node.clientWidth);
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+
+      if (!entry) {
+        return;
+      }
+
+      updatePageWidth(entry.contentRect.width);
+    });
+
+    resizeObserver.observe(node);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     onPageCountChange(chapter.id, visiblePageCount);
@@ -811,6 +850,7 @@ function ChapterDraftBlock({
       </div>
 
       <div
+        ref={documentFrameRef}
         className="relative mx-auto"
         style={{
           height: `${visibleDocumentHeight}px`,
@@ -1493,8 +1533,12 @@ type ManuscriptCaretGeometry = {
 let manuscriptMeasureContext: CanvasRenderingContext2D | null = null;
 let manuscriptParagraphIndentPrefix: string | null = null;
 
-function paginateManuscriptText(text: string, firstPageReservedLines = 0): ManuscriptPage[] {
-  const lines = layoutManuscriptLines(text);
+function paginateManuscriptText(
+  text: string,
+  firstPageReservedLines = 0,
+  pageContentWidth = PAGE_WIDTH - PAGE_MARGIN_X * 2
+): ManuscriptPage[] {
+  const lines = layoutManuscriptLines(text, pageContentWidth);
 
   if (lines.length === 0) {
     return [];
@@ -1599,7 +1643,7 @@ function getManuscriptCaretGeometry(
   };
 }
 
-function layoutManuscriptLines(text: string): ManuscriptLine[] {
+function layoutManuscriptLines(text: string, pageContentWidth: number): ManuscriptLine[] {
   const normalizedText = text.replace(/\r\n?/g, "\n");
 
   if (!normalizedText) {
@@ -1628,7 +1672,8 @@ function layoutManuscriptLines(text: string): ManuscriptLine[] {
       ...wrapParagraphLines(
         paragraph,
         paragraphStartIndex,
-        index === firstContentParagraphIndex
+        index === firstContentParagraphIndex,
+        pageContentWidth
       )
     );
 
@@ -1645,7 +1690,8 @@ function layoutManuscriptLines(text: string): ManuscriptLine[] {
 function wrapParagraphLines(
   paragraph: string,
   paragraphStartIndex: number,
-  isChapterOpeningParagraph: boolean
+  isChapterOpeningParagraph: boolean,
+  pageContentWidth: number
 ): ManuscriptLine[] {
   if (!paragraph.trim()) {
     return [
@@ -1689,7 +1735,10 @@ function wrapParagraphLines(
   };
 
   const currentLineWidth = () =>
-    currentLineIsParagraphStart ? PAGE_CONTENT_WIDTH - paragraphIndentWidth : PAGE_CONTENT_WIDTH;
+    Math.max(
+      1,
+      currentLineIsParagraphStart ? pageContentWidth - paragraphIndentWidth : pageContentWidth
+    );
 
   for (const wordMatch of words) {
     const word = wordMatch[0];
@@ -1709,7 +1758,8 @@ function wrapParagraphLines(
       const brokenPieces = splitTextToFitWidth(
         currentLine,
         currentLineStartIndex === paragraphStartIndex,
-        paragraphIndentWidth
+        paragraphIndentWidth,
+        pageContentWidth
       );
       let pieceOffset = 0;
 
@@ -1751,7 +1801,7 @@ function wrapParagraphLines(
       continue;
     }
 
-    const brokenPieces = splitTextToFitWidth(currentLine, false, 0);
+    const brokenPieces = splitTextToFitWidth(currentLine, false, 0, pageContentWidth);
     let pieceOffset = 0;
 
     brokenPieces.forEach((piece) => {
@@ -1777,7 +1827,8 @@ function wrapParagraphLines(
 function splitTextToFitWidth(
   text: string,
   isParagraphStart: boolean,
-  paragraphIndentWidth = PAGE_PARAGRAPH_INDENT
+  paragraphIndentWidth = PAGE_PARAGRAPH_INDENT,
+  pageContentWidth = PAGE_WIDTH - PAGE_MARGIN_X * 2
 ): string[] {
   const characters = Array.from(text);
   const pieces: string[] = [];
@@ -1785,7 +1836,10 @@ function splitTextToFitWidth(
   let isFirstPiece = isParagraphStart;
 
   while (remainingCharacters.length > 0) {
-    const maxWidth = isFirstPiece ? PAGE_CONTENT_WIDTH - paragraphIndentWidth : PAGE_CONTENT_WIDTH;
+    const maxWidth = Math.max(
+      1,
+      isFirstPiece ? pageContentWidth - paragraphIndentWidth : pageContentWidth
+    );
     const pieceLength = fitCharacterCount(remainingCharacters, maxWidth);
 
     if (pieceLength <= 0) {
