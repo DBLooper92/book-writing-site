@@ -1055,6 +1055,7 @@ export function TimelineWorkspaceVisual({
                             : visibleRestoredBrainDumpJobsByInsertionItemId[item.id] ?? null
                         }
                         activeProjectId={activeProjectId}
+                        compact
                         insertionRef={(node) => registerInsertionRef(item.id, node)}
                         insertionItem={item}
                         pendingSingleReviewState={pendingSingleReviewState}
